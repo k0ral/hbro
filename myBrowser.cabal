@@ -1,0 +1,47 @@
+Name:                myBrowser
+
+-- The package version. See the Haskell package versioning policy
+-- (http://www.haskell.org/haskellwiki/Package_versioning_policy) for
+-- standards guiding when and how versions should be incremented.
+Version:             0.1
+Synopsis:            A suckless minimalistic KISSy browser
+stability:           alpha
+
+-- A longer description of the package.
+-- Description:         
+
+License:             WTFPL
+License-file:        LICENSE
+Author:              koral
+Maintainer:          koral at mailoo dot org
+
+-- A copyright notice.
+-- Copyright:           
+
+Category:            Web
+Build-type:          Simple
+
+-- Extra files to be distributed with the package, such as examples or
+-- a README.
+-- Extra-source-files:  
+
+Cabal-version:       >=1.2
+
+
+Executable myBrowser
+  -- .hs or .lhs file containing the Main module.
+    Main-is: Main.hs
+  
+  -- Packages needed in order to build this package.
+    Build-depends:  base, webkit, gtk, glade, mtl, containers, dyre, process, url
+  
+  -- Modules not exported by this package.
+  -- Other-modules:       
+  
+  -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
+  -- Build-tools:         
+
+    Hs-Source-Dirs: src
+
+    Ghc-options: -Wall -O2 -threaded 
+  
