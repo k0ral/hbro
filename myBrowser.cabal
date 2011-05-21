@@ -4,7 +4,7 @@ Name:                myBrowser
 -- (http://www.haskell.org/haskellwiki/Package_versioning_policy) for
 -- standards guiding when and how versions should be incremented.
 Version:             0.1
-Synopsis:            A suckless minimalistic KISSy browser
+Synopsis:            A suckless minimalist KISSy browser
 stability:           alpha
 
 -- A longer description of the package.
