@@ -3,8 +3,8 @@ Name:                hbro
 -- The package version. See the Haskell package versioning policy
 -- (http://www.haskell.org/haskellwiki/Package_versioning_policy) for
 -- standards guiding when and how versions should be incremented.
-Version:             0.1
-Synopsis:            A suckless minimalist KISSy browser
+Version:             0.1.1
+Synopsis:            A suckless minimal KISSy browser
 stability:           alpha
 
 -- A longer description of the package.
@@ -37,10 +37,10 @@ Executable hbro
     Main-is: Main.hs
   
   -- Packages needed in order to build this package.
-    Build-depends:  base, webkit, gtk, glade, mtl, containers, dyre, process, url
+    Build-depends:  base == 4.*, webkit, gtk, glade, mtl, containers, dyre, process, url
   
   -- Modules not exported by this package.
-  -- Other-modules:       
+    Other-modules: Gui Browser Util
   
   -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
   -- Build-tools:         
