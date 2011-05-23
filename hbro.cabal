@@ -10,7 +10,7 @@ stability:           alpha
 -- A longer description of the package.
 -- Description:         
 
-License:             WTFPL
+License:             OtherLicense
 License-file:        LICENSE
 Author:              koral
 Maintainer:          koral at mailoo dot org
@@ -25,8 +25,12 @@ Build-type:          Simple
 -- a README.
 -- Extra-source-files:  
 
-Cabal-version:       >=1.2
+Cabal-version:       >=1.6
 
+
+Source-repository head
+    type:     git
+    location: git@twyk.tk/haskell-browser.git
 
 Executable hbro
   -- .hs or .lhs file containing the Main module.
@@ -43,5 +47,5 @@ Executable hbro
 
     Hs-Source-Dirs: src
 
-    Ghc-options: -Wall -O2 -threaded 
+    Ghc-options: -Wall -threaded 
   
