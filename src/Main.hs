@@ -104,7 +104,7 @@ main = browser Configuration {
                     _        -> labelSetMarkup urlLabel ""
 
             _ <- on webView progressChanged $ \progress ->
-                labelSetMarkup progressLabel $ "<span foreground=\"yellow\">" ++ (show progress) ++ "%</span>"
+                labelSetMarkup progressLabel $ "<span foreground=\"yellow\">" ++ show progress ++ "%</span>"
 
             _ <- on webView loadFinished $ \_ -> 
                 labelSetMarkup progressLabel "<span foreground=\"green\">100%</span>"

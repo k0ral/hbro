@@ -9,16 +9,17 @@ import Graphics.UI.Gtk.WebKit.WebView
 -- }}}
 
 data GUI = GUI {
-    mWindow         :: Window,
-    mWebView        :: WebView,
-    mPromptLabel    :: Label,
-    mPrompt         :: Entry,
-    mStatusBox      :: HBox,
+    mWindow         :: Window,  -- ^ Main window
+    mWebView        :: WebView, -- ^ Browser's webview
+    mPromptLabel    :: Label,   -- ^ Description of current prompt
+    mPrompt         :: Entry,   -- ^ Prompt entry
+    mStatusBox      :: HBox,    -- ^ Status bar's layout
     mProgressLabel  :: Label,
     mUrlLabel       :: Label
 }
 
 -- {{{ Load glade GUI
+-- | Load GUI from a glade file.
 loadGUI :: String -> IO GUI
 loadGUI gladePath = do
 --        -- Note: crashes with a runtime error on console if fails!
@@ -69,6 +70,7 @@ loadGUI gladePath = do
     return $ GUI window webView promptLabel promptEntry statusBox progressLabel urlLabel
 -- }}}
 
+-- | Show or hide the prompt bar (label + entry).
 showPrompt :: Bool -> GUI -> IO ()
 showPrompt toShow gui = case toShow of
     False -> do widgetHide (mPromptLabel gui)
@@ -76,6 +78,8 @@ showPrompt toShow gui = case toShow of
     _     -> do widgetShow (mPromptLabel gui)
                 widgetShow (mPrompt gui)
 
+-- | Show the prompt bar label and default text.
+-- As the user validates its entry, the given callback is executed.
 prompt :: String -> String -> GUI -> (GUI -> IO ()) -> IO ()
 prompt label defaultText gui callback = do
     -- Show prompt

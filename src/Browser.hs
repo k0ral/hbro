@@ -24,11 +24,11 @@ data Browser = Browser {
 }
 
 data Configuration = Configuration {
-    mHomePage       :: String,
-    mKeyBindings    :: [(([Modifier], String), GUI -> IO ())],
-    mWebSettings    :: IO (WebSettings),
-    mCustomizations :: GUI -> IO (),
-    mError          :: Maybe String
+    mHomePage       :: String,                                  -- ^ Startup page 
+    mKeyBindings    :: [(([Modifier], String), GUI -> IO ())],  -- ^ List of keybindings
+    mWebSettings    :: IO WebSettings,                          -- ^ Web settings
+    mCustomizations :: GUI -> IO (),                            -- ^ Custom callbacks
+    mError          :: Maybe String                             -- ^ Error
 }
 
 instance Ord Modifier where
@@ -36,6 +36,8 @@ instance Ord Modifier where
 -- }}}
 
 -- {{{ Entry point
+-- | Entry point of the application.
+-- Check if help display is requested.
 realMain :: Configuration -> IO ()
 realMain configuration = do
     args <- getArgs
@@ -46,6 +48,8 @@ realMain configuration = do
 -- }}}
 
 -- {{{ Main function
+-- | Application's main function.
+-- Create browser and load homepage.
 initBrowser :: Configuration -> IO ()
 initBrowser configuration = do
     -- Initialize GUI
@@ -101,24 +105,27 @@ initBrowser configuration = do
     mainGUI
 -- }}}
 
+-- | Show web inspector for current webpage.
 showWebInspector :: GUI -> IO ()
 showWebInspector gui = do
     inspector <- webViewGetInspector (mWebView gui)
     webInspectorShow inspector
 
+-- | Load given URL in the browser.
 loadURL :: String -> GUI -> IO ()
 loadURL url gui =
     case importURL url of
         Just url -> loadURL' url gui
         _        -> return ()
 
+-- | Backend function for loadURL.
 loadURL' :: URL -> GUI -> IO ()
 loadURL' url@URL {url_type = Absolute _} gui =
     webViewLoadUri (mWebView gui) (exportURL url)
 loadURL' url@URL {url_type = HostRelative} gui = 
-    webViewLoadUri (mWebView gui) ("file://" ++ (exportURL url)) >> putStrLn (show url)
+    webViewLoadUri (mWebView gui) ("file://" ++ exportURL url) >> putStrLn (show url)
 loadURL' url@URL {url_type = _} gui = 
-    webViewLoadUri (mWebView gui) ("http://" ++ (exportURL url)) >> putStrLn (show url)
+    webViewLoadUri (mWebView gui) ("http://" ++ exportURL url) >> print url
 
 -- {{{ Dyre
 showError :: Configuration -> String -> Configuration
