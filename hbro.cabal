@@ -1,4 +1,4 @@
-Name:                myBrowser
+Name:                hbro
 
 -- The package version. See the Haskell package versioning policy
 -- (http://www.haskell.org/haskellwiki/Package_versioning_policy) for
@@ -28,7 +28,7 @@ Build-type:          Simple
 Cabal-version:       >=1.2
 
 
-Executable myBrowser
+Executable hbro
   -- .hs or .lhs file containing the Main module.
     Main-is: Main.hs
   

@@ -16,7 +16,7 @@ import System.Cmd
 main :: IO ()
 main = browser Configuration {
     mError       = Nothing,
-    mHomePage    = "https://www.seeks-project.info/search_exp.php",
+    mHomePage    = "https://www.google.com",
 
     mKeyBindings = [
 --      ((Mod,          Key),       Callback)
