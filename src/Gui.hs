@@ -9,13 +9,15 @@ import Graphics.UI.Gtk.WebKit.WebView
 -- }}}
 
 data GUI = GUI {
-    mWindow         :: Window,  -- ^ Main window
-    mWebView        :: WebView, -- ^ Browser's webview
-    mPromptLabel    :: Label,   -- ^ Description of current prompt
-    mPrompt         :: Entry,   -- ^ Prompt entry
-    mStatusBox      :: HBox,    -- ^ Status bar's layout
-    mProgressLabel  :: Label,
-    mUrlLabel       :: Label
+    mWindow             :: Window,  -- ^ Main window
+    mInspectorWindow    :: Window,  -- ^ WebInspector window
+    mWebView            :: WebView, -- ^ Browser's webview
+    mPromptLabel        :: Label,   -- ^ Description of current prompt
+    mPrompt             :: Entry,   -- ^ Prompt entry
+    mWindowBox          :: VBox,    -- ^ Window's layout
+    mStatusBox          :: HBox,    -- ^ Status bar's layout
+    mProgressLabel      :: Label,
+    mUrlLabel           :: Label
 }
 
 -- {{{ Load glade GUI
@@ -32,12 +34,14 @@ loadGUI gladePath = do
 --        promptLabel  <- xmlGetWidget xml castToLabel     "promptLabel"
 --        prompt       <- xmlGetWidget xml castToEntry     "prompt"
 
-    window <- windowNew
+    window          <- windowNew
+    inspectorWindow <- windowNew
+
     windowSetDefaultSize window 1024 768
     windowSetPosition window WinPosCenter
     --windowSetOpacity window 0.8 
     --windowSetIconFromFile window "/path/to/icon"
-    set window [ windowTitle := "Browser" ]
+    set window [ windowTitle := "hbro" ]
 
     webView         <- webViewNew
     winBox          <- vBoxNew False 0
@@ -64,10 +68,9 @@ loadGUI gladePath = do
         mainQuit
         return True
 
+    --webFrame <- webViewGetMainFrame webView
 
-    webFrame <- webViewGetMainFrame webView
-
-    return $ GUI window webView promptLabel promptEntry statusBox progressLabel urlLabel
+    return $ GUI window inspectorWindow webView promptLabel promptEntry winBox statusBox progressLabel urlLabel
 -- }}}
 
 -- | Show or hide the prompt bar (label + entry).

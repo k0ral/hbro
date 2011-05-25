@@ -79,6 +79,43 @@ initBrowser configuration = do
             Nothing  -> return ()
         return (mWebView gui)
 
+    -- Web inspector
+    inspector <- webViewGetInspector (mWebView gui)
+    _ <- on inspector inspectWebView $ \_ -> do
+        webView <- webViewNew
+        containerAdd (mInspectorWindow gui) webView
+        return webView
+    
+    _ <- on inspector showWindow $ do
+        widgetShowAll (mInspectorWindow gui)
+        return True
+
+    -- TODO: when does this signal happen ?!
+    --_ <- on inspector finished $ return ()
+
+    _ <- on inspector attachWindow $ do
+        getWebView <- webInspectorGetWebView inspector
+        case getWebView of
+            Just webView -> do widgetHide (mInspectorWindow gui)
+                               containerRemove (mInspectorWindow gui) webView
+                               widgetSetSizeRequest webView (-1) 250
+                               boxPackEnd (mWindowBox gui) webView PackNatural 0
+                               widgetShow webView
+                               return True
+            _            -> return False
+
+    _ <- on inspector detachWindow $ do
+        getWebView <- webInspectorGetWebView inspector
+        case getWebView of
+            Just webView -> do containerRemove (mWindowBox gui) webView
+                               containerAdd (mInspectorWindow gui) webView
+                               widgetShowAll (mInspectorWindow gui)
+                               return True
+            _            -> return False
+        
+        widgetShowAll (mInspectorWindow gui)
+        return True
+
     -- Key bindings
     _ <- after (mWebView gui) keyPressEvent $ do
         keyVal      <- eventKeyVal
@@ -109,7 +146,8 @@ initBrowser configuration = do
 showWebInspector :: GUI -> IO ()
 showWebInspector gui = do
     inspector <- webViewGetInspector (mWebView gui)
-    webInspectorShow inspector
+    webInspectorInspectCoordinates inspector 0 0
+
 
 -- | Load given URL in the browser.
 loadURL :: String -> GUI -> IO ()
@@ -133,9 +171,9 @@ showError configuration message = configuration { mError = Just message }
 
 browser :: Configuration -> IO ()
 browser = Dyre.wrapMain Dyre.defaultParams {
-    Dyre.projectName  = "browser",
+    Dyre.projectName  = "hbro",
     Dyre.showError    = showError,
-    Dyre.realMain     = realMain,
-    Dyre.ghcOpts      = ["-i /path/to/src", "-O2"]
+    Dyre.realMain     = realMain--,
+    --Dyre.ghcOpts      = ["-i /path/to/src", "-O2"]
 }
 -- }}}
