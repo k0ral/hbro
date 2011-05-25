@@ -68,8 +68,6 @@ loadGUI gladePath = do
         mainQuit
         return True
 
-    --webFrame <- webViewGetMainFrame webView
-
     return $ GUI window inspectorWindow webView promptLabel promptEntry winBox statusBox progressLabel urlLabel
 -- }}}
 

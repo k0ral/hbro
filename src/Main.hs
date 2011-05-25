@@ -8,6 +8,7 @@ import Control.Concurrent
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.WebKit.Download
 import Graphics.UI.Gtk.WebKit.NetworkRequest
+import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebSettings
 import System.Cmd
@@ -38,7 +39,8 @@ main = browser Configuration {
         -- Others
         (([Control],    "i"),       showWebInspector),
         (([Control],    "u"),       toggleSourceMode),
-        (([],           "t"),       toggleStatusBar)
+        (([],           "t"),       toggleStatusBar),
+        (([Control],    "p"),       print)
     ],
 
     mWebSettings = (do
@@ -89,10 +91,10 @@ main = browser Configuration {
 
     -- Custom callbacks
     mCustomizations = \gui -> (let
-            webView = mWebView gui
-            progressLabel = mProgressLabel gui
-            urlLabel = mUrlLabel gui
-            window = mWindow gui
+            webView         = mWebView gui
+            progressLabel   = mProgressLabel gui
+            urlLabel        = mUrlLabel gui
+            window          = mWindow gui
         in do
             _ <- on webView loadStarted $ \_ -> do 
                 labelSetMarkup progressLabel "<span foreground=\"red\">0%</span>"
@@ -187,3 +189,9 @@ main = browser Configuration {
                                 u <- entryGetText (mPrompt g)
                                 loadURL u g)
                 _ -> return ()
+
+        print :: GUI -> IO ()
+        print gui = do
+            frame <- webViewGetMainFrame (mWebView gui)
+            webFramePrint frame
+
