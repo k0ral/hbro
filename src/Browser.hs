@@ -127,8 +127,7 @@ initBrowser configuration = do
             Just string -> do 
                 case lookup (modifiers, string) keyBindings of
                     Just callback   -> liftIO $ callback gui
-                    _               -> liftIO $ putStrLn "No callback associated"
-                liftIO $ putStrLn string
+                    _               -> liftIO $ putStrLn string 
             _ -> return ()
 
         return False
@@ -173,7 +172,6 @@ browser :: Configuration -> IO ()
 browser = Dyre.wrapMain Dyre.defaultParams {
     Dyre.projectName  = "hbro",
     Dyre.showError    = showError,
-    Dyre.realMain     = realMain--,
-    --Dyre.ghcOpts      = ["-i /path/to/src", "-O2"]
+    Dyre.realMain     = realMain
 }
 -- }}}

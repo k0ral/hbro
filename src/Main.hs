@@ -40,7 +40,10 @@ main = browser Configuration {
         (([Control],    "i"),       showWebInspector),
         (([Control],    "u"),       toggleSourceMode),
         (([],           "t"),       toggleStatusBar),
-        (([Control],    "p"),       print)
+        (([Control],    "p"),       print),
+        (([],           "<F11>"),   fullscreen),
+        (([],           "<Escape>"),   unfullscreen)
+
     ],
 
     mWebSettings = (do
@@ -194,4 +197,10 @@ main = browser Configuration {
         print gui = do
             frame <- webViewGetMainFrame (mWebView gui)
             webFramePrint frame
+
+        fullscreen :: GUI -> IO ()
+        fullscreen gui = windowFullscreen (mWindow gui)
+
+        unfullscreen :: GUI -> IO ()
+        unfullscreen gui = windowUnfullscreen (mWindow gui)
 

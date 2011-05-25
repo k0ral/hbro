@@ -38,8 +38,7 @@ loadGUI gladePath = do
     inspectorWindow <- windowNew
 
     windowSetDefaultSize window 1024 768
-    windowSetPosition window WinPosCenter
-    --windowSetOpacity window 0.8 
+    windowSetPosition   window WinPosCenter
     --windowSetIconFromFile window "/path/to/icon"
     set window [ windowTitle := "hbro" ]
 
@@ -63,6 +62,9 @@ loadGUI gladePath = do
 
     window `containerAdd` winBox
     scrollWin `containerAdd` webView
+
+    set webView [ widgetCanDefault := True ]
+    windowSetDefault window (Just webView)
 
     _ <- on webView closeWebView $ do
         mainQuit
