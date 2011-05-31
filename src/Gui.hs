@@ -83,8 +83,8 @@ showPrompt toShow gui = case toShow of
 
 -- | Show the prompt bar label and default text.
 -- As the user validates its entry, the given callback is executed.
-prompt :: String -> String -> GUI -> (GUI -> IO ()) -> IO ()
-prompt label defaultText gui callback = do
+prompt :: String -> String -> Bool -> GUI -> (GUI -> IO ()) -> IO ()
+prompt label defaultText incremental gui callback = do
     -- Show prompt
     showPrompt True gui
 
@@ -95,53 +95,44 @@ prompt label defaultText gui callback = do
     widgetGrabFocus (mPrompt gui)
 
     -- Register callback
-    rec id <- on (mPrompt gui) keyPressEvent $ do
-        key <- eventKeyName
+    case incremental of
+        True -> do 
+            id1 <- on (mPrompt gui) editableChanged $  
+                liftIO $ callback gui
+            rec id2 <- on (mPrompt gui) keyPressEvent $ do
+                key <- eventKeyName
+                
+                case key of
+                    "Return" -> do
+                        liftIO $ showPrompt False gui
+                        liftIO $ signalDisconnect id1
+                        liftIO $ signalDisconnect id2
+                        liftIO $ widgetGrabFocus (mWebView gui)
+                    "Escape" -> do
+                        liftIO $ showPrompt False gui
+                        liftIO $ signalDisconnect id1
+                        liftIO $ signalDisconnect id2
+                        liftIO $ widgetGrabFocus (mWebView gui)
+                    _ -> return ()
+                return False
+            return ()
 
-        case key of
-            "Return" -> do liftIO $ showPrompt False gui
-                           liftIO $ callback gui
-                           liftIO $ signalDisconnect id
-                           liftIO $ widgetGrabFocus (mWebView gui)
-            "Escape" -> do liftIO $ showPrompt False gui
-                           liftIO $ signalDisconnect id
-                           liftIO $ widgetGrabFocus (mWebView gui)
-            _        -> return ()
+        _ -> do
+            rec id <- on (mPrompt gui) keyPressEvent $ do
+                key <- eventKeyName
 
-        return False
+                case key of
+                    "Return" -> do
+                        liftIO $ showPrompt False gui
+                        liftIO $ callback gui
+                        liftIO $ signalDisconnect id
+                        liftIO $ widgetGrabFocus (mWebView gui)
+                    "Escape" -> do
+                        liftIO $ showPrompt False gui
+                        liftIO $ signalDisconnect id
+                        liftIO $ widgetGrabFocus (mWebView gui)
+                    _        -> return ()
+                return False
 
-    return ()
+            return ()
 
-
--- promptFind :: Maybe String -> GUI -> IO ()
--- promptFind label gui = do
---     -- Show prompt
---     widgetShow (mPromptLabel gui)
---     widgetShow (mPrompt gui)
-
---     -- Fill prompt
---     case label of
---         Just text -> labelSetText (mPromptLabel gui) text
---         _         -> return ()
-
---     widgetGrabFocus (mPrompt gui)
-
---     -- Register callback
---     rec id <- on (mPrompt gui) keyPressEvent $ do
---         key         <- eventKeyName
---         --keywords    <- entryGetText (mPrompt gui)
-
---         case key of
---             "Return" -> do liftIO $ widgetHide (mPromptLabel gui)
---                            liftIO $ widgetHide (mPrompt gui)
---                            liftIO $ webViewMarkTextMatches (mWebView gui) keywords True 0
---                            liftIO $ signalDisconnect id
---             "Escape" -> do liftIO $ widgetHide (mPromptLabel gui)
---                            liftIO $ widgetHide (mPrompt gui)
---                            liftIO $ signalDisconnect id
---             _        -> return ()
-
---         return False
-
---     return ()
---     

@@ -36,6 +36,12 @@ main = browser Configuration {
         (([],           "o"),       promptURL False), 
         (([Shift],      "O"),       promptURL True),
 
+        -- Search
+        (([Shift],      "/"),       promptFind False True),
+        (([Shift],      "?"),       promptFind False False),
+        (([],           "n"),       findNext False True),
+        (([Shift],      "N"),       findNext False False),
+
         -- Others
         (([Control],    "i"),       showWebInspector),
         (([Control],    "u"),       toggleSourceMode),
@@ -123,8 +129,8 @@ main = browser Configuration {
             _ <- on webView downloadRequested $ \download -> do
                 getUrl <- downloadGetUri download
                 _ <- case getUrl of
-                        Just url -> forkOS $ do _ <- rawSystem "wget" [url]; return ()
-                        _        -> forkOS $ do _ <- rawSystem "pwd"  []; return ()
+                        Just url -> forkOS $ (rawSystem "wget" [url]) >> return ()
+                        _        -> forkOS $ return ()
                 return True
 
             _ <- on webView mimeTypePolicyDecisionRequested $ \_ request mimetype policyDecision -> do
@@ -181,16 +187,29 @@ main = browser Configuration {
 
         promptURL :: Bool -> GUI -> IO ()        
         promptURL False gui = 
-            prompt "Open URL" "" gui (\g -> do 
+            prompt "Open URL" "" False gui (\g -> do 
                 uri <- entryGetText (mPrompt g)
                 loadURL uri g)
         promptURL _ gui = do
             uri <- webViewGetUri (mWebView gui)
             case uri of
-                Just url -> prompt "Open URL" url gui (\g -> do
+                Just url -> prompt "Open URL" url False gui (\g -> do
                                 u <- entryGetText (mPrompt g)
                                 loadURL u g)
                 _ -> return ()
+
+        promptFind :: Bool -> Bool -> GUI -> IO ()
+        promptFind caseSensitive forward gui =
+            prompt "Search" "" True gui (\gui' -> do
+                keyWord <- entryGetText (mPrompt gui')
+                webViewSearchText (mWebView gui) keyWord caseSensitive forward True
+                return ())
+
+        findNext :: Bool -> Bool -> GUI -> IO()
+        findNext caseSensitive forward gui = do
+            keyWord <- entryGetText (mPrompt gui)
+            webViewSearchText (mWebView gui) keyWord caseSensitive forward True
+            return ()
 
         printPage :: GUI -> IO ()
         printPage gui = do
