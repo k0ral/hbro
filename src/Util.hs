@@ -2,7 +2,7 @@ module Util where
 
 import Graphics.UI.Gtk
 
--- |Converts a keyVal to a String.
+-- | Converts a keyVal to a String.
 -- For printable characters, the corresponding String is returned, except for the space character for which "<Space>" is returned.
 -- For non-printable characters, the corresponding keyName between <> is returned.
 -- For modifiers, Nothing is returned.

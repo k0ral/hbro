@@ -1,51 +1,47 @@
 Name:                hbro
-
--- The package version. See the Haskell package versioning policy
--- (http://www.haskell.org/haskellwiki/Package_versioning_policy) for
--- standards guiding when and how versions should be incremented.
-Version:             0.2
+Version:             0.3
 Synopsis:            A suckless minimal KISSy browser
-stability:           alpha
-
--- A longer description of the package.
+Stability:           alpha
 -- Description:         
+-- Homepage:
 
 License:             OtherLicense
 License-file:        LICENSE
+-- Copyright:           
 Author:              koral
 Maintainer:          koral at mailoo dot org
 
--- A copyright notice.
--- Copyright:           
-
-Category:            Web
-Build-type:          Simple
+Category:            Browser,Web
 
 -- Extra files to be distributed with the package, such as examples or
 -- a README.
 -- Extra-source-files:  
 
 Cabal-version:       >=1.6
+Build-type:          Simple
 
 
 Source-repository head
-    type:     git
-    location: git@twyk.tk/haskell-browser.git
+    Type:     git
+    Location: git@twyk.tk/haskell-browser.git
 
 Executable hbro
-  -- .hs or .lhs file containing the Main module.
     Main-is: Main.hs
-  
-  -- Packages needed in order to build this package.
-    Build-depends:  base == 4.*, webkit, gtk, glade, mtl, containers, dyre, process, url
-  
-  -- Modules not exported by this package.
-    Other-modules: Gui Browser Util
-  
-  -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
-  -- Build-tools:         
-
+    Build-depends:
+        base == 4.*,
+        webkit,
+        gtk,
+        glade,
+        mtl,
+        containers,
+        dyre,
+        process,
+        url,
+        zeromq-haskell,
+        bytestring,
+        unix
+    Other-modules: Gui Browser Util Socket
+    -- Build-tools:         
     Hs-Source-Dirs: src
-
     Ghc-options: -Wall -threaded 
   

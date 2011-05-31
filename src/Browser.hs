@@ -1,14 +1,16 @@
+{-# LANGUAGE OverloadedStrings #-} 
 module Browser where
 
 -- {{{ Imports
 import Gui
+import Socket
 import Util
 
 import qualified Config.Dyre as Dyre
-
+import Control.Concurrent
 import Control.Monad.Trans(liftIO)
 import Data.Map
-import Graphics.UI.Gtk
+import Graphics.UI.Gtk 
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebInspector
@@ -16,6 +18,7 @@ import Graphics.UI.Gtk.WebKit.WebSettings
 import Network.URL
 import Prelude hiding (lookup)
 import System.Environment
+import System.Posix.Process
 -- }}}
 
 -- {{{ Type definitions
@@ -55,6 +58,10 @@ initBrowser configuration = do
     -- Initialize GUI
     args <- initGUI
     gui  <- loadGUI ""
+
+    -- Initialize IPC socket
+    pid <- getProcessID
+    _ <- forkIO $ createReplySocket ("ipc:///tmp/hbro." ++ (show pid)) gui
 
     -- Load configuration
     settings <- mWebSettings configuration
@@ -106,7 +113,7 @@ initBrowser configuration = do
 
     _ <- on inspector detachWindow $ do
         getWebView <- webInspectorGetWebView inspector
-        case getWebView of
+        _ <- case getWebView of
             Just webView -> do containerRemove (mWindowBox gui) webView
                                containerAdd (mInspectorWindow gui) webView
                                widgetShowAll (mInspectorWindow gui)
@@ -152,8 +159,8 @@ showWebInspector gui = do
 loadURL :: String -> GUI -> IO ()
 loadURL url gui =
     case importURL url of
-        Just url -> loadURL' url gui
-        _        -> return ()
+        Just url' -> loadURL' url' gui
+        _         -> return ()
 
 -- | Backend function for loadURL.
 loadURL' :: URL -> GUI -> IO ()

@@ -40,10 +40,9 @@ main = browser Configuration {
         (([Control],    "i"),       showWebInspector),
         (([Control],    "u"),       toggleSourceMode),
         (([],           "t"),       toggleStatusBar),
-        (([Control],    "p"),       print),
+        (([Control],    "p"),       printPage),
         (([],           "<F11>"),   fullscreen),
         (([],           "<Escape>"),   unfullscreen)
-
     ],
 
     mWebSettings = (do
@@ -108,8 +107,8 @@ main = browser Configuration {
                     Just url -> labelSetMarkup urlLabel url 
                     _        -> labelSetMarkup urlLabel ""
 
-            _ <- on webView progressChanged $ \progress ->
-                labelSetMarkup progressLabel $ "<span foreground=\"yellow\">" ++ show progress ++ "%</span>"
+            _ <- on webView progressChanged $ \progress' ->
+                labelSetMarkup progressLabel $ "<span foreground=\"yellow\">" ++ show progress' ++ "%</span>"
 
             _ <- on webView loadFinished $ \_ -> 
                 labelSetMarkup progressLabel "<span foreground=\"green\">100%</span>"
@@ -124,8 +123,8 @@ main = browser Configuration {
             _ <- on webView downloadRequested $ \download -> do
                 getUrl <- downloadGetUri download
                 _ <- case getUrl of
-                        Just url -> forkOS $ do rawSystem "wget" [url]; return ()
-                        _        -> forkOS $ do rawSystem "pwd"  []; return ()
+                        Just url -> forkOS $ do _ <- rawSystem "wget" [url]; return ()
+                        _        -> forkOS $ do _ <- rawSystem "pwd"  []; return ()
                 return True
 
             _ <- on webView mimeTypePolicyDecisionRequested $ \_ request mimetype policyDecision -> do
@@ -193,8 +192,8 @@ main = browser Configuration {
                                 loadURL u g)
                 _ -> return ()
 
-        print :: GUI -> IO ()
-        print gui = do
+        printPage :: GUI -> IO ()
+        printPage gui = do
             frame <- webViewGetMainFrame (mWebView gui)
             webFramePrint frame
 
