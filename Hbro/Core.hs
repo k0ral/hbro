@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-} 
-module Browser where
+module Hbro.Core where
 
 -- {{{ Imports
-import Gui
-import Socket
-import Util
+import Hbro.Gui
+import Hbro.Socket
+import Hbro.Util
 
 import qualified Config.Dyre as Dyre
 import Control.Concurrent

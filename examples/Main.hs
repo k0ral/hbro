@@ -1,8 +1,8 @@
 module Main where
 
 -- {{{ Imports
-import Browser
-import Gui
+import Hbro.Core
+import Hbro.Gui
 
 import Control.Concurrent
 import Graphics.UI.Gtk

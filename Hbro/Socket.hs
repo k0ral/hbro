@@ -1,12 +1,13 @@
-module Socket where
+module Hbro.Socket where
     
-import Gui
+-- {{{ Imports
+import Hbro.Gui
 
 import Control.Monad
 import Data.ByteString.Char8 (pack, unpack)
 import Graphics.UI.Gtk.WebKit.WebView
 import System.ZMQ 
-    
+-- }}}
     
 createReplySocket :: String -> GUI -> IO a
 createReplySocket socketName gui = withContext 1 $ \context -> do  

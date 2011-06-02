@@ -1,4 +1,4 @@
-module Util where
+module Hbro.Util where
 
 import Graphics.UI.Gtk
 

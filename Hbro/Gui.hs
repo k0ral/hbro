@@ -1,5 +1,5 @@
 {-# LANGUAGE DoRec #-}
-module Gui where
+module Hbro.Gui where
 
 -- {{{ Imports
 import Control.Monad.Trans(liftIO)
