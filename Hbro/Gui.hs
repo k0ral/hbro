@@ -9,15 +9,17 @@ import Graphics.UI.Gtk.WebKit.WebView
 -- }}}
 
 data GUI = GUI {
-    mWindow             :: Window,  -- ^ Main window
-    mInspectorWindow    :: Window,  -- ^ WebInspector window
-    mWebView            :: WebView, -- ^ Browser's webview
-    mPromptLabel        :: Label,   -- ^ Description of current prompt
-    mPrompt             :: Entry,   -- ^ Prompt entry
-    mWindowBox          :: VBox,    -- ^ Window's layout
-    mStatusBox          :: HBox,    -- ^ Status bar's layout
+    mWindow             :: Window,          -- ^ Main window
+    mInspectorWindow    :: Window,          -- ^ WebInspector window
+    mScrollWindow       :: ScrolledWindow,  -- ^ ScrolledWindow containing the webview
+    mWebView            :: WebView,         -- ^ Browser's webview
+    mPromptLabel        :: Label,           -- ^ Description of current prompt
+    mPrompt             :: Entry,           -- ^ Prompt entry
+    mWindowBox          :: VBox,            -- ^ Window's layout
+    mStatusBox          :: HBox,            -- ^ Status bar's layout
     mProgressLabel      :: Label,
-    mUrlLabel           :: Label
+    mUrlLabel           :: Label,
+    mScrollLabel        :: Label
 }
 
 -- {{{ Load glade GUI
@@ -46,33 +48,40 @@ loadGUI gladePath = do
     winBox          <- vBoxNew False 0
     promptBox       <- hBoxNew False 10
     statusBox       <- hBoxNew False 5
-    scrollWin       <- scrolledWindowNew Nothing Nothing
+    scrollWindow    <- scrolledWindowNew Nothing Nothing
     promptLabel     <- labelNew Nothing
     promptEntry     <- entryNew
     progressLabel   <- labelNew (Just "0%")
     urlLabel        <- labelNew (Just "")
+    scrollLabel     <- labelNew (Just "0%")
 
-    boxPackStart winBox     scrollWin       PackGrow 0
+    boxPackStart winBox     scrollWindow    PackGrow 0
     boxPackStart winBox     promptBox       PackNatural 0
     boxPackStart winBox     statusBox       PackNatural 0
     boxPackStart promptBox  promptLabel     PackNatural 0
     boxPackStart promptBox  promptEntry     PackGrow 0
     boxPackStart statusBox  progressLabel   PackNatural 0
     boxPackStart statusBox  urlLabel        PackNatural 0
+    boxPackEnd   statusBox  scrollLabel     PackNatural 0
+    
 
     window `containerAdd` winBox
-    scrollWin `containerAdd` webView
+    scrollWindow `containerAdd` webView
 
     set webView [ widgetCanDefault := True ]
     windowSetDefault window (Just webView)
+    set scrollWindow [
+        scrolledWindowHscrollbarPolicy := PolicyNever,
+        scrolledWindowVscrollbarPolicy := PolicyNever ]
 
     _ <- on webView closeWebView $ do
         mainQuit
         return True
 
-    return $ GUI window inspectorWindow webView promptLabel promptEntry winBox statusBox progressLabel urlLabel
+    return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry winBox statusBox progressLabel urlLabel scrollLabel
 -- }}}
 
+-- {{{ Prompt
 -- | Show or hide the prompt bar (label + entry).
 showPrompt :: Bool -> GUI -> IO ()
 showPrompt toShow gui = case toShow of
@@ -135,4 +144,4 @@ prompt label defaultText incremental gui callback = do
                 return False
 
             return ()
-
+-- }}}

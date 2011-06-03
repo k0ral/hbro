@@ -13,7 +13,7 @@ import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebNavigationAction
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebSettings
-import System.Cmd
+import System.Process
 -- }}}
 
 main :: IO ()
@@ -103,17 +103,31 @@ main = browser Configuration {
     -- Custom callbacks
     mCustomizations = \gui -> (let
             webView         = mWebView gui
+            scrollWindow    = mScrollWindow gui
             progressLabel   = mProgressLabel gui
             urlLabel        = mUrlLabel gui
+            scrollLabel     = mScrollLabel gui
             window          = mWindow gui
         in do
+            widgetModifyBg window StateNormal (Color 0 0 10000)
+            adjustment <- scrolledWindowGetVAdjustment scrollWindow
+
+            -- Scroll position
+            onValueChanged adjustment $ do
+                current <- adjustmentGetValue adjustment
+                min     <- adjustmentGetLower adjustment
+                max     <- adjustmentGetUpper adjustment
+                page    <- adjustmentGetPageSize adjustment
+                
+                labelSetMarkup scrollLabel $ (show (round $ current/(max-min-page)*100)) ++ "%"
+
             _ <- on webView loadStarted $ \_ -> do 
                 labelSetMarkup progressLabel "<span foreground=\"red\">0%</span>"
 
             _ <- on webView loadCommitted $ \_ -> do
                 getUrl <- (webViewGetUri webView)
                 case getUrl of 
-                    Just url -> labelSetMarkup urlLabel url 
+                    Just url -> labelSetMarkup urlLabel $ "<span weight=\"bold\" foreground=\"white\">" ++ url  ++ "</span>"
                     _        -> labelSetMarkup urlLabel ""
 
             _ <- on webView progressChanged $ \progress' ->
@@ -121,6 +135,12 @@ main = browser Configuration {
 
             _ <- on webView loadFinished $ \_ -> do
                 labelSetMarkup progressLabel "<span foreground=\"green\">100%</span>"
+
+                getUri   <- webViewGetUri webView
+                getTitle <- webViewGetTitle webView
+                case (getUri, getTitle) of
+                    (Just uri, Just title)  -> (runCommand $ scriptsDir ++ "/historyHandler.sh \"" ++ uri ++ "\" \"" ++ title ++ "\"") >> return ()
+                    _                       -> return ()
 
 
             _ <- on webView loadError $ \_ _ _ -> do
@@ -133,8 +153,8 @@ main = browser Configuration {
             _ <- on webView downloadRequested $ \download -> do
                 getUrl <- downloadGetUri download
                 _ <- case getUrl of
-                        Just url -> forkOS $ (rawSystem "wget" [url]) >> return ()
-                        _        -> forkOS $ return ()
+                        Just url -> runExternalCommand $ "wget \"" ++ url ++ "\""
+                        _        -> return ()
                 return True
 
             _ <- on webView mimeTypePolicyDecisionRequested $ \_ request mimetype policyDecision -> do
@@ -181,6 +201,9 @@ main = browser Configuration {
 
 -- Definitions
     where
+        scriptsDir :: String
+        scriptsDir = "~/.config/hbro/scripts/"
+
         goBack :: GUI -> IO ()
         goBack gui = webViewGoBack (mWebView gui)
 
