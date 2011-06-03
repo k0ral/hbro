@@ -28,6 +28,7 @@ data Browser = Browser {
 
 data Configuration = Configuration {
     mHomePage       :: String,                                  -- ^ Startup page 
+    mSocketDir      :: String,                                  -- ^ Path to socket directory (/tmp for example)
     mKeyBindings    :: [(([Modifier], String), GUI -> IO ())],  -- ^ List of keybindings
     mWebSettings    :: IO WebSettings,                          -- ^ Web settings
     mCustomizations :: GUI -> IO (),                            -- ^ Custom callbacks
@@ -61,7 +62,7 @@ initBrowser configuration = do
 
     -- Initialize IPC socket
     pid <- getProcessID
-    _ <- forkIO $ createReplySocket ("ipc:///tmp/hbro." ++ (show pid)) gui
+    _ <- forkIO $ createReplySocket ("ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ (show pid)) gui
 
     -- Load configuration
     settings <- mWebSettings configuration

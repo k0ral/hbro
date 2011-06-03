@@ -1,6 +1,7 @@
 module Hbro.Util where
 
 import Graphics.UI.Gtk
+import System.Process
 
 -- | Converts a keyVal to a String.
 -- For printable characters, the corresponding String is returned, except for the space character for which "<Space>" is returned.
@@ -23,3 +24,14 @@ keyToString keyVal = case keyToChar keyVal of
         "Menu"      -> Nothing
         "ISO_Level3_Shift" -> Nothing
         x           -> Just ('<':x ++ ">")
+
+
+-- | Like run `runCommand`, but return IO ()
+runCommand' :: String -> IO ()
+runCommand' command = runCommand command >> return ()
+
+-- | Run external command and won't kill when parent process exit.
+-- nohup for ignore all hup signal. 
+-- `> /dev/null 2>&1` redirect all stdout (1) and stderr (2) to `/dev/null`
+runExternalCommand :: String -> IO ()
+runExternalCommand command = runCommand' $ "nohup " ++ command ++ " > /dev/null 2>&1"

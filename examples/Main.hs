@@ -3,12 +3,14 @@ module Main where
 -- {{{ Imports
 import Hbro.Core
 import Hbro.Gui
+import Hbro.Util
 
 import Control.Concurrent
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.WebKit.Download
 import Graphics.UI.Gtk.WebKit.NetworkRequest
 import Graphics.UI.Gtk.WebKit.WebFrame
+import Graphics.UI.Gtk.WebKit.WebNavigationAction
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebSettings
 import System.Cmd
@@ -17,13 +19,14 @@ import System.Cmd
 main :: IO ()
 main = browser Configuration {
     mError       = Nothing,
+    mSocketDir   = "/tmp",
     mHomePage    = "https://www.google.com",
 
     mKeyBindings = [
 --      ((Mod,          Key),       Callback)
         -- Browsing
-        (([],           "<"),       back),
-        (([Shift],      ">"),       forward),
+        (([],           "<"),       goBack),
+        (([Shift],      ">"),       goForward),
         (([],           "s"),       stop),
         (([],           "<F5>"),    reload True),
         (([Shift],      "<F5>"),    reload False),
@@ -134,13 +137,34 @@ main = browser Configuration {
                 return True
 
             _ <- on webView mimeTypePolicyDecisionRequested $ \_ request mimetype policyDecision -> do
-                putStrLn mimetype
                 getUrl <- networkRequestGetUri request
                 case getUrl of
-                    Just url -> putStrLn url
+                    Just url -> putStrLn $ mimetype ++ ": " ++ url
                     _        -> putStrLn "ERROR"
 
                 return False
+
+            -- On navigating to a new URI
+            -- Return True to forbid navigation, False to allow
+            _ <- on webView navigationPolicyDecisionRequested $ \_ request action policyDecision -> do
+                getUri      <- networkRequestGetUri request
+                reason      <- webNavigationActionGetReason action
+                mouseButton <- webNavigationActionGetButton action
+
+                case getUri of
+                    Just ('m':'a':'i':'l':'t':'o':':':address) -> do
+                        putStrLn $ "Mailing to: " ++ address
+                        return True
+                    Just uri -> 
+                        case mouseButton of
+                            1 -> return False -- Left button 
+                            2 -> (runExternalCommand $ "hbro " ++ uri) >> return True -- Middle button
+                            3 -> return False -- Right button
+                            _ -> return False -- No mouse button pressed
+                    _        -> return False
+
+
+                
 
             _ <- on webView newWindowPolicyDecisionRequested $ \_ request action policyDecision -> do
                 getUrl <- networkRequestGetUri request
@@ -156,11 +180,11 @@ main = browser Configuration {
 
 -- Definitions
     where
-        back :: GUI -> IO ()
-        back gui = webViewGoBack (mWebView gui)
+        goBack :: GUI -> IO ()
+        goBack gui = webViewGoBack (mWebView gui)
 
-        forward :: GUI -> IO ()
-        forward gui = webViewGoForward (mWebView gui)
+        goForward :: GUI -> IO ()
+        goForward gui = webViewGoForward (mWebView gui)
 
         stop :: GUI -> IO ()
         stop gui = webViewStopLoading (mWebView gui)
@@ -221,4 +245,3 @@ main = browser Configuration {
 
         unfullscreen :: GUI -> IO ()
         unfullscreen gui = windowUnfullscreen (mWindow gui)
-
