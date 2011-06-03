@@ -44,7 +44,7 @@ Library
         Hbro.Gui,
         Hbro.Socket
         Hbro.Util
-    Ghc-options: -Wall -threaded 
+    Ghc-options: -Wall
 
 Executable hbro
     Build-depends: 
