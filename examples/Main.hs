@@ -23,7 +23,7 @@ main = browser Configuration {
     mHomePage    = "https://www.google.com",
 
     mKeyBindings = [
---      ((Mod,          Key),       Callback)
+--      ((Modifiers,    Key),       Callback)
         -- Browsing
         (([],           "<"),       goBack),
         (([Shift],      ">"),       goForward),
@@ -119,8 +119,9 @@ main = browser Configuration {
             _ <- on webView progressChanged $ \progress' ->
                 labelSetMarkup progressLabel $ "<span foreground=\"yellow\">" ++ show progress' ++ "%</span>"
 
-            _ <- on webView loadFinished $ \_ -> 
+            _ <- on webView loadFinished $ \_ -> do
                 labelSetMarkup progressLabel "<span foreground=\"green\">100%</span>"
+
 
             _ <- on webView loadError $ \_ _ _ -> do
                 labelSetMarkup progressLabel "<span foreground=\"red\">ERROR</span>"
@@ -165,12 +166,12 @@ main = browser Configuration {
 
 
                 
-
+            -- On requesting new window
             _ <- on webView newWindowPolicyDecisionRequested $ \_ request action policyDecision -> do
-                getUrl <- networkRequestGetUri request
-                case getUrl of
-                    Just url -> putStrLn ("New Window: " ++ url)
-                    _        -> putStrLn "ERROR"
+                getUri <- networkRequestGetUri request
+                case getUri of
+                    Just uri -> runExternalCommand $ "hbro " ++ uri
+                    _        -> putStrLn "ERROR: wrong URI given, unable to open window."
 
                 return True
 

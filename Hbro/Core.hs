@@ -9,14 +9,15 @@ import Hbro.Util
 import qualified Config.Dyre as Dyre
 import Control.Concurrent
 import Control.Monad.Trans(liftIO)
-import Data.Map
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Graphics.UI.Gtk 
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebInspector
 import Graphics.UI.Gtk.WebKit.WebSettings
 import Network.URL
-import Prelude hiding (lookup)
+import Prelude
 import System.Environment
 import System.Posix.Process
 -- }}}
@@ -26,17 +27,16 @@ data Browser = Browser {
     mGUI            :: GUI
 }
 
-data Configuration = Configuration {
-    mHomePage       :: String,                                  -- ^ Startup page 
-    mSocketDir      :: String,                                  -- ^ Path to socket directory (/tmp for example)
-    mKeyBindings    :: [(([Modifier], String), GUI -> IO ())],  -- ^ List of keybindings
-    mWebSettings    :: IO WebSettings,                          -- ^ Web settings
-    mCustomizations :: GUI -> IO (),                            -- ^ Custom callbacks
-    mError          :: Maybe String                             -- ^ Error
-}
+type KeyBindingsList = [(([Modifier], String), (GUI -> IO ()))]
 
-instance Ord Modifier where
-    m <= m' =  fromEnum m <= fromEnum m'
+data Configuration = Configuration {
+    mHomePage       :: String,          -- ^ Startup page 
+    mSocketDir      :: String,          -- ^ Path to socket directory (/tmp for example)
+    mKeyBindings    :: KeyBindingsList, -- ^ List of keybindings
+    mWebSettings    :: IO WebSettings,  -- ^ Web settings
+    mCustomizations :: GUI -> IO (),    -- ^ Custom callbacks
+    mError          :: Maybe String     -- ^ Error
+}
 -- }}}
 
 -- {{{ Entry point
@@ -74,10 +74,10 @@ initBrowser configuration = do
                 [arg] -> arg
                 _     -> mHomePage configuration
 
-    webViewLoadUri (mWebView gui) url
+    loadURL url gui
 
     -- Load key bindings
-    let keyBindings = fromList (mKeyBindings configuration)
+    let keyBindings = importKeyBindings (mKeyBindings configuration)
 
     -- Open all link in current window.
     _ <- on (mWebView gui) createWebView $ \frame -> do
@@ -133,7 +133,7 @@ initBrowser configuration = do
 
         case keyString of 
             Just string -> do 
-                case lookup (modifiers, string) keyBindings of
+                case Map.lookup (Set.fromList modifiers, string) keyBindings of
                     Just callback   -> liftIO $ callback gui
                     _               -> liftIO $ putStrLn string 
             _ -> return ()
