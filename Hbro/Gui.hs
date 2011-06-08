@@ -5,6 +5,7 @@ module Hbro.Gui where
 import Control.Monad.Trans(liftIO)
 
 import Graphics.UI.Gtk
+--import Graphics.UI.Gtk.Abstract.Misc
 import Graphics.UI.Gtk.WebKit.WebView
 -- }}}
 
@@ -39,7 +40,7 @@ loadGUI gladePath = do
     window          <- windowNew
     inspectorWindow <- windowNew
 
-    windowSetDefaultSize window 1024 768
+    --windowSetDefaultSize window 1024 768
     windowSetPosition   window WinPosCenter
     --windowSetIconFromFile window "/path/to/icon"
     set window [ windowTitle := "hbro" ]
@@ -61,18 +62,20 @@ loadGUI gladePath = do
     boxPackStart promptBox  promptLabel     PackNatural 0
     boxPackStart promptBox  promptEntry     PackGrow 0
     boxPackStart statusBox  progressLabel   PackNatural 0
-    boxPackStart statusBox  urlLabel        PackNatural 0
+    boxPackStart statusBox  urlLabel        PackGrow 0
     boxPackEnd   statusBox  scrollLabel     PackNatural 0
     
-
-    window `containerAdd` winBox
-    scrollWindow `containerAdd` webView
+    containerAdd window winBox
+    containerAdd scrollWindow webView 
 
     set webView [ widgetCanDefault := True ]
     windowSetDefault window (Just webView)
     set scrollWindow [
         scrolledWindowHscrollbarPolicy := PolicyNever,
         scrolledWindowVscrollbarPolicy := PolicyNever ]
+
+    labelSetEllipsize   urlLabel EllipsizeEnd
+    miscSetAlignment    urlLabel 0 0
 
     _ <- on webView closeWebView $ do
         mainQuit

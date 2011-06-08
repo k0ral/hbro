@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             0.4.4
+Version:             0.4.5
 Synopsis:            A suckless minimal KISSy browser
 -- Description:         
 -- Homepage:
@@ -29,6 +29,7 @@ Library
     Build-depends:
         base == 4.*,
         webkit,
+        glib,
         gtk,
         glade,
         mtl,
@@ -50,7 +51,9 @@ Executable hbro
     Build-depends: 
         hbro,
         base == 4.*,
+        glib,
         gtk,
+        pango,
         process,
         webkit
     Main-is: Main.hs
