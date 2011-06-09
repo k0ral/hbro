@@ -33,36 +33,44 @@ main = browser Configuration {
     mSocketDir   = "/tmp",
     mHomePage    = "https://www.google.com",
 
+    -- Custom keys
+    -- Note 1 : for modifiers, lists are used for convenience purposes,
+    --          but are transformed into sets in hbro's internal machinery,
+    --          so that order and repetition don't matter
+    -- Note 2 : for printable characters accessed via the shift modifier,
+    --          you have to include Shift in modifiers list
     mKeyBindings = [
---      ((Modifiers,    Key),       Callback)
+--      ((Modifiers,    Key),           Callback)
         -- Browsing
-        (([],           "<"),       goBack),
-        (([Shift],      ">"),       goForward),
-        (([],           "s"),       stop),
-        (([],           "<F5>"),    reload True),
-        (([Shift],      "<F5>"),    reload False),
+        (([],           "<"),           goBack),
+        (([Shift],      ">"),           goForward),
+        (([],           "s"),           stop),
+        (([],           "<F5>"),        reload True),
+        (([Shift],      "<F5>"),        reload False),
 
         -- Zooming
-        (([Shift],      "+"),       zoomIn),
-        (([],           "-"),       zoomOut),
+        (([Shift],      "+"),           zoomIn),
+        (([],           "-"),           zoomOut),
 
         -- Prompt
-        (([],           "o"),       promptURL False), 
-        (([Shift],      "O"),       promptURL True),
+        (([],           "o"),           promptURL False), 
+        (([Shift],      "O"),           promptURL True),
 
         -- Search
-        (([Shift],      "/"),       promptFind False True),
-        (([Shift],      "?"),       promptFind False False),
-        (([],           "n"),       findNext False True),
-        (([Shift],      "N"),       findNext False False),
+        (([Shift],      "/"),           promptFind False True),
+        (([Shift],      "?"),           promptFind False False),
+        (([],           "n"),           findNext False True),
+        (([Shift],      "N"),           findNext False False),
 
         -- Others
-        (([Control],    "i"),       showWebInspector),
-        (([Control],    "u"),       toggleSourceMode),
-        (([],           "t"),       toggleStatusBar),
-        (([Control],    "p"),       printPage),
-        (([],           "<F11>"),   fullscreen),
-        (([],           "<Escape>"),   unfullscreen)
+        (([Control],    "i"),           showWebInspector),
+        (([Control],    "u"),           toggleSourceMode),
+        (([],           "t"),           toggleStatusBar),
+        (([Control],    "p"),           printPage),
+        (([],           "<F11>"),       fullscreen),
+        (([],           "<Escape>"),    unfullscreen),
+        (([],           "y"),           copyUri)
+
     ],
 
     mWebSettings = (do
@@ -289,3 +297,10 @@ main = browser Configuration {
 
         unfullscreen :: GUI -> IO ()
         unfullscreen gui = windowUnfullscreen (mWindow gui)
+
+        copyUri :: GUI -> IO ()
+        copyUri gui = do
+            getUri <- webViewGetUri (mWebView gui)
+            case getUri of
+                Just u -> (runCommand $ "echo -n " ++ u ++ " | xclip") >> return ()
+                _      -> return ()
