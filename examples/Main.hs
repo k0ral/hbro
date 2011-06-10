@@ -24,7 +24,7 @@ import Graphics.UI.Gtk.Windows.Window
 
 import System.Glib.Attributes
 import System.Glib.Signals
-import System.Process (runCommand)
+import System.Process 
 -- }}}
 
 main :: IO ()
@@ -47,6 +47,10 @@ main = browser Configuration {
         (([],           "s"),           stop),
         (([],           "<F5>"),        reload True),
         (([Shift],      "<F5>"),        reload False),
+        (([],           "^"),           horizontalHome),
+        (([],           "$"),           horizontalEnd),
+        (([],           "<Home>"),      verticalHome),
+        (([],           "<End>"),       verticalEnd),
 
         -- Zooming
         (([Shift],      "+"),           zoomIn),
@@ -62,15 +66,18 @@ main = browser Configuration {
         (([],           "n"),           findNext False True),
         (([Shift],      "N"),           findNext False False),
 
+        -- Copy/paste
+        (([],           "y"),           copyUri),
+        (([Control],    "y"),           copyTitle),
+        --(([],           "p"),           pasteUri), -- /!\ UNSTABLE, can't see why...
+
         -- Others
         (([Control],    "i"),           showWebInspector),
         (([Control],    "u"),           toggleSourceMode),
         (([],           "t"),           toggleStatusBar),
         (([Control],    "p"),           printPage),
         (([],           "<F11>"),       fullscreen),
-        (([],           "<Escape>"),    unfullscreen),
-        (([],           "y"),           copyUri)
-
+        (([],           "<Escape>"),    unfullscreen)
     ],
 
     mWebSettings = (do
@@ -304,3 +311,44 @@ main = browser Configuration {
             case getUri of
                 Just u -> (runCommand $ "echo -n " ++ u ++ " | xclip") >> return ()
                 _      -> return ()
+
+        copyTitle :: GUI -> IO ()
+        copyTitle gui = do
+            getTitle <- webViewGetTitle (mWebView gui)
+            case getTitle of
+                Just t -> (runCommand $ "echo -n " ++ t ++ " | xclip") >> return ()
+                _      -> return ()
+
+        pasteUri :: GUI -> IO ()
+        pasteUri gui = do
+            uri <- readProcess "xclip" ["-o"] []
+            loadURL uri gui
+
+        verticalHome :: GUI -> IO ()
+        verticalHome gui = do
+            adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow gui)
+            min         <- adjustmentGetLower adjustment
+
+            adjustmentSetValue adjustment min
+
+        verticalEnd :: GUI -> IO ()
+        verticalEnd gui = do
+            adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow gui)
+            max         <- adjustmentGetUpper adjustment
+
+            adjustmentSetValue adjustment max
+
+        horizontalHome :: GUI -> IO ()
+        horizontalHome gui = do
+            adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow gui)
+            min         <- adjustmentGetLower adjustment
+
+            adjustmentSetValue adjustment min
+
+        horizontalEnd :: GUI -> IO ()
+        horizontalEnd gui = do
+            adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow gui)
+            max         <- adjustmentGetUpper adjustment
+
+            adjustmentSetValue adjustment max
+

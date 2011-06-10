@@ -20,18 +20,19 @@ keyToString keyVal = case keyToChar keyVal of
     Just ' '    -> Just "<Space>"
     Just char   -> Just [char]
     _           -> case keyName keyVal of
-        "Caps_Lock" -> Nothing
-        "Shift_L"   -> Nothing
-        "Shift_R"   -> Nothing
-        "Control_L" -> Nothing
-        "Control_R" -> Nothing
-        "Alt_L"     -> Nothing
-        "Alt_R"     -> Nothing
-        "Super_L"   -> Nothing
-        "Super_R"   -> Nothing
-        "Menu"      -> Nothing
-        "ISO_Level3_Shift" -> Nothing
-        x           -> Just ('<':x ++ ">")
+        "Caps_Lock"         -> Nothing
+        "Shift_L"           -> Nothing
+        "Shift_R"           -> Nothing
+        "Control_L"         -> Nothing
+        "Control_R"         -> Nothing
+        "Alt_L"             -> Nothing
+        "Alt_R"             -> Nothing
+        "Super_L"           -> Nothing
+        "Super_R"           -> Nothing
+        "Menu"              -> Nothing
+        "ISO_Level3_Shift"  -> Nothing
+        "dead_circumflex"   -> Just "^"
+        x                   -> Just ('<':x ++ ">")
 
 -- | Converts key bindings list to a map.
 -- | Calls importKeyBindings'.
