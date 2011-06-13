@@ -6,6 +6,7 @@ import Control.Monad.Trans(liftIO)
 
 import Graphics.UI.Gtk
 --import Graphics.UI.Gtk.Abstract.Misc
+import Graphics.UI.Gtk.Glade
 import Graphics.UI.Gtk.WebKit.WebView
 -- }}}
 
@@ -20,6 +21,7 @@ data GUI = GUI {
     mStatusBox          :: HBox,            -- ^ Status bar's layout
     mProgressLabel      :: Label,
     mUrlLabel           :: Label,
+    mKeysLabel          :: Label,
     mScrollLabel        :: Label
 }
 
@@ -27,15 +29,15 @@ data GUI = GUI {
 -- | Load GUI from a glade file.
 loadGUI :: String -> IO GUI
 loadGUI gladePath = do
---        -- Note: crashes with a runtime error on console if fails!
---        Just xml <- xmlNew gladePath
+    -- Note: crashes with a runtime error on console if fails!
+--     Just xml <- xmlNew gladePath
 
---        -- Load main window
---        -- castTo* don't exist :(
---        window       <- xmlGetWidget xml castToWindow    "window"
---        webView      <- xmlGetWidget xml castToWebView   "webView"
---        promptLabel  <- xmlGetWidget xml castToLabel     "promptLabel"
---        prompt       <- xmlGetWidget xml castToEntry     "prompt"
+--     -- Load main window
+--     -- castTo* don't exist :(
+--     window       <- xmlGetWidget xml castToWindow    "window"
+--     webView      <- xmlGetWidget xml castToWebView   "webView"
+--     promptLabel  <- xmlGetWidget xml castToLabel     "promptLabel"
+--     prompt       <- xmlGetWidget xml castToEntry     "prompt"
 
     window          <- windowNew
     inspectorWindow <- windowNew
@@ -53,7 +55,8 @@ loadGUI gladePath = do
     promptLabel     <- labelNew Nothing
     promptEntry     <- entryNew
     progressLabel   <- labelNew (Just "0%")
-    urlLabel        <- labelNew (Just "")
+    urlLabel        <- labelNew Nothing
+    keysLabel       <- labelNew Nothing
     scrollLabel     <- labelNew (Just "0%")
 
     boxPackStart winBox     scrollWindow    PackGrow 0
@@ -81,7 +84,7 @@ loadGUI gladePath = do
         mainQuit
         return True
 
-    return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry winBox statusBox progressLabel urlLabel scrollLabel
+    return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry winBox statusBox progressLabel urlLabel keysLabel scrollLabel
 -- }}}
 
 -- {{{ Prompt

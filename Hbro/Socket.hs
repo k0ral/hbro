@@ -16,7 +16,6 @@ createReplySocket socketName gui = withContext 1 $ \context -> do
         forever $ do
             command <- receive socket []
             case unpack command of
-
                 -- Get information
                 "getUri" -> do
                     getUri <- webViewGetUri (mWebView gui)

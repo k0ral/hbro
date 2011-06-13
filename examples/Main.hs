@@ -29,19 +29,25 @@ import System.Process
 
 main :: IO ()
 main = browser Configuration {
-    mError       = Nothing,
-    mSocketDir   = "/tmp",
-    mHomePage    = "https://www.google.com",
+    -- Do not change this
+    mError = Nothing,
+
+    -- Directory where 0MQ sockets will be created
+    mSocketDir = "/tmp",
+
+    -- URI loaded at startup
+    mHomePage = "https://www.google.com",
+
 
     -- Custom keys
     -- Note 1 : for modifiers, lists are used for convenience purposes,
     --          but are transformed into sets in hbro's internal machinery,
     --          so that order and repetition don't matter
     -- Note 2 : for printable characters accessed via the shift modifier,
-    --          you have to include Shift in modifiers list
+    --          you do have to include Shift in modifiers list
     mKeyBindings = [
 --      ((Modifiers,    Key),           Callback)
-        -- Browsing
+        -- Browse
         (([],           "<"),           goBack),
         (([Shift],      ">"),           goForward),
         (([],           "s"),           stop),
@@ -52,7 +58,7 @@ main = browser Configuration {
         (([],           "<Home>"),      verticalHome),
         (([],           "<End>"),       verticalEnd),
 
-        -- Zooming
+        -- Zoom
         (([Shift],      "+"),           zoomIn),
         (([],           "-"),           zoomOut),
 
@@ -71,6 +77,10 @@ main = browser Configuration {
         (([Control],    "y"),           copyTitle),
         --(([],           "p"),           pasteUri), -- /!\ UNSTABLE, can't see why...
 
+        -- Bookmarks
+        (([Control],   "d"),            addToBookmarks),
+--         (([Control],   "l"),            loadFrombookmarks),
+
         -- Others
         (([Control],    "i"),           showWebInspector),
         (([Control],    "u"),           toggleSourceMode),
@@ -80,7 +90,11 @@ main = browser Configuration {
         (([],           "<Escape>"),    unfullscreen)
     ],
 
-    mWebSettings = (do
+
+    -- Various web settings
+    -- Commented lines correspond to default values
+    -- For more details, please refer to WebSettings documentation
+    mWebSettings = do
         settings <- webSettingsNew
         set settings [
             --SETTING                                      DEFAULT VALUE 
@@ -122,12 +136,13 @@ main = browser Configuration {
             --webSettingsTabKeyCyclesThroughElements    := True,
             webSettingsUserAgent                        := "Mozilla/5.0 (Windows; U; Windows NT 6.1; ru; rv:1.9.2.3) Gecko/20100401 Firefox/4.0 (.NET CLR 3.5.30729)"
             --webSettingsUserStylesheetUri              := Nothing,
-            --webSettingsZoomStep                       := 0.1 
+            --webSettingsZoomStep                       := 0.1
             ]
-        return settings),
+        return settings,
+
 
     -- Custom callbacks
-    mCustomizations = \gui -> (let
+    mAtStartUp = \gui -> (let
             webView         = mWebView gui
             scrollWindow    = mScrollWindow gui
             progressLabel   = mProgressLabel gui
@@ -135,28 +150,30 @@ main = browser Configuration {
             scrollLabel     = mScrollLabel gui
             window          = mWindow gui
         in do
+            -- Default background (for status bar)
             widgetModifyBg window StateNormal (Color 0 0 10000)
-            adjustment <- scrolledWindowGetVAdjustment scrollWindow
 
-            -- Scroll position
+            -- Scroll position in status bar
+            adjustment <- scrolledWindowGetVAdjustment scrollWindow
             onValueChanged adjustment $ do
                 current <- adjustmentGetValue adjustment
-                min     <- adjustmentGetLower adjustment
-                max     <- adjustmentGetUpper adjustment
+                lower   <- adjustmentGetLower adjustment
+                upper   <- adjustmentGetUpper adjustment
                 page    <- adjustmentGetPageSize adjustment
                 
-                case (max-min-page) of
+                case upper-lower-page of
                     0 -> labelSetMarkup scrollLabel "ALL"
-                    x -> labelSetMarkup scrollLabel $ (show (round $ current/x*100)) ++ "%"
+                    x -> labelSetMarkup scrollLabel $ show (round $ current/x*100) ++ "%"
 
-            _ <- on webView loadStarted $ \_ -> do 
+            -- Page load
+            _ <- on webView loadStarted $ \_ -> do
                 labelSetMarkup progressLabel "<span foreground=\"red\">0%</span>"
 
             _ <- on webView loadCommitted $ \_ -> do
                 getUri <- (webViewGetUri webView)
                 case getUri of 
-                    Just uri -> labelSetMarkup urlLabel $ "<span weight=\"bold\" foreground=\"white\">" ++ (escapeMarkup uri) ++ "</span>"
-                    _        -> labelSetMarkup urlLabel ""
+                    Just uri -> labelSetMarkup urlLabel $ "<span weight=\"bold\" foreground=\"white\">" ++ escapeMarkup uri ++ "</span>"
+                    _        -> labelSetMarkup urlLabel "<span weight=\"bold\" foreground=\"red\">ERROR</span>"
 
             _ <- on webView progressChanged $ \progress' ->
                 labelSetMarkup progressLabel $ "<span foreground=\"yellow\">" ++ show progress' ++ "%</span>"
@@ -167,29 +184,30 @@ main = browser Configuration {
                 getUri   <- webViewGetUri webView
                 getTitle <- webViewGetTitle webView
                 case (getUri, getTitle) of
-                    (Just uri, Just title)  -> (runCommand $ scriptsDir ++ "/historyHandler.sh \"" ++ uri ++ "\" \"" ++ title ++ "\"") >> return ()
+                    (Just uri, Just title)  -> historyHandler uri title
                     _                       -> return ()
-
 
             _ <- on webView loadError $ \_ _ _ -> do
                 labelSetMarkup progressLabel "<span foreground=\"red\">ERROR</span>"
                 return False
 
-            _ <- on webView titleChanged $ \_ title -> do
-                set window [ windowTitle := title]
+            _ <- on webView titleChanged $ \_ title ->
+                set window [ windowTitle := ("hbro | " ++ title)]
 
+            -- Special requests
             _ <- on webView downloadRequested $ \download -> do
-                getUrl <- downloadGetUri download
-                _ <- case getUrl of
-                        Just url -> runExternalCommand $ "wget \"" ++ url ++ "\""
-                        _        -> return ()
+                getUri <- downloadGetUri download
+                _ <- case getUri of
+                    Just uri -> downloadHandler uri 
+                    _        -> return ()
                 return True
 
             _ <- on webView mimeTypePolicyDecisionRequested $ \_ request mimetype policyDecision -> do
-                getUrl <- networkRequestGetUri request
-                case getUrl of
-                    Just url -> putStrLn $ mimetype ++ ": " ++ url
-                    _        -> putStrLn "ERROR"
+                getUri <- networkRequestGetUri request
+                case (getUri, mimetype) of
+                    --(Just uri, 'a':'p':'p':'l':'i':'c':'a':'t':'i':'o':'n':'/':_) -> downloadHandler uri
+                    (Just uri, _) -> putStrLn $ mimetype ++ ": " ++ uri
+                    _             -> putStrLn "FIXME"
 
                 return False
 
@@ -207,7 +225,7 @@ main = browser Configuration {
                     Just uri -> 
                         case mouseButton of
                             1 -> return False -- Left button 
-                            2 -> (runExternalCommand $ "hbro " ++ uri) >> return True -- Middle button
+                            2 -> runExternalCommand ("hbro \"" ++ uri ++ "\"") >> return True -- Middle button
                             3 -> return False -- Right button
                             _ -> return False -- No mouse button pressed
                     _        -> return False
@@ -226,9 +244,13 @@ main = browser Configuration {
             _ <- on webView hoveringOverLink $ \title hoveredUri -> do
                 getUri <- (webViewGetUri webView)
                 case (hoveredUri, getUri) of
-                    (Just u, _) -> labelSetMarkup urlLabel $ "<span foreground=\"#5555ff\">" ++ (escapeMarkup u) ++ "</span>"
-                    (_, Just u) -> labelSetMarkup urlLabel $ "<span foreground=\"white\" weight=\"bold\">" ++ (escapeMarkup u) ++ "</span>"
+                    (Just u, _) -> labelSetMarkup urlLabel $ "<span foreground=\"#5555ff\">" ++ escapeMarkup u ++ "</span>"
+                    (_, Just u) -> labelSetMarkup urlLabel $ "<span foreground=\"white\" weight=\"bold\">" ++ escapeMarkup u ++ "</span>"
                     _           -> putStrLn "FIXME"
+
+            
+            -- Favicon
+            --_ <- on webView iconLoaded $ \uri -> do something
 
             return ()
     )}
@@ -236,9 +258,12 @@ main = browser Configuration {
 
 -- Definitions
     where
+        -- Constants
         scriptsDir :: String
         scriptsDir = "~/.config/hbro/scripts/"
 
+
+        -- Browse
         goBack :: GUI -> IO ()
         goBack gui = webViewGoBack (mWebView gui)
 
@@ -252,6 +277,7 @@ main = browser Configuration {
         reload True gui = webViewReload (mWebView gui)
         reload _    gui = webViewReloadBypassCache (mWebView gui)
 
+        -- Zoom
         zoomIn :: GUI -> IO ()
         zoomIn gui = webViewZoomIn (mWebView gui)
 
@@ -305,18 +331,20 @@ main = browser Configuration {
         unfullscreen :: GUI -> IO ()
         unfullscreen gui = windowUnfullscreen (mWindow gui)
 
+
+        -- Copy/paste
         copyUri :: GUI -> IO ()
         copyUri gui = do
             getUri <- webViewGetUri (mWebView gui)
             case getUri of
-                Just u -> (runCommand $ "echo -n " ++ u ++ " | xclip") >> return ()
+                Just u -> runCommand ("echo -n " ++ u ++ " | xclip") >> return ()
                 _      -> return ()
 
         copyTitle :: GUI -> IO ()
         copyTitle gui = do
             getTitle <- webViewGetTitle (mWebView gui)
             case getTitle of
-                Just t -> (runCommand $ "echo -n " ++ t ++ " | xclip") >> return ()
+                Just t -> runCommand ("echo -n " ++ t ++ " | xclip") >> return ()
                 _      -> return ()
 
         pasteUri :: GUI -> IO ()
@@ -324,6 +352,8 @@ main = browser Configuration {
             uri <- readProcess "xclip" ["-o"] []
             loadURL uri gui
 
+
+        -- Scrolling
         verticalHome :: GUI -> IO ()
         verticalHome gui = do
             adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow gui)
@@ -351,4 +381,25 @@ main = browser Configuration {
             max         <- adjustmentGetUpper adjustment
 
             adjustmentSetValue adjustment max
+
+        -- Handlers
+        downloadHandler :: String -> IO ()
+        downloadHandler uri = runExternalCommand $ "wget \"" ++ uri ++ "\""
+
+        historyHandler :: String -> String -> IO ()
+        historyHandler uri title = runCommand (scriptsDir ++ "/historyHandler.sh \"" ++ uri ++ "\" \"" ++ title ++ "\"") >> return ()
+
+
+        -- Bookmarks
+        addToBookmarks :: GUI -> IO ()
+        addToBookmarks gui = do
+            getUri <- webViewGetUri (mWebView gui)
+            case getUri of
+                Just uri -> prompt "Bookmark with tag:" "" False gui (\g -> do 
+                    tags <- entryGetText (mPrompt g)
+                    runExternalCommand $ scriptsDir ++ "bookmarks.sh add " ++ uri ++ " " ++ tags)
+                _        -> return ()
+
+        loadFromBookmarks :: GUI -> IO ()
+        loadFromBookmarks gui = runExternalCommand $ scriptsDir ++ "bookmarks.sh load" 
 

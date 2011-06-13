@@ -9,21 +9,35 @@ import Hbro.Util
 import qualified Config.Dyre as Dyre
 import Control.Concurrent
 import Control.Monad.Trans(liftIO)
+
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Graphics.UI.Gtk 
+
+import Graphics.UI.Gtk.Abstract.Box
+import Graphics.UI.Gtk.Abstract.Container
+import Graphics.UI.Gtk.Abstract.IMContext
+import Graphics.UI.Gtk.Abstract.Widget
+import Graphics.UI.Gtk.General.General
+import Graphics.UI.Gtk.Gdk.EventM
+import Graphics.UI.Gtk.WebKit.Download
+import Graphics.UI.Gtk.WebKit.NetworkRequest
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebInspector
 import Graphics.UI.Gtk.WebKit.WebSettings
+
 import Network.URL
 import Prelude
+
 import System.Environment
+import System.Glib.Attributes
+import System.Glib.Signals
 import System.Posix.Process
 -- }}}
 
 -- {{{ Type definitions
 data Browser = Browser {
+    mArgs           :: [String],
     mGUI            :: GUI
 }
 
@@ -34,7 +48,7 @@ data Configuration = Configuration {
     mSocketDir      :: String,          -- ^ Path to socket directory (/tmp for example)
     mKeyBindings    :: KeyBindingsList, -- ^ List of keybindings
     mWebSettings    :: IO WebSettings,  -- ^ Web settings
-    mCustomizations :: GUI -> IO (),    -- ^ Custom callbacks
+    mAtStartUp      :: GUI -> IO (),    -- ^ Custom startup instructions
     mError          :: Maybe String     -- ^ Error
 }
 -- }}}
@@ -56,9 +70,14 @@ realMain configuration = do
 -- Create browser and load homepage.
 initBrowser :: Configuration -> IO ()
 initBrowser configuration = do
-    -- Initialize GUI
+    case (mError configuration) of
+        Just error -> putStrLn error
+        _          -> return ()
+
+    -- Initialize browser
     args <- initGUI
     gui  <- loadGUI ""
+    let browser = Browser args gui
 
     -- Initialize IPC socket
     pid <- getProcessID
@@ -67,7 +86,9 @@ initBrowser configuration = do
     -- Load configuration
     settings <- mWebSettings configuration
     webViewSetWebSettings (mWebView gui) settings
-    (mCustomizations configuration) gui
+
+    -- Launch custom startup
+    (mAtStartUp configuration) gui
 
     -- Load url
     let url = case args of
@@ -79,13 +100,24 @@ initBrowser configuration = do
     -- Load key bindings
     let keyBindings = importKeyBindings (mKeyBindings configuration)
 
-    -- Open all link in current window.
+    
+    -- On new window request
+    --newWindowWebView <- webViewNew
     _ <- on (mWebView gui) createWebView $ \frame -> do
         newUri <- webFrameGetUri frame
         case newUri of
             Just uri -> webViewLoadUri (mWebView gui) uri
+            --Just uri -> runExternalCommand $ "hbro " ++ uri
             Nothing  -> return ()
         return (mWebView gui)
+--         return newWindowWebView
+
+--     _ <- on newWindowWebView loadCommitted $ \frame -> do
+--         getUri <- (webViewGetUri newWindowWebView)
+--         case getUri of 
+--             Just uri -> runExternalCommand $ "hbro \"" ++ uri ++ "\""
+--             _        -> return ()
+
 
     -- Web inspector
     inspector <- webViewGetInspector (mWebView gui)
@@ -125,11 +157,24 @@ initBrowser configuration = do
         return True
 
     -- Key bindings
-    _ <- after (mWebView gui) keyPressEvent $ do
-        keyVal      <- eventKeyVal
-        modifiers   <- eventModifier
+--     imContext <- get (mWebView gui) webViewImContext
+--     _ <- on (mWebView gui) keyPressEvent $ do
+--         value      <- eventKeyVal
+--         modifiers  <- eventModifier
 
-        let keyString = keyToString keyVal
+--         let keyString = keyToString value
+--         
+--         case keyString of
+--             Just "<Escape>" -> do
+--                 liftIO $ imContextFocusIn imContext
+--                 return True
+--             _               -> return False
+
+    _ <- after (mWebView gui) keyPressEvent $ do
+        value      <- eventKeyVal
+        modifiers  <- eventModifier
+
+        let keyString = keyToString value
 
         case keyString of 
             Just string -> do 
@@ -139,6 +184,22 @@ initBrowser configuration = do
             _ -> return ()
 
         return False
+
+--     imContextFilterKeypress imContext $ do
+--         value      <- eventKeyVal
+--         modifiers  <- eventModifier
+
+--         let keyString = keyToString value
+--         putStrLn keyString
+
+-- --         case keyString of 
+-- --             Just string -> do 
+-- --                 case Map.lookup (Set.fromList modifiers, string) keyBindings of
+-- --                     Just callback   -> liftIO $ callback gui
+-- --                     _               -> liftIO $ putStrLn string 
+-- --             _ -> return ()
+
+--         return False
 
     -- Connect and show.
     _ <- onDestroy (mWindow gui) mainQuit
@@ -162,6 +223,7 @@ loadURL url gui =
     case importURL url of
         Just url' -> loadURL' url' gui
         _         -> return ()
+
 
 -- | Backend function for loadURL.
 loadURL' :: URL -> GUI -> IO ()
