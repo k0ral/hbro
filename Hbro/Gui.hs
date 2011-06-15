@@ -67,6 +67,7 @@ loadGUI gladePath = do
     boxPackStart statusBox  progressLabel   PackNatural 0
     boxPackStart statusBox  urlLabel        PackGrow 0
     boxPackEnd   statusBox  scrollLabel     PackNatural 0
+    boxPackEnd   statusBox  keysLabel       PackNatural 0
     
     containerAdd window winBox
     containerAdd scrollWindow webView 

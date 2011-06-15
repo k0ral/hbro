@@ -59,5 +59,5 @@ createReplySocket socketName gui = withContext 1 $ \context -> do
                     webViewZoomOut (mWebView gui)
                     send socket (pack "OK") []
 
-                _ -> send socket (pack "ERROR Wrong command") []
+                _ -> send socket (pack "ERROR Unknown command") []
 

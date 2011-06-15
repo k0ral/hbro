@@ -25,6 +25,7 @@ import Graphics.UI.Gtk.Windows.Window
 import System.Glib.Attributes
 import System.Glib.Signals
 import System.Process 
+import System.Posix.Process
 -- }}}
 
 main :: IO ()
@@ -33,7 +34,7 @@ main = browser Configuration {
     mError = Nothing,
 
     -- Directory where 0MQ sockets will be created
-    mSocketDir = "/tmp",
+    mSocketDir = socketDir,
 
     -- URI loaded at startup
     mHomePage = "https://www.google.com",
@@ -79,7 +80,7 @@ main = browser Configuration {
 
         -- Bookmarks
         (([Control],   "d"),            addToBookmarks),
---         (([Control],   "l"),            loadFrombookmarks),
+        (([Control],   "l"),            loadFromBookmarks),
 
         -- Others
         (([Control],    "i"),           showWebInspector),
@@ -262,6 +263,8 @@ main = browser Configuration {
         scriptsDir :: String
         scriptsDir = "~/.config/hbro/scripts/"
 
+        socketDir :: String
+        socketDir = "/tmp"
 
         -- Browse
         goBack :: GUI -> IO ()
@@ -401,5 +404,7 @@ main = browser Configuration {
                 _        -> return ()
 
         loadFromBookmarks :: GUI -> IO ()
-        loadFromBookmarks gui = runExternalCommand $ scriptsDir ++ "bookmarks.sh load" 
+        loadFromBookmarks gui = do 
+            pid <- getProcessID
+            runExternalCommand $ scriptsDir ++ "bookmarks.sh load \"" ++ socketDir ++ "/hbro." ++ show pid ++ "\""
 

@@ -17,6 +17,7 @@ import Graphics.UI.Gtk.Abstract.Box
 import Graphics.UI.Gtk.Abstract.Container
 import Graphics.UI.Gtk.Abstract.IMContext
 import Graphics.UI.Gtk.Abstract.Widget
+import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.WebKit.Download
@@ -81,7 +82,7 @@ initBrowser configuration = do
 
     -- Initialize IPC socket
     pid <- getProcessID
-    _ <- forkIO $ createReplySocket ("ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ (show pid)) gui
+    _ <- forkOS $ createReplySocket ("ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid) gui
 
     -- Load configuration
     settings <- mWebSettings configuration
@@ -179,7 +180,9 @@ initBrowser configuration = do
         case keyString of 
             Just string -> do 
                 case Map.lookup (Set.fromList modifiers, string) keyBindings of
-                    Just callback   -> liftIO $ callback gui
+                    Just callback   -> do
+                        liftIO $ callback gui
+                        liftIO $ labelSetMarkup (mKeysLabel gui) $ "<span foreground=\"green\">" ++ show modifiers ++ string ++ "</span>"
                     _               -> liftIO $ putStrLn string 
             _ -> return ()
 
@@ -242,6 +245,7 @@ browser :: Configuration -> IO ()
 browser = Dyre.wrapMain Dyre.defaultParams {
     Dyre.projectName  = "hbro",
     Dyre.showError    = showError,
-    Dyre.realMain     = realMain
+    Dyre.realMain     = realMain,
+    Dyre.ghcOpts      = ["-threaded"]
 }
 -- }}}

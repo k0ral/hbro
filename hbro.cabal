@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             0.4.5
+Version:             0.4.6
 Synopsis:            A suckless minimal KISSy browser
 -- Description:         
 -- Homepage:
@@ -55,6 +55,7 @@ Executable hbro
         gtk,
         pango,
         process,
+        unix,
         webkit
     Main-is: Main.hs
     Hs-Source-Dirs: examples  
