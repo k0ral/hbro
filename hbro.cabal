@@ -28,18 +28,19 @@ Source-repository head
 Library
     Build-depends:
         base == 4.*,
-        webkit,
-        glib,
-        gtk,
-        glade,
-        mtl,
+        bytestring,
+        cmdargs,
         containers,
         dyre,
+        glade,
+        glib,
+        gtk,
+        mtl,
         process,
         url,
-        zeromq-haskell,
-        bytestring,
-        unix
+        webkit,
+        unix,
+        zeromq-haskell
     Exposed-modules:
         Hbro.Core,
         Hbro.Gui,

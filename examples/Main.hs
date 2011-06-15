@@ -29,7 +29,7 @@ import System.Posix.Process
 -- }}}
 
 main :: IO ()
-main = browser Configuration {
+main = hbro Configuration {
     -- Do not change this
     mError = Nothing,
 
@@ -226,7 +226,7 @@ main = browser Configuration {
                     Just uri -> 
                         case mouseButton of
                             1 -> return False -- Left button 
-                            2 -> runExternalCommand ("hbro \"" ++ uri ++ "\"") >> return True -- Middle button
+                            2 -> runExternalCommand ("hbro -u \"" ++ uri ++ "\"") >> return True -- Middle button
                             3 -> return False -- Right button
                             _ -> return False -- No mouse button pressed
                     _        -> return False
@@ -360,9 +360,9 @@ main = browser Configuration {
         verticalHome :: GUI -> IO ()
         verticalHome gui = do
             adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow gui)
-            min         <- adjustmentGetLower adjustment
+            lower       <- adjustmentGetLower adjustment
 
-            adjustmentSetValue adjustment min
+            adjustmentSetValue adjustment lower
 
         verticalEnd :: GUI -> IO ()
         verticalEnd gui = do

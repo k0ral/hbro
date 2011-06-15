@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-} 
+{-# LANGUAGE OverloadedStrings, DeriveDataTypeable #-} 
 module Hbro.Core where
 
 -- {{{ Imports
@@ -15,13 +15,13 @@ import qualified Data.Set as Set
 
 import Graphics.UI.Gtk.Abstract.Box
 import Graphics.UI.Gtk.Abstract.Container
-import Graphics.UI.Gtk.Abstract.IMContext
+--import Graphics.UI.Gtk.Abstract.IMContext
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
-import Graphics.UI.Gtk.WebKit.Download
-import Graphics.UI.Gtk.WebKit.NetworkRequest
+--import Graphics.UI.Gtk.WebKit.Download
+--import Graphics.UI.Gtk.WebKit.NetworkRequest
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebInspector
@@ -30,19 +30,18 @@ import Graphics.UI.Gtk.WebKit.WebSettings
 import Network.URL
 import Prelude
 
-import System.Environment
-import System.Glib.Attributes
+import System.Console.CmdArgs
+--import System.Environment
+--import System.Glib.Attributes
 import System.Glib.Signals
 import System.Posix.Process
 -- }}}
 
 -- {{{ Type definitions
 data Browser = Browser {
-    mArgs           :: [String],
+    mOptions        :: CliOptions,
     mGUI            :: GUI
 }
-
-type KeyBindingsList = [(([Modifier], String), (GUI -> IO ()))]
 
 data Configuration = Configuration {
     mHomePage       :: String,          -- ^ Startup page 
@@ -52,33 +51,52 @@ data Configuration = Configuration {
     mAtStartUp      :: GUI -> IO (),    -- ^ Custom startup instructions
     mError          :: Maybe String     -- ^ Error
 }
+
+type KeyBindingsList = [(([Modifier], String), (GUI -> IO ()))]
+-- }}}
+
+-- {{{ Commandline options
+data CliOptions = CliOptions {
+    mURI :: Maybe String
+} deriving (Data, Typeable, Show, Eq)
+
+cliOptions :: CliOptions
+cliOptions = CliOptions{
+    mURI = def &= help "URI to open at startup" &= explicit &= name "u" &= name "uri" &= typ "URI"
+}
+
+getOptions :: IO CliOptions
+getOptions = cmdArgs $ cliOptions
+    &= verbosityArgs [explicit, name "Verbose", name "v"] []
+    &= versionArg [ignore]
+    &= help "A suckless minimal KISSy browser."
+    &= helpArg [explicit, name "help", name "h"]
+    &= program "hbro"
 -- }}}
 
 -- {{{ Entry point
 -- | Entry point of the application.
--- Check if help display is requested.
+-- | Parse arguments and step down in favour of initBrowser.
 realMain :: Configuration -> IO ()
 realMain configuration = do
-    args <- getArgs
+    options  <- getOptions
 
-    case args of
-        ["--help"]  -> putStrLn "Usage: browser [url]"
-        _           -> initBrowser configuration
+    initBrowser configuration options
 -- }}}
 
 -- {{{ Main function
 -- | Application's main function.
 -- Create browser and load homepage.
-initBrowser :: Configuration -> IO ()
-initBrowser configuration = do
+initBrowser :: Configuration -> CliOptions -> IO ()
+initBrowser configuration options = do
     case (mError configuration) of
-        Just error -> putStrLn error
-        _          -> return ()
+        Just e -> putStrLn e
+        _      -> return ()
 
     -- Initialize browser
-    args <- initGUI
+    _    <- initGUI
     gui  <- loadGUI ""
-    let browser = Browser args gui
+    let browser = Browser options gui
 
     -- Initialize IPC socket
     pid <- getProcessID
@@ -92,9 +110,9 @@ initBrowser configuration = do
     (mAtStartUp configuration) gui
 
     -- Load url
-    let url = case args of
-                [arg] -> arg
-                _     -> mHomePage configuration
+    let url = case (mURI options) of
+                Just x -> x
+                _      -> mHomePage configuration
 
     loadURL url gui
 
@@ -241,8 +259,8 @@ loadURL' url@URL {url_type = _} gui =
 showError :: Configuration -> String -> Configuration
 showError configuration message = configuration { mError = Just message }
 
-browser :: Configuration -> IO ()
-browser = Dyre.wrapMain Dyre.defaultParams {
+hbro :: Configuration -> IO ()
+hbro = Dyre.wrapMain Dyre.defaultParams {
     Dyre.projectName  = "hbro",
     Dyre.showError    = showError,
     Dyre.realMain     = realMain,
