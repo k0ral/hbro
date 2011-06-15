@@ -68,10 +68,10 @@ main = browser Configuration {
         (([Shift],      "O"),           promptURL True),
 
         -- Search
-        (([Shift],      "/"),           promptFind False True),
-        (([Shift],      "?"),           promptFind False False),
-        (([],           "n"),           findNext False True),
-        (([Shift],      "N"),           findNext False False),
+        (([Shift],      "/"),           promptFind False True True),
+        (([Shift],      "?"),           promptFind False False True),
+        (([],           "n"),           findNext False True True),
+        (([Shift],      "N"),           findNext False False True),
 
         -- Copy/paste
         (([],           "y"),           copyUri),
@@ -156,7 +156,7 @@ main = browser Configuration {
 
             -- Scroll position in status bar
             adjustment <- scrolledWindowGetVAdjustment scrollWindow
-            onValueChanged adjustment $ do
+            _ <- onValueChanged adjustment $ do
                 current <- adjustmentGetValue adjustment
                 lower   <- adjustmentGetLower adjustment
                 upper   <- adjustmentGetUpper adjustment
@@ -310,17 +310,17 @@ main = browser Configuration {
                                 loadURL u g)
                 _ -> return ()
 
-        promptFind :: Bool -> Bool -> GUI -> IO ()
-        promptFind caseSensitive forward gui =
+        promptFind :: Bool -> Bool -> Bool -> GUI -> IO ()
+        promptFind caseSensitive forward wrap gui =
             prompt "Search" "" True gui (\gui' -> do
                 keyWord <- entryGetText (mPrompt gui')
-                webViewSearchText (mWebView gui) keyWord caseSensitive forward True
+                found   <- webViewSearchText (mWebView gui) keyWord caseSensitive forward wrap
                 return ())
 
-        findNext :: Bool -> Bool -> GUI -> IO()
-        findNext caseSensitive forward gui = do
+        findNext :: Bool -> Bool -> Bool -> GUI -> IO()
+        findNext caseSensitive forward wrap gui = do
             keyWord <- entryGetText (mPrompt gui)
-            webViewSearchText (mWebView gui) keyWord caseSensitive forward True
+            found   <- webViewSearchText (mWebView gui) keyWord caseSensitive forward wrap 
             return ()
 
         printPage :: GUI -> IO ()
@@ -367,23 +367,23 @@ main = browser Configuration {
         verticalEnd :: GUI -> IO ()
         verticalEnd gui = do
             adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow gui)
-            max         <- adjustmentGetUpper adjustment
+            upper       <- adjustmentGetUpper adjustment
 
-            adjustmentSetValue adjustment max
+            adjustmentSetValue adjustment upper
 
         horizontalHome :: GUI -> IO ()
         horizontalHome gui = do
             adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow gui)
-            min         <- adjustmentGetLower adjustment
+            lower       <- adjustmentGetLower adjustment
 
-            adjustmentSetValue adjustment min
+            adjustmentSetValue adjustment lower
 
         horizontalEnd :: GUI -> IO ()
         horizontalEnd gui = do
             adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow gui)
-            max         <- adjustmentGetUpper adjustment
+            upper       <- adjustmentGetUpper adjustment
 
-            adjustmentSetValue adjustment max
+            adjustmentSetValue adjustment upper 
 
         -- Handlers
         downloadHandler :: String -> IO ()
