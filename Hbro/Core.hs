@@ -31,7 +31,6 @@ import Network.URL
 import Prelude
 
 import System.Console.CmdArgs
---import System.Environment
 --import System.Glib.Attributes
 import System.Glib.Signals
 import System.Posix.Process
@@ -89,6 +88,7 @@ realMain configuration = do
 -- Create browser and load homepage.
 initBrowser :: Configuration -> CliOptions -> IO ()
 initBrowser configuration options = do
+    -- Print configuration error, if any
     case (mError configuration) of
         Just e -> putStrLn e
         _      -> return ()
@@ -100,7 +100,7 @@ initBrowser configuration options = do
 
     -- Initialize IPC socket
     pid <- getProcessID
-    _ <- forkOS $ createReplySocket ("ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid) gui
+    _ <- forkIO $ createReplySocket ("ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid) gui
 
     -- Load configuration
     settings <- mWebSettings configuration
