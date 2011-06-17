@@ -14,6 +14,13 @@ createReplySocket :: String -> GUI -> IO a
 createReplySocket socketName gui = withContext 1 $ \context -> do  
     withSocket context Rep $ \socket -> do
         bind socket socketName
+
+        postGUIAsync $ do
+            quitAdd 0 $ do
+                close socket
+                return False
+            return ()
+
         forever $ do
             command <- receive socket []
             case unpack command of

@@ -38,8 +38,8 @@ import System.Posix.Process
 
 -- {{{ Type definitions
 data Browser = Browser {
-    mOptions        :: CliOptions,
-    mGUI            :: GUI
+    mOptions        :: CliOptions,      -- ^ Commandline options
+    mGUI            :: GUI              -- ^ Graphical widgets
 }
 
 data Configuration = Configuration {
@@ -78,8 +78,7 @@ getOptions = cmdArgs $ cliOptions
 -- | Parse arguments and step down in favour of initBrowser.
 realMain :: Configuration -> IO ()
 realMain configuration = do
-    options  <- getOptions
-
+    options <- getOptions
     initBrowser configuration options
 -- }}}
 

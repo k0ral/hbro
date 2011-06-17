@@ -34,10 +34,10 @@ loadGUI gladePath = do
 
 --     -- Load main window
 --     -- castTo* don't exist :(
---     window       <- xmlGetWidget xml castToWindow    "window"
---     webView      <- xmlGetWidget xml castToWebView   "webView"
---     promptLabel  <- xmlGetWidget xml castToLabel     "promptLabel"
---     prompt       <- xmlGetWidget xml castToEntry     "prompt"
+--     window       <- xmlGetWidget xml castToWindow            "window"
+--     webView      <- xmlGetWidget xml castToScrolledWindow    "scrolledWindow"
+--     promptLabel  <- xmlGetWidget xml castToLabel             "promptLabel"
+--     prompt       <- xmlGetWidget xml castToEntry             "prompt"
 
     window          <- windowNew
     inspectorWindow <- windowNew
