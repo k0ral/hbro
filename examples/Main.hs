@@ -5,9 +5,12 @@ import Hbro.Core
 import Hbro.Gui 
 import Hbro.Util 
 
+import Control.Monad.Trans(liftIO)
+
 import Graphics.Rendering.Pango.Layout
 
 import Graphics.UI.Gtk.Abstract.Widget
+import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.Gdk.EventM
@@ -22,6 +25,9 @@ import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.Windows.Window
 
+-- import Paths_hbro -- Doesn't work for now
+
+import System.Environment
 import System.Glib.Attributes
 import System.Glib.Signals
 import System.Process 
@@ -29,25 +35,35 @@ import System.Posix.Process
 -- }}}
 
 main :: IO ()
-main = hbro Configuration {
+main = do
+  --uiFile <- getDataFileName "examples/ui.xml" -- Doesn't work for now
+  configHome <- getEnv "XDG_CONFIG_HOME"
+    
+  hbro Configuration {
     -- Do not change this
     mError = Nothing,
 
     -- Directory where 0MQ sockets will be created
     mSocketDir = socketDir,
 
+    -- XML file defining UI (used by GtkBuilder) 
+    --mUIFile = uiFile, -- Doesn't work for now
+    -- Use this line if you want to use your own UI file in ~/.config/hbro/ui.xml
+    mUIFile = configHome ++ "/hbro/ui.xml",
+
     -- URI loaded at startup
     mHomePage = "https://www.google.com",
 
 
     -- Custom keys
+    -- All callbacks are fed with the GUI instance
     -- Note 1 : for modifiers, lists are used for convenience purposes,
     --          but are transformed into sets in hbro's internal machinery,
     --          so that order and repetition don't matter
-    -- Note 2 : for printable characters accessed via the shift modifier,
+    -- Note 3 : for printable characters accessed via the shift modifier,
     --          you do have to include Shift in modifiers list
     mKeyBindings = [
---      ((Modifiers,    Key),           Callback)
+--      ((modifiers,    key),           callback)
         -- Browse
         (([],           "<"),           goBack),
         (([Shift],      ">"),           goForward),
@@ -59,9 +75,13 @@ main = hbro Configuration {
         (([],           "<Home>"),      verticalHome),
         (([],           "<End>"),       verticalEnd),
 
-        -- Zoom
+        -- Display
         (([Shift],      "+"),           zoomIn),
         (([],           "-"),           zoomOut),
+        (([],           "<F11>"),       fullscreen),
+        (([],           "<Escape>"),    unfullscreen),
+        (([],           "t"),           toggleStatusBar),
+        (([Control],    "u"),           toggleSourceMode),
 
         -- Prompt
         (([],           "o"),           promptURL False), 
@@ -84,11 +104,7 @@ main = hbro Configuration {
 
         -- Others
         (([Control],    "i"),           showWebInspector),
-        (([Control],    "u"),           toggleSourceMode),
-        (([],           "t"),           toggleStatusBar),
-        (([Control],    "p"),           printPage),
-        (([],           "<F11>"),       fullscreen),
-        (([],           "<Escape>"),    unfullscreen)
+        (([Control],    "p"),           printPage)
     ],
 
 
@@ -144,13 +160,16 @@ main = hbro Configuration {
 
     -- Custom callbacks
     mAtStartUp = \gui -> (let
+            builder         = mBuilder gui
             webView         = mWebView gui
             scrollWindow    = mScrollWindow gui
-            progressLabel   = mProgressLabel gui
-            urlLabel        = mUrlLabel gui
-            scrollLabel     = mScrollLabel gui
             window          = mWindow gui
         in do
+            progressLabel   <- builderGetObject builder castToLabel "progress"
+            uriLabel        <- builderGetObject builder castToLabel "uri"
+            scrollLabel     <- builderGetObject builder castToLabel "scroll"
+            keysLabel       <- builderGetObject builder castToLabel "keys"
+
             -- Default background (for status bar)
             widgetModifyBg window StateNormal (Color 0 0 10000)
 
@@ -166,6 +185,18 @@ main = hbro Configuration {
                     0 -> labelSetMarkup scrollLabel "ALL"
                     x -> labelSetMarkup scrollLabel $ show (round $ current/x*100) ++ "%"
 
+            -- Pressed keys in statusbar
+            _ <- after webView keyPressEvent $ do
+                value      <- eventKeyVal
+                modifiers  <- eventModifier
+
+                let keyString = keyToString value
+                case keyString of 
+                    Just string -> liftIO $ labelSetMarkup keysLabel $ "<span foreground=\"green\">" ++ show modifiers ++ string ++ "</span>"
+                    _           -> return ()
+
+                return False
+
             -- Page load
             _ <- on webView loadStarted $ \_ -> do
                 labelSetMarkup progressLabel "<span foreground=\"red\">0%</span>"
@@ -173,8 +204,8 @@ main = hbro Configuration {
             _ <- on webView loadCommitted $ \_ -> do
                 getUri <- (webViewGetUri webView)
                 case getUri of 
-                    Just uri -> labelSetMarkup urlLabel $ "<span weight=\"bold\" foreground=\"white\">" ++ escapeMarkup uri ++ "</span>"
-                    _        -> labelSetMarkup urlLabel "<span weight=\"bold\" foreground=\"red\">ERROR</span>"
+                    Just uri -> labelSetMarkup uriLabel $ "<span weight=\"bold\" foreground=\"white\">" ++ escapeMarkup uri ++ "</span>"
+                    _        -> labelSetMarkup uriLabel "<span weight=\"bold\" foreground=\"red\">ERROR</span>"
 
             _ <- on webView progressChanged $ \progress' ->
                 labelSetMarkup progressLabel $ "<span foreground=\"yellow\">" ++ show progress' ++ "%</span>"
@@ -245,8 +276,8 @@ main = hbro Configuration {
             _ <- on webView hoveringOverLink $ \title hoveredUri -> do
                 getUri <- (webViewGetUri webView)
                 case (hoveredUri, getUri) of
-                    (Just u, _) -> labelSetMarkup urlLabel $ "<span foreground=\"#5555ff\">" ++ escapeMarkup u ++ "</span>"
-                    (_, Just u) -> labelSetMarkup urlLabel $ "<span foreground=\"white\" weight=\"bold\">" ++ escapeMarkup u ++ "</span>"
+                    (Just u, _) -> labelSetMarkup uriLabel $ "<span foreground=\"#5555ff\">" ++ escapeMarkup u ++ "</span>"
+                    (_, Just u) -> labelSetMarkup uriLabel $ "<span foreground=\"white\" weight=\"bold\">" ++ escapeMarkup u ++ "</span>"
                     _           -> putStrLn "FIXME"
 
             

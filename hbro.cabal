@@ -1,8 +1,9 @@
 Name:                hbro
-Version:             0.4.6
+Version:             0.5
 Synopsis:            A suckless minimal KISSy browser
 -- Description:         
 -- Homepage:
+Category:            Browser,Web
 Stability:           alpha
 
 License:             OtherLicense
@@ -11,15 +12,9 @@ License-file:        LICENSE
 Author:              koral
 Maintainer:          koral at mailoo dot org
 
-Category:            Browser,Web
-
--- Extra files to be distributed with the package, such as examples or
--- a README.
--- Extra-source-files:  
-
 Cabal-version:       >=1.8
 Build-type:          Simple
-
+Data-files:          examples/ui.xml
 
 Source-repository head
     Type:     git
@@ -32,7 +27,6 @@ Library
         cmdargs,
         containers,
         dyre,
-        glade,
         glib,
         gtk,
         mtl,
@@ -54,6 +48,7 @@ Executable hbro
         base == 4.*,
         glib,
         gtk,
+        mtl,
         pango,
         process,
         unix,

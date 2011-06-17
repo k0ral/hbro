@@ -13,11 +13,9 @@ import Control.Monad.Trans(liftIO)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Graphics.UI.Gtk.Abstract.Box
 import Graphics.UI.Gtk.Abstract.Container
 --import Graphics.UI.Gtk.Abstract.IMContext
 import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
 --import Graphics.UI.Gtk.WebKit.Download
@@ -44,7 +42,8 @@ data Browser = Browser {
 
 data Configuration = Configuration {
     mHomePage       :: String,          -- ^ Startup page 
-    mSocketDir      :: String,          -- ^ Path to socket directory (/tmp for example)
+    mSocketDir      :: String,          -- ^ Path to socket directory ("/tmp" for example)
+    mUIFile         :: String,          -- ^ Path to XML file describing UI (used by GtkBuilder)
     mKeyBindings    :: KeyBindingsList, -- ^ List of keybindings
     mWebSettings    :: IO WebSettings,  -- ^ Web settings
     mAtStartUp      :: GUI -> IO (),    -- ^ Custom startup instructions
@@ -93,9 +92,9 @@ initBrowser configuration options = do
         _      -> return ()
 
     -- Initialize browser
-    _    <- initGUI
-    gui  <- loadGUI ""
-    let browser = Browser options gui
+    _   <- initGUI
+    gui <- loadGUI (mUIFile configuration)
+    --let browser = Browser options gui
 
     -- Initialize IPC socket
     pid <- getProcessID
@@ -151,25 +150,25 @@ initBrowser configuration options = do
     -- TODO: when does this signal happen ?!
     --_ <- on inspector finished $ return ()
 
-    _ <- on inspector attachWindow $ do
-        getWebView <- webInspectorGetWebView inspector
-        case getWebView of
-            Just webView -> do widgetHide (mInspectorWindow gui)
-                               containerRemove (mInspectorWindow gui) webView
-                               widgetSetSizeRequest webView (-1) 250
-                               boxPackEnd (mWindowBox gui) webView PackNatural 0
-                               widgetShow webView
-                               return True
-            _            -> return False
+--     _ <- on inspector attachWindow $ do
+--         getWebView <- webInspectorGetWebView inspector
+--         case getWebView of
+--             Just webView -> do widgetHide (mInspectorWindow gui)
+--                                containerRemove (mInspectorWindow gui) webView
+--                                widgetSetSizeRequest webView (-1) 250
+--                                boxPackEnd (mWindowBox gui) webView PackNatural 0
+--                                widgetShow webView
+--                                return True
+--             _            -> return False
 
-    _ <- on inspector detachWindow $ do
-        getWebView <- webInspectorGetWebView inspector
-        _ <- case getWebView of
-            Just webView -> do containerRemove (mWindowBox gui) webView
-                               containerAdd (mInspectorWindow gui) webView
-                               widgetShowAll (mInspectorWindow gui)
-                               return True
-            _            -> return False
+--     _ <- on inspector detachWindow $ do
+--         getWebView <- webInspectorGetWebView inspector
+--         _ <- case getWebView of
+--             Just webView -> do containerRemove (mWindowBox gui) webView
+--                                containerAdd (mInspectorWindow gui) webView
+--                                widgetShowAll (mInspectorWindow gui)
+--                                return True
+--             _            -> return False
         
         widgetShowAll (mInspectorWindow gui)
         return True
@@ -197,10 +196,8 @@ initBrowser configuration options = do
         case keyString of 
             Just string -> do 
                 case Map.lookup (Set.fromList modifiers, string) keyBindings of
-                    Just callback   -> do
-                        liftIO $ callback gui
-                        liftIO $ labelSetMarkup (mKeysLabel gui) $ "<span foreground=\"green\">" ++ show modifiers ++ string ++ "</span>"
-                    _               -> liftIO $ putStrLn string 
+                    Just callback -> liftIO $ callback gui
+                    _             -> liftIO $ putStrLn string 
             _ -> return ()
 
         return False

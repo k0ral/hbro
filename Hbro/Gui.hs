@@ -4,10 +4,21 @@ module Hbro.Gui where
 -- {{{ Imports
 import Control.Monad.Trans(liftIO)
 
-import Graphics.UI.Gtk
 --import Graphics.UI.Gtk.Abstract.Misc
-import Graphics.UI.Gtk.Glade
+import Graphics.UI.Gtk.Abstract.Container
+import Graphics.UI.Gtk.Abstract.Widget
+import Graphics.UI.Gtk.Builder
+import Graphics.UI.Gtk.Display.Label
+import Graphics.UI.Gtk.Entry.Editable
+import Graphics.UI.Gtk.Entry.Entry
+import Graphics.UI.Gtk.General.General
+import Graphics.UI.Gtk.Gdk.EventM
+import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebView
+import Graphics.UI.Gtk.Windows.Window
+
+import System.Glib.Attributes
+import System.Glib.Signals
 -- }}}
 
 data GUI = GUI {
@@ -17,59 +28,29 @@ data GUI = GUI {
     mWebView            :: WebView,         -- ^ Browser's webview
     mPromptLabel        :: Label,           -- ^ Description of current prompt
     mPrompt             :: Entry,           -- ^ Prompt entry
-    mWindowBox          :: VBox,            -- ^ Window's layout
-    mStatusBox          :: HBox,            -- ^ Status bar's layout
-    mProgressLabel      :: Label,
-    mUrlLabel           :: Label,
-    mKeysLabel          :: Label,
-    mScrollLabel        :: Label
+    mBuilder            :: Builder          -- ^ Builder object created from XML file
 }
 
--- {{{ Load glade GUI
--- | Load GUI from a glade file.
+-- {{{ Load GUI from XML file
 loadGUI :: String -> IO GUI
-loadGUI gladePath = do
-    -- Note: crashes with a runtime error on console if fails!
---     Just xml <- xmlNew gladePath
+loadGUI xmlPath = do
+    builder <- builderNew
+    builderAddFromFile builder xmlPath
 
---     -- Load main window
---     -- castTo* don't exist :(
---     window       <- xmlGetWidget xml castToWindow            "window"
---     webView      <- xmlGetWidget xml castToScrolledWindow    "scrolledWindow"
---     promptLabel  <- xmlGetWidget xml castToLabel             "promptLabel"
---     prompt       <- xmlGetWidget xml castToEntry             "prompt"
+    -- Load main window
+    window       <- builderGetObject builder castToWindow            "mainWindow"
+    scrollWindow <- builderGetObject builder castToScrolledWindow    "webViewParent"
+    promptLabel  <- builderGetObject builder castToLabel             "promptDescription"
+    promptEntry  <- builderGetObject builder castToEntry             "promptEntry"
 
-    window          <- windowNew
     inspectorWindow <- windowNew
 
     --windowSetDefaultSize window 1024 768
-    windowSetPosition   window WinPosCenter
+    --windowSetPosition   window WinPosCenter
     --windowSetIconFromFile window "/path/to/icon"
     set window [ windowTitle := "hbro" ]
 
-    webView         <- webViewNew
-    winBox          <- vBoxNew False 0
-    promptBox       <- hBoxNew False 10
-    statusBox       <- hBoxNew False 5
-    scrollWindow    <- scrolledWindowNew Nothing Nothing
-    promptLabel     <- labelNew Nothing
-    promptEntry     <- entryNew
-    progressLabel   <- labelNew (Just "0%")
-    urlLabel        <- labelNew Nothing
-    keysLabel       <- labelNew Nothing
-    scrollLabel     <- labelNew (Just "0%")
-
-    boxPackStart winBox     scrollWindow    PackGrow 0
-    boxPackStart winBox     promptBox       PackNatural 0
-    boxPackStart winBox     statusBox       PackNatural 0
-    boxPackStart promptBox  promptLabel     PackNatural 0
-    boxPackStart promptBox  promptEntry     PackGrow 0
-    boxPackStart statusBox  progressLabel   PackNatural 0
-    boxPackStart statusBox  urlLabel        PackGrow 0
-    boxPackEnd   statusBox  scrollLabel     PackNatural 0
-    boxPackEnd   statusBox  keysLabel       PackNatural 0
-    
-    containerAdd window winBox
+    webView <- webViewNew
     containerAdd scrollWindow webView 
 
     set webView [ widgetCanDefault := True ]
@@ -78,14 +59,11 @@ loadGUI gladePath = do
         scrolledWindowHscrollbarPolicy := PolicyNever,
         scrolledWindowVscrollbarPolicy := PolicyNever ]
 
-    labelSetEllipsize   urlLabel EllipsizeEnd
-    miscSetAlignment    urlLabel 0 0
-
     _ <- on webView closeWebView $ do
         mainQuit
         return True
 
-    return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry winBox statusBox progressLabel urlLabel keysLabel scrollLabel
+    return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry builder
 -- }}}
 
 -- {{{ Prompt

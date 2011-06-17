@@ -1,0 +1,86 @@
+<interface>
+    <object class="GtkWindow" id="mainWindow">
+        <child><object class="GtkVBox" id="windowBox">
+            <property name="homogeneous">False</property>
+            <property name="spacing">0</property>
+
+            <!-- Scrolled window, will contain the webview -->
+            <child>
+                <object class="GtkScrolledWindow" id="webViewParent"></object>
+            </child>
+            
+
+            <!-- Prompt bar -->
+            <child>
+                <object class="GtkHBox" id="promptBox">
+                    <property name="homogeneous">False</property>
+                    <property name="spacing">10</property>
+                    
+                    <child>
+                        <object class="GtkLabel" id="promptDescription"></object>
+                        <packing>
+                            <property name="fill">False</property>
+                            <property name="expand">False</property>
+                        </packing>
+                    </child>
+
+                    <child><object class="GtkEntry" id="promptEntry"></object></child>
+                </object>
+
+                <packing>
+                    <property name="fill">False</property>
+                    <property name="expand">False</property>
+                </packing>
+            </child>
+
+
+            <!-- Status bar -->
+            <child>
+                <object class="GtkHBox" id="statusBox">
+                    <property name="homogeneous">False</property>
+                    <property name="spacing">5</property>
+                    
+                    <child>
+                        <object class="GtkLabel" id="progress"></object>
+                        <packing>
+                            <property name="fill">False</property>
+                            <property name="expand">False</property>
+                        </packing>
+                    </child>
+
+                    <child>
+                        <object class="GtkLabel" id="uri">
+                            <property name="ellipsize">PANGO_ELLIPSIZE_END</property>
+                            <property name="xalign">0</property>
+                            <property name="yalign">0</property>
+                        </object>
+                    </child>
+                    
+                    <child>
+                        <object class="GtkLabel" id="scroll"></object>
+                        <packing>
+                            <property name="pack-type">GTK_PACK_END</property>
+                            <property name="fill">False</property>
+                            <property name="expand">False</property>
+                        </packing>
+                    </child>
+
+                    <child>
+                        <object class="GtkLabel" id="keys"></object>
+                        <packing>
+                            <property name="pack-type">GTK_PACK_END</property>
+                            <property name="fill">False</property>
+                            <property name="expand">False</property>
+                        </packing>
+                    </child>
+                </object>
+
+                <packing>
+                    <property name="fill">False</property>
+                    <property name="expand">False</property>
+                </packing>
+            </child>
+
+        </object></child>
+    </object>
+</interface>
