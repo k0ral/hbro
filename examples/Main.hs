@@ -25,7 +25,8 @@ import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.Windows.Window
 
--- import Paths_hbro -- Doesn't work for now
+-- Remove this line in your custom hbro.hs
+import Paths_hbro
 
 import System.Environment
 import System.Glib.Attributes
@@ -36,7 +37,7 @@ import System.Posix.Process
 
 main :: IO ()
 main = do
-  --uiFile <- getDataFileName "examples/ui.xml" -- Doesn't work for now
+  uiFile <- getDataFileName "examples/ui.xml" -- Remove this line in your custom hbro.hs
   configHome <- getEnv "XDG_CONFIG_HOME"
     
   hbro Configuration {
@@ -47,9 +48,9 @@ main = do
     mSocketDir = socketDir,
 
     -- XML file defining UI (used by GtkBuilder) 
-    --mUIFile = uiFile, -- Doesn't work for now
-    -- Use this line if you want to use your own UI file in ~/.config/hbro/ui.xml
-    mUIFile = configHome ++ "/hbro/ui.xml",
+    -- In your custom hbro.hs, remove the first line and use instead the second one
+    mUIFile = uiFile,
+    --mUIFile = configHome ++ "/hbro/ui.xml",
 
     -- URI loaded at startup
     mHomePage = "https://www.google.com",
