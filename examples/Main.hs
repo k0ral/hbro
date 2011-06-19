@@ -3,6 +3,7 @@ module Main where
 -- {{{ Imports
 import Hbro.Core 
 import Hbro.Gui 
+import Hbro.Types
 import Hbro.Util 
 
 import Control.Monad.Trans(liftIO)
@@ -19,7 +20,6 @@ import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.Download
 import Graphics.UI.Gtk.WebKit.NetworkRequest
-import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebNavigationAction
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebSettings
@@ -37,7 +37,7 @@ import System.Posix.Process
 
 main :: IO ()
 main = do
-  uiFile <- getDataFileName "examples/ui.xml" -- Remove this line in your custom hbro.hs
+  uiFile     <- getDataFileName "examples/ui.xml" -- Remove this line in your custom hbro.hs
   configHome <- getEnv "XDG_CONFIG_HOME"
     
   hbro Configuration {
@@ -52,7 +52,7 @@ main = do
     mUIFile = uiFile,
     --mUIFile = configHome ++ "/hbro/ui.xml",
 
-    -- URI loaded at startup
+    -- URI to load at startup
     mHomePage = "https://www.google.com",
 
 
@@ -68,13 +68,14 @@ main = do
         -- Browse
         (([],           "<"),           goBack),
         (([Shift],      ">"),           goForward),
-        (([],           "s"),           stop),
+        (([],           "s"),           stopLoading),
         (([],           "<F5>"),        reload True),
         (([Shift],      "<F5>"),        reload False),
         (([],           "^"),           horizontalHome),
         (([],           "$"),           horizontalEnd),
         (([],           "<Home>"),      verticalHome),
         (([],           "<End>"),       verticalEnd),
+        (([Control],    "<Home>"),      goHome),
 
         -- Display
         (([Shift],      "+"),           zoomIn),
@@ -160,11 +161,11 @@ main = do
 
 
     -- Custom callbacks
-    mAtStartUp = \gui -> (let
-            builder         = mBuilder gui
-            webView         = mWebView gui
-            scrollWindow    = mScrollWindow gui
-            window          = mWindow gui
+    mAtStartUp = \browser -> (let
+            builder         = mBuilder      (mGUI browser)
+            webView         = mWebView      (mGUI browser)
+            scrollWindow    = mScrollWindow (mGUI browser)
+            window          = mWindow       (mGUI browser)
         in do
             progressLabel   <- builderGetObject builder castToLabel "progress"
             uriLabel        <- builderGetObject builder castToLabel "uri"
@@ -193,10 +194,11 @@ main = do
 
                 let keyString = keyToString value
                 case keyString of 
-                    Just string -> liftIO $ labelSetMarkup keysLabel $ "<span foreground=\"green\">" ++ show modifiers ++ string ++ "</span>"
+                    Just string -> liftIO $ labelSetMarkup keysLabel $ "<span foreground=\"green\">" ++ show modifiers ++ escapeMarkup string ++ "</span>"
                     _           -> return ()
 
                 return False
+
 
             -- Page load
             _ <- on webView loadStarted $ \_ -> do
@@ -214,18 +216,13 @@ main = do
             _ <- on webView loadFinished $ \_ -> do
                 labelSetMarkup progressLabel "<span foreground=\"green\">100%</span>"
 
-                getUri   <- webViewGetUri webView
-                getTitle <- webViewGetTitle webView
-                case (getUri, getTitle) of
-                    (Just uri, Just title)  -> historyHandler uri title
-                    _                       -> return ()
-
             _ <- on webView loadError $ \_ _ _ -> do
                 labelSetMarkup progressLabel "<span foreground=\"red\">ERROR</span>"
                 return False
 
             _ <- on webView titleChanged $ \_ title ->
                 set window [ windowTitle := ("hbro | " ++ title)]
+
 
             -- Special requests
             _ <- on webView downloadRequested $ \download -> do
@@ -243,6 +240,16 @@ main = do
                     _             -> putStrLn "FIXME"
 
                 return False
+
+
+            -- History handler
+            _ <- on webView loadFinished $ \_ -> do
+                getUri   <- webViewGetUri webView
+                getTitle <- webViewGetTitle webView
+                case (getUri, getTitle) of
+                    (Just uri, Just title)  -> historyHandler uri title
+                    _                       -> return ()
+
 
             -- On navigating to a new URI
             -- Return True to forbid navigation, False to allow
@@ -292,127 +299,87 @@ main = do
 -- Definitions
     where
         -- Constants
-        scriptsDir :: String
+        scriptsDir, socketDir :: String
         scriptsDir = "~/.config/hbro/scripts/"
+        socketDir  = "/tmp"
 
-        socketDir :: String
-        socketDir = "/tmp"
-
-        -- Browse
-        goBack :: GUI -> IO ()
-        goBack gui = webViewGoBack (mWebView gui)
-
-        goForward :: GUI -> IO ()
-        goForward gui = webViewGoForward (mWebView gui)
-
-        stop :: GUI -> IO ()
-        stop gui = webViewStopLoading (mWebView gui)
-
-        reload :: Bool -> GUI -> IO ()
-        reload True gui = webViewReload (mWebView gui)
-        reload _    gui = webViewReloadBypassCache (mWebView gui)
-
-        -- Zoom
-        zoomIn :: GUI -> IO ()
-        zoomIn gui = webViewZoomIn (mWebView gui)
-
-        zoomOut :: GUI -> IO ()
-        zoomOut gui = webViewZoomOut (mWebView gui)
-
-        toggleSourceMode :: GUI -> IO ()
-        toggleSourceMode gui = do
-            currentMode <- webViewGetViewSourceMode (mWebView gui)
-            webViewSetViewSourceMode (mWebView gui) (not currentMode)
+        toggleSourceMode :: Browser -> IO()
+        toggleSourceMode browser = do
+            currentMode <- webViewGetViewSourceMode (mWebView $ mGUI browser)
+            webViewSetViewSourceMode (mWebView $ mGUI browser) (not currentMode)
 
         -- TODO
-        toggleStatusBar :: GUI -> IO ()
-        toggleStatusBar gui = return()
+        toggleStatusBar :: Browser -> IO()
+        toggleStatusBar browser = return()
 
 
-        promptURL :: Bool -> GUI -> IO ()        
-        promptURL False gui = 
-            prompt "Open URL" "" False gui (\g -> do 
-                uri <- entryGetText (mPrompt g)
-                loadURL uri g)
-        promptURL _ gui = do
-            uri <- webViewGetUri (mWebView gui)
+        promptURL :: Bool -> Browser -> IO()        
+        promptURL False browser = 
+            prompt "Open URL" "" False browser (\b -> do 
+                uri <- entryGetText (mPromptEntry $ mGUI b)
+                loadURL uri b)
+        promptURL _ browser = do
+            uri <- webViewGetUri (mWebView $ mGUI browser)
             case uri of
-                Just url -> prompt "Open URL" url False gui (\g -> do
-                                u <- entryGetText (mPrompt g)
-                                loadURL u g)
+                Just url -> prompt "Open URL" url False browser (\b -> do
+                                u <- entryGetText (mPromptEntry $ mGUI b)
+                                loadURL u b)
                 _ -> return ()
 
-        promptFind :: Bool -> Bool -> Bool -> GUI -> IO ()
-        promptFind caseSensitive forward wrap gui =
-            prompt "Search" "" True gui (\gui' -> do
-                keyWord <- entryGetText (mPrompt gui')
-                found   <- webViewSearchText (mWebView gui) keyWord caseSensitive forward wrap
+        promptFind :: Bool -> Bool -> Bool -> Browser -> IO ()
+        promptFind caseSensitive forward wrap browser =
+            prompt "Search" "" True browser (\browser' -> do
+                keyWord <- entryGetText (mPromptEntry $ mGUI browser')
+                found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap
                 return ())
 
-        findNext :: Bool -> Bool -> Bool -> GUI -> IO()
-        findNext caseSensitive forward wrap gui = do
-            keyWord <- entryGetText (mPrompt gui)
-            found   <- webViewSearchText (mWebView gui) keyWord caseSensitive forward wrap 
+        findNext :: Bool -> Bool -> Bool -> Browser -> IO ()
+        findNext caseSensitive forward wrap browser = do
+            keyWord <- entryGetText (mPromptEntry $ mGUI browser)
+            found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap 
             return ()
 
-        printPage :: GUI -> IO ()
-        printPage gui = do
-            frame <- webViewGetMainFrame (mWebView gui)
-            webFramePrint frame
-
-        fullscreen :: GUI -> IO ()
-        fullscreen gui = windowFullscreen (mWindow gui)
-
-        unfullscreen :: GUI -> IO ()
-        unfullscreen gui = windowUnfullscreen (mWindow gui)
-
-
         -- Copy/paste
-        copyUri :: GUI -> IO ()
-        copyUri gui = do
-            getUri <- webViewGetUri (mWebView gui)
+        copyUri, copyTitle, pasteUri :: Browser -> IO()
+        copyUri browser = do
+            getUri <- webViewGetUri (mWebView $ mGUI browser)
             case getUri of
                 Just u -> runCommand ("echo -n " ++ u ++ " | xclip") >> return ()
                 _      -> return ()
 
-        copyTitle :: GUI -> IO ()
-        copyTitle gui = do
-            getTitle <- webViewGetTitle (mWebView gui)
+        copyTitle browser = do
+            getTitle <- webViewGetTitle (mWebView $ mGUI browser)
             case getTitle of
                 Just t -> runCommand ("echo -n " ++ t ++ " | xclip") >> return ()
                 _      -> return ()
 
-        pasteUri :: GUI -> IO ()
-        pasteUri gui = do
+        pasteUri browser = do
             uri <- readProcess "xclip" ["-o"] []
-            loadURL uri gui
+            loadURL uri browser
 
 
         -- Scrolling
-        verticalHome :: GUI -> IO ()
-        verticalHome gui = do
-            adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow gui)
+        verticalHome, verticalEnd, horizontalHome, horizontalEnd :: Browser -> IO()
+        verticalHome browser = do
+            adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
             lower       <- adjustmentGetLower adjustment
 
             adjustmentSetValue adjustment lower
 
-        verticalEnd :: GUI -> IO ()
-        verticalEnd gui = do
-            adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow gui)
+        verticalEnd browser = do
+            adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
             upper       <- adjustmentGetUpper adjustment
 
             adjustmentSetValue adjustment upper
 
-        horizontalHome :: GUI -> IO ()
-        horizontalHome gui = do
-            adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow gui)
+        horizontalHome browser = do
+            adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
             lower       <- adjustmentGetLower adjustment
 
             adjustmentSetValue adjustment lower
 
-        horizontalEnd :: GUI -> IO ()
-        horizontalEnd gui = do
-            adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow gui)
+        horizontalEnd browser = do
+            adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
             upper       <- adjustmentGetUpper adjustment
 
             adjustmentSetValue adjustment upper 
@@ -426,17 +393,16 @@ main = do
 
 
         -- Bookmarks
-        addToBookmarks :: GUI -> IO ()
-        addToBookmarks gui = do
-            getUri <- webViewGetUri (mWebView gui)
+        addToBookmarks, loadFromBookmarks :: Browser -> IO()
+        addToBookmarks browser = do
+            getUri <- webViewGetUri (mWebView $ mGUI browser)
             case getUri of
-                Just uri -> prompt "Bookmark with tag:" "" False gui (\g -> do 
-                    tags <- entryGetText (mPrompt g)
+                Just uri -> prompt "Bookmark with tag:" "" False browser (\b -> do 
+                    tags <- entryGetText (mPromptEntry $ mGUI b)
                     runExternalCommand $ scriptsDir ++ "bookmarks.sh add " ++ uri ++ " " ++ tags)
                 _        -> return ()
 
-        loadFromBookmarks :: GUI -> IO ()
-        loadFromBookmarks gui = do 
+        loadFromBookmarks browser = do 
             pid <- getProcessID
             runExternalCommand $ scriptsDir ++ "bookmarks.sh load \"" ++ socketDir ++ "/hbro." ++ show pid ++ "\""
 

@@ -2,6 +2,8 @@
 module Hbro.Gui where
 
 -- {{{ Imports
+import Hbro.Types
+
 import Control.Monad.Trans(liftIO)
 
 --import Graphics.UI.Gtk.Abstract.Misc
@@ -21,17 +23,7 @@ import System.Glib.Attributes
 import System.Glib.Signals
 -- }}}
 
-data GUI = GUI {
-    mWindow             :: Window,          -- ^ Main window
-    mInspectorWindow    :: Window,          -- ^ WebInspector window
-    mScrollWindow       :: ScrolledWindow,  -- ^ ScrolledWindow containing the webview
-    mWebView            :: WebView,         -- ^ Browser's webview
-    mPromptLabel        :: Label,           -- ^ Description of current prompt
-    mPrompt             :: Entry,           -- ^ Prompt entry
-    mBuilder            :: Builder          -- ^ Builder object created from XML file
-}
-
--- {{{ Load GUI from XML file
+-- | Load GUI from XML file
 loadGUI :: String -> IO GUI
 loadGUI xmlPath = do
     builder <- builderNew
@@ -64,69 +56,76 @@ loadGUI xmlPath = do
         return True
 
     return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry builder
--- }}}
 
 -- {{{ Prompt
 -- | Show or hide the prompt bar (label + entry).
-showPrompt :: Bool -> GUI -> IO ()
-showPrompt toShow gui = case toShow of
-    False -> do widgetHide (mPromptLabel gui)
-                widgetHide (mPrompt gui)
-    _     -> do widgetShow (mPromptLabel gui)
-                widgetShow (mPrompt gui)
+showPrompt :: Bool -> Browser -> IO ()
+showPrompt toShow browser = case toShow of
+    False -> do widgetHide (mPromptLabel $ mGUI browser)
+                widgetHide (mPromptEntry $ mGUI browser)
+    _     -> do widgetShow (mPromptLabel $ mGUI browser)
+                widgetShow (mPromptEntry $ mGUI browser)
 
 -- | Show the prompt bar label and default text.
 -- As the user validates its entry, the given callback is executed.
-prompt :: String -> String -> Bool -> GUI -> (GUI -> IO ()) -> IO ()
-prompt label defaultText incremental gui callback = do
-    -- Show prompt
-    showPrompt True gui
+prompt :: String -> String -> Bool -> Browser -> (Browser -> IO ()) -> IO ()
+prompt label defaultText incremental browser callback = let
+        promptLabel = (mPromptLabel $ mGUI browser)
+        promptEntry = (mPromptEntry $ mGUI browser)
+        webView     = (mWebView     $ mGUI browser)
+    in do
+        -- Show prompt
+        showPrompt True browser
 
-    -- Fill prompt
-    labelSetText (mPromptLabel gui) label
-    entrySetText (mPrompt gui) defaultText
+        -- Fill prompt
+        labelSetText promptLabel label
+        entrySetText promptEntry defaultText
 
-    widgetGrabFocus (mPrompt gui)
+        widgetGrabFocus promptEntry
 
-    -- Register callback
-    case incremental of
-        True -> do 
-            id1 <- on (mPrompt gui) editableChanged $  
-                liftIO $ callback gui
-            rec id2 <- on (mPrompt gui) keyPressEvent $ do
-                key <- eventKeyName
-                
-                case key of
-                    "Return" -> do
-                        liftIO $ showPrompt False gui
-                        liftIO $ signalDisconnect id1
-                        liftIO $ signalDisconnect id2
-                        liftIO $ widgetGrabFocus (mWebView gui)
-                    "Escape" -> do
-                        liftIO $ showPrompt False gui
-                        liftIO $ signalDisconnect id1
-                        liftIO $ signalDisconnect id2
-                        liftIO $ widgetGrabFocus (mWebView gui)
-                    _ -> return ()
-                return False
-            return ()
+        -- Register callback
+        case incremental of
+            True -> do 
+                id1 <- on promptEntry editableChanged $  
+                    liftIO $ callback browser
+                rec id2 <- on promptEntry keyPressEvent $ do
+                    key <- eventKeyName
+                    
+                    case key of
+                        "Return" -> do
+                            liftIO $ showPrompt False browser
+                            liftIO $ signalDisconnect id1
+                            liftIO $ signalDisconnect id2
+                            liftIO $ widgetGrabFocus webView
+                        "Escape" -> do
+                            liftIO $ showPrompt False browser
+                            liftIO $ signalDisconnect id1
+                            liftIO $ signalDisconnect id2
+                            liftIO $ widgetGrabFocus webView
+                        _ -> return ()
+                    return False
+                return ()
 
-        _ -> do
-            rec id <- on (mPrompt gui) keyPressEvent $ do
-                key <- eventKeyName
+            _ -> do
+                rec id <- on promptEntry keyPressEvent $ do
+                    key <- eventKeyName
 
-                case key of
-                    "Return" -> do
-                        liftIO $ showPrompt False gui
-                        liftIO $ callback gui
-                        liftIO $ signalDisconnect id
-                        liftIO $ widgetGrabFocus (mWebView gui)
-                    "Escape" -> do
-                        liftIO $ showPrompt False gui
-                        liftIO $ signalDisconnect id
-                        liftIO $ widgetGrabFocus (mWebView gui)
-                    _        -> return ()
-                return False
+                    case key of
+                        "Return" -> do
+                            liftIO $ showPrompt False browser
+                            liftIO $ callback browser
+                            liftIO $ signalDisconnect id
+                            liftIO $ widgetGrabFocus webView
+                        "Escape" -> do
+                            liftIO $ showPrompt False browser
+                            liftIO $ signalDisconnect id
+                            liftIO $ widgetGrabFocus webView
+                        _        -> return ()
+                    return False
 
-            return ()
+                return ()
 -- }}}
+
+fullscreen, unfullscreen :: Browser -> IO()
+fullscreen   browser = windowFullscreen   (mWindow $ mGUI browser)
+unfullscreen browser = windowUnfullscreen (mWindow $ mGUI browser)

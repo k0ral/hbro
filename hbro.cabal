@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             0.5.0
+Version:             0.5.1
 Synopsis:            A suckless minimal KISSy browser
 -- Description:         
 -- Homepage:
@@ -39,7 +39,8 @@ Library
     Exposed-modules:
         Hbro.Core,
         Hbro.Gui,
-        Hbro.Socket
+        Hbro.Socket,
+        Hbro.Types,
         Hbro.Util
     Ghc-options: -Wall
 

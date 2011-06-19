@@ -1,16 +1,19 @@
 module Hbro.Util where
 
-import Hbro.Gui (GUI)
+-- {{{ Imports
+import Hbro.Types
 
-import qualified Data.Set as Set
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+
 import Graphics.UI.Gtk
 import System.Process
-
+-- }}}
 
 instance Ord Modifier where
     m <= m' =  fromEnum m <= fromEnum m'
 
+-- {{{ Keybindings functions
 -- | Converts a keyVal to a String.
 -- For printable characters, the corresponding String is returned, except for the space character for which "<Space>" is returned.
 -- For non-printable characters, the corresponding keyName between <> is returned.
@@ -36,17 +39,18 @@ keyToString keyVal = case keyToChar keyVal of
 
 -- | Converts key bindings list to a map.
 -- | Calls importKeyBindings'.
-importKeyBindings :: [(([Modifier], String), (GUI -> IO ()))] -> Map.Map (Set.Set Modifier, String) (GUI -> IO ()) 
+importKeyBindings :: [(([Modifier], String), (Browser -> IO ()))] -> Map.Map (Set.Set Modifier, String) (Browser -> IO ()) 
 importKeyBindings list = Map.fromList $ importKeyBindings' list
 
 -- | Converts modifiers list to modifiers sets.
 -- The order of modifiers in key bindings don't matter.
 -- Called by importKeyBindings.
-importKeyBindings' :: [(([Modifier], String), (GUI -> IO ()))] -> [((Set.Set Modifier, String), (GUI -> IO ()))]
+importKeyBindings' :: [(([Modifier], String), (Browser -> IO ()))] -> [((Set.Set Modifier, String), (Browser -> IO ()))]
 importKeyBindings' (((a, b), c):t) = ((Set.fromList a, b), c):(importKeyBindings' t)
 importKeyBindings' _ = []
+-- }}}
 
-
+-- {{{ Run commands
 -- | Like run `runCommand`, but return IO ()
 runCommand' :: String -> IO ()
 runCommand' command = runCommand command >> return ()
@@ -56,3 +60,4 @@ runCommand' command = runCommand command >> return ()
 -- `> /dev/null 2>&1` redirect all stdout (1) and stderr (2) to `/dev/null`
 runExternalCommand :: String -> IO ()
 runExternalCommand command = runCommand' $ "nohup " ++ command ++ " > /dev/null 2>&1"
+-- }}}
