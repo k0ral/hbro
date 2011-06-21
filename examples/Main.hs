@@ -6,6 +6,7 @@ import Hbro.Gui
 import Hbro.Types
 import Hbro.Util 
 
+import Control.Concurrent
 import Control.Monad.Trans(liftIO)
 
 import Graphics.Rendering.Pango.Layout
@@ -71,6 +72,8 @@ main = do
         (([],           "s"),           stopLoading),
         (([],           "<F5>"),        reload True),
         (([Shift],      "<F5>"),        reload False),
+        (([Control],    "r"),           reload True),
+        (([Control, Shift], "R"),       reload False),
         (([],           "^"),           horizontalHome),
         (([],           "$"),           horizontalEnd),
         (([],           "<Home>"),      verticalHome),
@@ -78,8 +81,8 @@ main = do
         (([Control],    "<Home>"),      goHome),
 
         -- Display
-        (([Shift],      "+"),           zoomIn),
-        (([],           "-"),           zoomOut),
+        (([Control, Shift], "+"),       zoomIn),
+        (([Control],    "-"),           zoomOut),
         (([],           "<F11>"),       fullscreen),
         (([],           "<Escape>"),    unfullscreen),
         (([],           "t"),           toggleStatusBar),
@@ -102,11 +105,13 @@ main = do
 
         -- Bookmarks
         (([Control],   "d"),            addToBookmarks),
+        (([Control, Shift], "D"),       addAllInstancesToBookmarks),
         (([Control],   "l"),            loadFromBookmarks),
 
         -- Others
         (([Control],    "i"),           showWebInspector),
-        (([Control],    "p"),           printPage)
+        (([Control],    "p"),           printPage),
+        (([Control],    "n"),           newWindow)
     ],
 
 
@@ -339,6 +344,9 @@ main = do
             found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap 
             return ()
 
+        newWindow :: Browser -> IO ()
+        newWindow browser = runExternalCommand ("hbro")
+
         -- Copy/paste
         copyUri, copyTitle, pasteUri :: Browser -> IO()
         copyUri browser = do
@@ -393,7 +401,7 @@ main = do
 
 
         -- Bookmarks
-        addToBookmarks, loadFromBookmarks :: Browser -> IO()
+        addToBookmarks, addAllInstancesToBookmarks, loadFromBookmarks :: Browser -> IO()
         addToBookmarks browser = do
             getUri <- webViewGetUri (mWebView $ mGUI browser)
             case getUri of
@@ -401,6 +409,12 @@ main = do
                     tags <- entryGetText (mPromptEntry $ mGUI b)
                     runExternalCommand $ scriptsDir ++ "bookmarks.sh add " ++ uri ++ " " ++ tags)
                 _        -> return ()
+
+        addAllInstancesToBookmarks browser = do
+            prompt "Bookmark all instances with tag:" "" False browser (\b -> do 
+                tags <- entryGetText (mPromptEntry $ mGUI b)
+                forkIO $ (runCommand (scriptsDir ++ "bookmarks.sh add-all " ++ socketDir ++ " " ++ tags)) >> return ()
+                return())
 
         loadFromBookmarks browser = do 
             pid <- getProcessID

@@ -30,6 +30,7 @@ import Prelude
 import System.Console.CmdArgs
 import System.Glib.Signals
 import System.Posix.Process
+import qualified System.ZMQ as ZMQ
 -- }}}
 
 -- {{{ Commandline options
@@ -73,8 +74,20 @@ initBrowser configuration options = do
     let webView = mWebView gui
 
     -- Initialize IPC socket
-    pid <- getProcessID
-    _   <- forkIO $ createReplySocket ("ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid) browser
+    pid       <- getProcessID
+    context   <- ZMQ.init 1
+    repSocket <- ZMQ.socket context ZMQ.Rep 
+    let socketURI = "ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid
+
+    ZMQ.bind repSocket socketURI
+      
+    _ <- quitAdd 0 $ do
+        ZMQ.setOption repSocket (ZMQ.Linger 0)
+        ZMQ.close repSocket
+        ZMQ.term  context
+        return False
+
+    _ <- forkIO $ listenToSocket repSocket browser
 
     -- Load configuration
     settings <- mWebSettings configuration
