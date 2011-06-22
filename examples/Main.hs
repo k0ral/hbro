@@ -38,7 +38,11 @@ import System.Posix.Process
 
 main :: IO ()
 main = do
-  uiFile     <- getDataFileName "examples/ui.xml" -- Remove this line in your custom hbro.hs
+  -- All lines containing "getDataFileName" won't compile
+  -- in your custom configuration file, you must remove them
+  uiFile                <- getDataFileName "examples/ui.xml"
+  bookmarksHandlerFile  <- getDataFileName "examples/scripts/bookmarks.sh"
+
   configHome <- getEnv "XDG_CONFIG_HOME"
     
   hbro Configuration {
@@ -104,9 +108,11 @@ main = do
         --(([],           "p"),           pasteUri), -- /!\ UNSTABLE, can't see why...
 
         -- Bookmarks
-        (([Control],   "d"),            addToBookmarks),
-        (([Control, Shift], "D"),       addAllInstancesToBookmarks),
-        (([Control],   "l"),            loadFromBookmarks),
+        (([Control],    "d"),           addToBookmarks              bookmarksHandlerFile),
+        (([Control, Shift], "D"),       addAllInstancesToBookmarks  bookmarksHandlerFile),
+        (([Alt],        "d"),           deleteTagFromBookmarks      bookmarksHandlerFile),
+        (([Control],    "l"),           loadFromBookmarks           bookmarksHandlerFile),
+        (([Control, Shift], "L"),       loadTagFromBookmarks        bookmarksHandlerFile),
 
         -- Others
         (([Control],    "i"),           showWebInspector),
@@ -401,22 +407,32 @@ main = do
 
 
         -- Bookmarks
-        addToBookmarks, addAllInstancesToBookmarks, loadFromBookmarks :: Browser -> IO()
-        addToBookmarks browser = do
+        addToBookmarks, addAllInstancesToBookmarks, loadFromBookmarks :: FilePath -> Browser -> IO()
+        addToBookmarks handlerPath browser = do
             getUri <- webViewGetUri (mWebView $ mGUI browser)
             case getUri of
                 Just uri -> prompt "Bookmark with tag:" "" False browser (\b -> do 
                     tags <- entryGetText (mPromptEntry $ mGUI b)
-                    runExternalCommand $ scriptsDir ++ "bookmarks.sh add " ++ uri ++ " " ++ tags)
+                    runExternalCommand $ handlerPath ++ " add " ++ uri ++ " " ++ tags)
+                    --runExternalCommand $ scriptsDir ++ "bookmarks.sh add " ++ uri ++ " " ++ tags)
                 _        -> return ()
 
-        addAllInstancesToBookmarks browser = do
+        addAllInstancesToBookmarks handlerPath browser = do
             prompt "Bookmark all instances with tag:" "" False browser (\b -> do 
                 tags <- entryGetText (mPromptEntry $ mGUI b)
-                forkIO $ (runCommand (scriptsDir ++ "bookmarks.sh add-all " ++ socketDir ++ " " ++ tags)) >> return ()
+                _ <- forkIO $ (runCommand (handlerPath ++ " add-all " ++ socketDir ++ " " ++ tags)) >> return ()
+                --_ <- forkIO $ (runCommand (scriptsDir ++ "bookmarks.sh add-all " ++ socketDir ++ " " ++ tags)) >> return ()
                 return())
 
-        loadFromBookmarks browser = do 
+        loadFromBookmarks handlerPath browser = do 
             pid <- getProcessID
-            runExternalCommand $ scriptsDir ++ "bookmarks.sh load \"" ++ socketDir ++ "/hbro." ++ show pid ++ "\""
+            runExternalCommand $ handlerPath ++ " load \"" ++ socketDir ++ "/hbro." ++ show pid ++ "\""
+            --runExternalCommand $ scriptsDir ++ "bookmarks.sh load \"" ++ socketDir ++ "/hbro." ++ show pid ++ "\""
 
+        loadTagFromBookmarks handlerPath browser = do
+            runExternalCommand $ handlerPath ++ " load-tag"
+            --runExternalCommand $ scriptsDir ++ "bookmarks.sh load-tag"
+
+        deleteTagFromBookmarks handlerPath browser = do
+            runExternalCommand $ handlerPath ++ " delete-tag"
+            --runExternalCommand $ scriptsDir ++ "bookmarks.sh delete-tag"

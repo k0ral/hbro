@@ -1,8 +1,8 @@
 Name:                hbro
-Version:             0.5.1
+Version:             0.5.2
 Synopsis:            A suckless minimal KISSy browser
 -- Description:         
--- Homepage:
+Homepage:            http://projects.haskell.org/hbro/
 Category:            Browser,Web
 Stability:           alpha
 
@@ -14,8 +14,10 @@ Maintainer:          koral at mailoo dot org
 
 Cabal-version:       >=1.8
 Build-type:          Simple
-Data-files:          examples/ui.xml
 Extra-source-files:  examples/Main.hs
+Data-files:          
+    examples/ui.xml,
+    examples/scripts/bookmarks.sh
 
 Source-repository head
     Type:     git
