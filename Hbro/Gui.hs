@@ -15,6 +15,7 @@ import Graphics.UI.Gtk.Entry.Editable
 import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
+import Graphics.UI.Gtk.Layout.HBox
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebInspector
 import Graphics.UI.Gtk.WebKit.WebView
@@ -53,12 +54,13 @@ loadGUI xmlPath = do
 
     promptLabel  <- builderGetObject builder castToLabel             "promptDescription"
     promptEntry  <- builderGetObject builder castToEntry             "promptEntry"
+    statusBox    <- builderGetObject builder castToHBox              "statusBox"
 
     -- Create web inspector's window
     inspector       <- webViewGetInspector webView
     inspectorWindow <- initWebInspector inspector
 
-    return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry builder
+    return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry statusBox builder
 
 -- {{{ Web inspector
 initWebInspector :: WebInspector -> IO (Window)

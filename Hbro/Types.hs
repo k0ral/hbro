@@ -5,6 +5,7 @@ module Hbro.Types where
 import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Entry.Entry
+import Graphics.UI.Gtk.Layout.HBox
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebSettings
@@ -44,6 +45,7 @@ data GUI = GUI {
     mWebView            :: WebView,         -- ^ Browser's webview
     mPromptLabel        :: Label,           -- ^ Description of current prompt
     mPromptEntry        :: Entry,           -- ^ Prompt entry
+    mStatusBox          :: HBox,            -- ^ Status bar's horizontal box
     mBuilder            :: Builder          -- ^ Builder object created from XML file
 }
 

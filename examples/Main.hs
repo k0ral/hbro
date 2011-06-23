@@ -89,7 +89,7 @@ main = do
         (([Control],    "-"),           zoomOut),
         (([],           "<F11>"),       fullscreen),
         (([],           "<Escape>"),    unfullscreen),
-        (([],           "t"),           toggleStatusBar),
+        (([Control],    "t"),           toggleStatusBar),
         (([Control],    "u"),           toggleSourceMode),
 
         -- Prompt
@@ -319,9 +319,12 @@ main = do
             currentMode <- webViewGetViewSourceMode (mWebView $ mGUI browser)
             webViewSetViewSourceMode (mWebView $ mGUI browser) (not currentMode)
 
-        -- TODO
         toggleStatusBar :: Browser -> IO ()
-        toggleStatusBar browser = return ()
+        toggleStatusBar browser = do
+            visibility <- get (mStatusBox $ mGUI browser) widgetVisible
+            case visibility of
+                False -> widgetShow (mStatusBox $ mGUI browser)
+                _     -> widgetHide (mStatusBox $ mGUI browser)
 
 
         promptURL :: Bool -> Browser -> IO()        
