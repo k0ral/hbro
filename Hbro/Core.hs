@@ -50,10 +50,16 @@ getOptions = cmdArgs $ cliOptions
 
 -- {{{ Entry point
 -- | Entry point of the application.
--- | Parse arguments and step down in favour of initBrowser.
+-- Parse arguments and step down in favour of initBrowser.
+-- Print configuration error, if any.
 realMain :: Configuration -> IO ()
 realMain configuration = do
     options <- getOptions
+
+    case (mError configuration) of
+        Just e -> putStrLn e
+        _      -> return ()
+
     initBrowser configuration options
 -- }}}
 
@@ -62,11 +68,6 @@ realMain configuration = do
 -- Create browser and load homepage.
 initBrowser :: Configuration -> CliOptions -> IO ()
 initBrowser configuration options = do
-    -- Print configuration error, if any
-    case (mError configuration) of
-        Just e -> putStrLn e
-        _      -> return ()
-
     -- Initialize browser
     _   <- initGUI
     gui <- loadGUI (mUIFile configuration)
@@ -105,6 +106,7 @@ initBrowser configuration options = do
     --newWindowWebView <- webViewNew
     _ <- on webView createWebView $ \frame -> do
         newUri <- webFrameGetUri frame
+        putStrLn "NEW WINDOW"
         case newUri of
             Just uri -> webViewLoadUri webView uri
             --Just uri -> runExternalCommand $ "hbro " ++ uri

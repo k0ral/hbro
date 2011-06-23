@@ -287,7 +287,7 @@ main = do
             _ <- on webView newWindowPolicyDecisionRequested $ \_ request action policyDecision -> do
                 getUri <- networkRequestGetUri request
                 case getUri of
-                    Just uri -> runExternalCommand $ "hbro " ++ uri
+                    Just uri -> runExternalCommand $ "hbro -u " ++ uri
                     _        -> putStrLn "ERROR: wrong URI given, unable to open window."
 
                 return True
