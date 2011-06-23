@@ -14,14 +14,12 @@ import Control.Monad.Trans(liftIO)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Graphics.UI.Gtk.Abstract.Container
 --import Graphics.UI.Gtk.Abstract.IMContext
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebFrame
-import Graphics.UI.Gtk.WebKit.WebInspector
 --import Graphics.UI.Gtk.Windows.Window
 
 import Network.URL
@@ -101,7 +99,6 @@ initBrowser configuration options = do
     -- Load key bindings
     let keyBindings = importKeyBindings (mKeyBindings configuration)
 
-    
     -- On new window request
     --newWindowWebView <- webViewNew
     _ <- on webView createWebView $ \frame -> do
@@ -120,43 +117,6 @@ initBrowser configuration options = do
 --             Just uri -> runExternalCommand $ "hbro \"" ++ uri ++ "\""
 --             _        -> return ()
 
-
-    -- Web inspector
-    inspector <- webViewGetInspector webView
-    _ <- on inspector inspectWebView $ \_ -> do
-        inspectorWebView <- webViewNew
-        containerAdd (mInspectorWindow gui) inspectorWebView
-        return inspectorWebView
-    
-    _ <- on inspector showWindow $ do
-        widgetShowAll (mInspectorWindow gui)
-        return True
-
-    -- TODO: when does this signal happen ?!
-    --_ <- on inspector finished $ return ()
-
---     _ <- on inspector attachWindow $ do
---         getWebView <- webInspectorGetWebView inspector
---         case getWebView of
---             Just webView -> do widgetHide (mInspectorWindow gui)
---                                containerRemove (mInspectorWindow gui) webView
---                                widgetSetSizeRequest webView (-1) 250
---                                boxPackEnd (mWindowBox gui) webView PackNatural 0
---                                widgetShow webView
---                                return True
---             _            -> return False
-
---     _ <- on inspector detachWindow $ do
---         getWebView <- webInspectorGetWebView inspector
---         _ <- case getWebView of
---             Just webView -> do containerRemove (mWindowBox gui) webView
---                                containerAdd (mInspectorWindow gui) webView
---                                widgetShowAll (mInspectorWindow gui)
---                                return True
---             _            -> return False
-        
---         widgetShowAll (mInspectorWindow gui)
---         return True
 
     -- Key bindings
 --     imContext <- get webView webViewImContext
@@ -242,15 +202,6 @@ printPage :: Browser -> IO()
 printPage browser = do
     frame <- webViewGetMainFrame (mWebView $ mGUI browser)
     webFramePrint frame
--- }}}
-
-
--- | Show web inspector for current webpage.
-showWebInspector :: Browser -> IO ()
-showWebInspector browser = do
-    inspector <- webViewGetInspector (mWebView $ mGUI browser)
-    webInspectorInspectCoordinates inspector 0 0
-
 
 -- | Load given URL in the browser.
 loadURL :: String -> Browser -> IO ()
@@ -258,8 +209,6 @@ loadURL url browser =
     case importURL url of
         Just url' -> loadURL' url' browser
         _         -> return ()
--- }}}
-
 
 -- | Backend function for loadURL.
 loadURL' :: URL -> Browser -> IO ()
@@ -269,6 +218,7 @@ loadURL' url@URL {url_type = HostRelative} browser =
     webViewLoadUri (mWebView $ mGUI browser) ("file://" ++ exportURL url) >> putStrLn (show url)
 loadURL' url@URL {url_type = _} browser = 
     webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL url) >> print url
+-- }}}
 
 -- {{{ Dyre
 showError :: Configuration -> String -> Configuration

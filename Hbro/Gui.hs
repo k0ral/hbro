@@ -16,6 +16,7 @@ import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
+import Graphics.UI.Gtk.WebKit.WebInspector
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
 
@@ -29,33 +30,87 @@ loadGUI xmlPath = do
     builder <- builderNew
     builderAddFromFile builder xmlPath
 
+    -- Init main web view
+    webView <- webViewNew
+    set webView [ widgetCanDefault := True ]
+    _ <- on webView closeWebView $ do
+        mainQuit
+        return True
+
     -- Load main window
     window       <- builderGetObject builder castToWindow            "mainWindow"
-    scrollWindow <- builderGetObject builder castToScrolledWindow    "webViewParent"
-    promptLabel  <- builderGetObject builder castToLabel             "promptDescription"
-    promptEntry  <- builderGetObject builder castToEntry             "promptEntry"
-
-    inspectorWindow <- windowNew
-
+    windowSetDefault window (Just webView)
     --windowSetDefaultSize window 1024 768
     --windowSetPosition   window WinPosCenter
     --windowSetIconFromFile window "/path/to/icon"
     set window [ windowTitle := "hbro" ]
 
-    webView <- webViewNew
+    scrollWindow <- builderGetObject builder castToScrolledWindow    "webViewParent"
     containerAdd scrollWindow webView 
-
-    set webView [ widgetCanDefault := True ]
-    windowSetDefault window (Just webView)
     set scrollWindow [
         scrolledWindowHscrollbarPolicy := PolicyNever,
         scrolledWindowVscrollbarPolicy := PolicyNever ]
 
-    _ <- on webView closeWebView $ do
-        mainQuit
-        return True
+    promptLabel  <- builderGetObject builder castToLabel             "promptDescription"
+    promptEntry  <- builderGetObject builder castToEntry             "promptEntry"
+
+    -- Create web inspector's window
+    inspector       <- webViewGetInspector webView
+    inspectorWindow <- initWebInspector inspector
 
     return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry builder
+
+-- {{{ Web inspector
+initWebInspector :: WebInspector -> IO (Window)
+initWebInspector inspector = do 
+    inspectorWindow <- windowNew
+    set inspectorWindow [ windowTitle := "hbro | Web inspector" ]
+
+    _ <- on inspector inspectWebView $ \_ -> do
+        webView <- webViewNew
+        containerAdd inspectorWindow webView
+        return webView
+    
+    _ <- on inspector showWindow $ do
+        widgetShowAll inspectorWindow
+        return True
+
+    -- TODO: when does this signal happen ?!
+    --_ <- on inspector finished $ return ()
+
+--     _ <- on inspector attachWindow $ do
+--         getWebView <- webInspectorGetWebView inspector
+--         case getWebView of
+--             Just webView -> do widgetHide (mInspectorWindow gui)
+--                                containerRemove (mInspectorWindow gui) webView
+--                                widgetSetSizeRequest webView (-1) 250
+--                                boxPackEnd (mWindowBox gui) webView PackNatural 0
+--                                widgetShow webView
+--                                return True
+--             _            -> return False
+
+--     _ <- on inspector detachWindow $ do
+--         getWebView <- webInspectorGetWebView inspector
+--         _ <- case getWebView of
+--             Just webView -> do containerRemove (mWindowBox gui) webView
+--                                containerAdd (mInspectorWindow gui) webView
+--                                widgetShowAll (mInspectorWindow gui)
+--                                return True
+--             _            -> return False
+        
+--         widgetShowAll (mInspectorWindow gui)
+--         return True
+
+    return inspectorWindow
+
+
+-- | Show web inspector for current webpage.
+showWebInspector :: Browser -> IO ()
+showWebInspector browser = do
+    inspector <- webViewGetInspector (mWebView $ mGUI browser)
+    webInspectorInspectCoordinates inspector 0 0
+
+-- }}}
 
 -- {{{ Prompt
 -- | Show or hide the prompt bar (label + entry).

@@ -314,14 +314,14 @@ main = do
         scriptsDir = "~/.config/hbro/scripts/"
         socketDir  = "/tmp"
 
-        toggleSourceMode :: Browser -> IO()
+        toggleSourceMode :: Browser -> IO ()
         toggleSourceMode browser = do
             currentMode <- webViewGetViewSourceMode (mWebView $ mGUI browser)
             webViewSetViewSourceMode (mWebView $ mGUI browser) (not currentMode)
 
         -- TODO
-        toggleStatusBar :: Browser -> IO()
-        toggleStatusBar browser = return()
+        toggleStatusBar :: Browser -> IO ()
+        toggleStatusBar browser = return ()
 
 
         promptURL :: Bool -> Browser -> IO()        
