@@ -307,135 +307,135 @@ main = do
     )}
 
 
--- Definitions
-    where
-        -- Constants
-        scriptsDir, socketDir :: String
-        scriptsDir = "~/.config/hbro/scripts/"
-        socketDir  = "/tmp"
+-- Constants
+scriptsDir, socketDir :: String
+scriptsDir = "~/.config/hbro/scripts/"
+socketDir  = "/tmp"
 
-        toggleSourceMode :: Browser -> IO ()
-        toggleSourceMode browser = do
-            currentMode <- webViewGetViewSourceMode (mWebView $ mGUI browser)
-            webViewSetViewSourceMode (mWebView $ mGUI browser) (not currentMode)
+toggleSourceMode :: Browser -> IO ()
+toggleSourceMode browser = do
+    currentMode <- webViewGetViewSourceMode (mWebView $ mGUI browser)
+    webViewSetViewSourceMode (mWebView $ mGUI browser) (not currentMode)
+    reload True browser
 
-        toggleStatusBar :: Browser -> IO ()
-        toggleStatusBar browser = do
-            visibility <- get (mStatusBox $ mGUI browser) widgetVisible
-            case visibility of
-                False -> widgetShow (mStatusBox $ mGUI browser)
-                _     -> widgetHide (mStatusBox $ mGUI browser)
-
-
-        promptURL :: Bool -> Browser -> IO()        
-        promptURL False browser = 
-            prompt "Open URL" "" False browser (\b -> do 
-                uri <- entryGetText (mPromptEntry $ mGUI b)
-                loadURL uri b)
-        promptURL _ browser = do
-            uri <- webViewGetUri (mWebView $ mGUI browser)
-            case uri of
-                Just url -> prompt "Open URL" url False browser (\b -> do
-                                u <- entryGetText (mPromptEntry $ mGUI b)
-                                loadURL u b)
-                _ -> return ()
-
-        promptFind :: Bool -> Bool -> Bool -> Browser -> IO ()
-        promptFind caseSensitive forward wrap browser =
-            prompt "Search" "" True browser (\browser' -> do
-                keyWord <- entryGetText (mPromptEntry $ mGUI browser')
-                found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap
-                return ())
-
-        findNext :: Bool -> Bool -> Bool -> Browser -> IO ()
-        findNext caseSensitive forward wrap browser = do
-            keyWord <- entryGetText (mPromptEntry $ mGUI browser)
-            found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap 
-            return ()
-
-        newWindow :: Browser -> IO ()
-        newWindow browser = runExternalCommand ("hbro")
-
-        -- Copy/paste
-        copyUri, copyTitle, pasteUri :: Browser -> IO()
-        copyUri browser = do
-            getUri <- webViewGetUri (mWebView $ mGUI browser)
-            case getUri of
-                Just u -> runCommand ("echo -n " ++ u ++ " | xclip") >> return ()
-                _      -> return ()
-
-        copyTitle browser = do
-            getTitle <- webViewGetTitle (mWebView $ mGUI browser)
-            case getTitle of
-                Just t -> runCommand ("echo -n " ++ t ++ " | xclip") >> return ()
-                _      -> return ()
-
-        pasteUri browser = do
-            uri <- readProcess "xclip" ["-o"] []
-            loadURL uri browser
+toggleStatusBar :: Browser -> IO ()
+toggleStatusBar browser = do
+    visibility <- get (mStatusBox $ mGUI browser) widgetVisible
+    case visibility of
+        False -> widgetShow (mStatusBox $ mGUI browser)
+        _     -> widgetHide (mStatusBox $ mGUI browser)
 
 
-        -- Scrolling
-        verticalHome, verticalEnd, horizontalHome, horizontalEnd :: Browser -> IO()
-        verticalHome browser = do
-            adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
-            lower       <- adjustmentGetLower adjustment
+promptURL :: Bool -> Browser -> IO()        
+promptURL False browser = 
+    prompt "Open URL" "" False browser (\b -> do 
+        uri <- entryGetText (mPromptEntry $ mGUI b)
+        loadURL uri b)
+promptURL _ browser = do
+    uri <- webViewGetUri (mWebView $ mGUI browser)
+    case uri of
+        Just url -> prompt "Open URL" url False browser (\b -> do
+                        u <- entryGetText (mPromptEntry $ mGUI b)
+                        loadURL u b)
+        _ -> return ()
 
-            adjustmentSetValue adjustment lower
+promptFind :: Bool -> Bool -> Bool -> Browser -> IO ()
+promptFind caseSensitive forward wrap browser =
+    prompt "Search" "" True browser (\browser' -> do
+        keyWord <- entryGetText (mPromptEntry $ mGUI browser')
+        found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap
+        return ())
 
-        verticalEnd browser = do
-            adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
-            upper       <- adjustmentGetUpper adjustment
+findNext :: Bool -> Bool -> Bool -> Browser -> IO ()
+findNext caseSensitive forward wrap browser = do
+    keyWord <- entryGetText (mPromptEntry $ mGUI browser)
+    found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap 
+    return ()
 
-            adjustmentSetValue adjustment upper
+newWindow :: Browser -> IO ()
+newWindow browser = runExternalCommand ("hbro")
 
-        horizontalHome browser = do
-            adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
-            lower       <- adjustmentGetLower adjustment
+-- Copy/paste
+copyUri, copyTitle, pasteUri :: Browser -> IO()
+copyUri browser = do
+    getUri <- webViewGetUri (mWebView $ mGUI browser)
+    case getUri of
+        Just u -> runCommand ("echo -n " ++ u ++ " | xclip") >> return ()
+        _      -> return ()
 
-            adjustmentSetValue adjustment lower
+copyTitle browser = do
+    getTitle <- webViewGetTitle (mWebView $ mGUI browser)
+    case getTitle of
+        Just t -> runCommand ("echo -n " ++ t ++ " | xclip") >> return ()
+        _      -> return ()
 
-        horizontalEnd browser = do
-            adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
-            upper       <- adjustmentGetUpper adjustment
-
-            adjustmentSetValue adjustment upper 
-
-        -- Handlers
-        downloadHandler :: String -> IO ()
-        downloadHandler uri = runExternalCommand $ "wget \"" ++ uri ++ "\""
-
-        historyHandler :: String -> String -> IO ()
-        historyHandler uri title = runCommand (scriptsDir ++ "/historyHandler.sh \"" ++ uri ++ "\" \"" ++ title ++ "\"") >> return ()
+pasteUri browser = do
+    uri <- readProcess "xclip" ["-o"] []
+    loadURL uri browser
 
 
-        -- Bookmarks
-        addToBookmarks, addAllInstancesToBookmarks, loadFromBookmarks :: FilePath -> Browser -> IO()
-        addToBookmarks handlerPath browser = do
-            getUri <- webViewGetUri (mWebView $ mGUI browser)
-            case getUri of
-                Just uri -> prompt "Bookmark with tag:" "" False browser (\b -> do 
-                    tags <- entryGetText (mPromptEntry $ mGUI b)
-                    runExternalCommand $ handlerPath ++ " add " ++ uri ++ " " ++ tags)
-                    --runExternalCommand $ scriptsDir ++ "bookmarks.sh add " ++ uri ++ " " ++ tags)
-                _        -> return ()
+-- Scrolling
+verticalHome, verticalEnd, horizontalHome, horizontalEnd :: Browser -> IO ()
+verticalHome browser = do
+    adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
+    lower       <- adjustmentGetLower adjustment
 
-        addAllInstancesToBookmarks handlerPath browser = do
-            prompt "Bookmark all instances with tag:" "" False browser (\b -> do 
-                tags <- entryGetText (mPromptEntry $ mGUI b)
-                _ <- forkIO $ (runCommand (handlerPath ++ " add-all " ++ socketDir ++ " " ++ tags)) >> return ()
-                --_ <- forkIO $ (runCommand (scriptsDir ++ "bookmarks.sh add-all " ++ socketDir ++ " " ++ tags)) >> return ()
-                return())
+    adjustmentSetValue adjustment lower
 
-        loadFromBookmarks handlerPath browser = do 
-            pid <- getProcessID
-            runExternalCommand $ handlerPath ++ " load \"" ++ socketDir ++ "/hbro." ++ show pid ++ "\""
-            --runExternalCommand $ scriptsDir ++ "bookmarks.sh load \"" ++ socketDir ++ "/hbro." ++ show pid ++ "\""
+verticalEnd browser = do
+    adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
+    upper       <- adjustmentGetUpper adjustment
 
-        loadTagFromBookmarks handlerPath browser = do
-            runExternalCommand $ handlerPath ++ " load-tag"
-            --runExternalCommand $ scriptsDir ++ "bookmarks.sh load-tag"
+    adjustmentSetValue adjustment upper
 
-        deleteTagFromBookmarks handlerPath browser = do
-            runExternalCommand $ handlerPath ++ " delete-tag"
-            --runExternalCommand $ scriptsDir ++ "bookmarks.sh delete-tag"
+horizontalHome browser = do
+    adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
+    lower       <- adjustmentGetLower adjustment
+
+    adjustmentSetValue adjustment lower
+
+horizontalEnd browser = do
+    adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
+    upper       <- adjustmentGetUpper adjustment
+
+    adjustmentSetValue adjustment upper 
+
+
+-- Handlers
+downloadHandler :: String -> IO ()
+downloadHandler uri       = runExternalCommand $ "wget \"" ++ uri ++ "\""
+
+historyHandler :: String -> String -> IO ()
+historyHandler  uri title = runCommand (scriptsDir ++ "/historyHandler.sh \"" ++ uri ++ "\" \"" ++ title ++ "\"") >> return ()
+
+
+-- Bookmarks
+addToBookmarks, addAllInstancesToBookmarks, loadFromBookmarks :: FilePath -> Browser -> IO()
+addToBookmarks handlerPath browser = do
+    getUri <- webViewGetUri (mWebView $ mGUI browser)
+    case getUri of
+        Just uri -> prompt "Bookmark with tag:" "" False browser (\b -> do 
+            tags <- entryGetText (mPromptEntry $ mGUI b)
+            runExternalCommand $ handlerPath ++ " add " ++ uri ++ " " ++ tags)
+            --runExternalCommand $ scriptsDir ++ "bookmarks.sh add " ++ uri ++ " " ++ tags)
+        _        -> return ()
+
+addAllInstancesToBookmarks handlerPath browser = do
+    prompt "Bookmark all instances with tag:" "" False browser (\b -> do 
+        tags <- entryGetText (mPromptEntry $ mGUI b)
+        _ <- forkIO $ (runCommand (handlerPath ++ " add-all " ++ socketDir ++ " " ++ tags)) >> return ()
+        --_ <- forkIO $ (runCommand (scriptsDir ++ "bookmarks.sh add-all " ++ socketDir ++ " " ++ tags)) >> return ()
+        return())
+
+loadFromBookmarks handlerPath browser = do 
+    pid <- getProcessID
+    runExternalCommand $ handlerPath ++ " load \"" ++ socketDir ++ "/hbro." ++ show pid ++ "\""
+    --runExternalCommand $ scriptsDir ++ "bookmarks.sh load \"" ++ socketDir ++ "/hbro." ++ show pid ++ "\""
+
+loadTagFromBookmarks handlerPath browser = do
+    runExternalCommand $ handlerPath ++ " load-tag"
+    --runExternalCommand $ scriptsDir ++ "bookmarks.sh load-tag"
+
+deleteTagFromBookmarks handlerPath browser = do
+    runExternalCommand $ handlerPath ++ " delete-tag"
+    --runExternalCommand $ scriptsDir ++ "bookmarks.sh delete-tag"
