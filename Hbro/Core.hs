@@ -20,7 +20,6 @@ import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebFrame
---import Graphics.UI.Gtk.Windows.Window
 
 import Network.URL
 import Prelude
