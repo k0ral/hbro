@@ -13,7 +13,7 @@ import System.Process
 instance Ord Modifier where
     m <= m' =  fromEnum m <= fromEnum m'
 
--- {{{ Keybindings functions
+-- {{{ Keys-related functions
 -- | Converts a keyVal to a String.
 -- For printable characters, the corresponding String is returned, except for the space character for which "<Space>" is returned.
 -- For non-printable characters, the corresponding keyName between <> is returned.
@@ -35,14 +35,15 @@ keyToString keyVal = case keyToChar keyVal of
         "Menu"              -> Nothing
         "ISO_Level3_Shift"  -> Nothing
         "dead_circumflex"   -> Just "^"
+        "dead_diaeresis"    -> Just "¨"
         x                   -> Just ('<':x ++ ">")
 
--- | Converts key bindings list to a map.
--- | Calls importKeyBindings'.
+-- | Convert key bindings list to a map.
+-- Calls importKeyBindings'.
 importKeyBindings :: [(([Modifier], String), (Browser -> IO ()))] -> Map.Map (Set.Set Modifier, String) (Browser -> IO ()) 
 importKeyBindings list = Map.fromList $ importKeyBindings' list
 
--- | Converts modifiers list to modifiers sets.
+-- | Convert modifiers list to modifiers sets.
 -- The order of modifiers in key bindings don't matter.
 -- Called by importKeyBindings.
 importKeyBindings' :: [(([Modifier], String), (Browser -> IO ()))] -> [((Set.Set Modifier, String), (Browser -> IO ()))]

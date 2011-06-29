@@ -7,7 +7,6 @@ import Hbro.Socket
 import Hbro.Types
 import Hbro.Util
 
-import qualified Config.Dyre as Dyre
 import Control.Concurrent
 import Control.Monad.Trans(liftIO)
 
@@ -18,6 +17,8 @@ import qualified Data.Set as Set
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
+import Graphics.UI.Gtk.Misc.Adjustment
+import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebFrame
 
@@ -90,13 +91,13 @@ initBrowser configuration options = do
     -- Load configuration
     settings <- mWebSettings configuration
     webViewSetWebSettings webView settings
-    (mAtStartUp configuration) browser
+    (mSetup configuration) browser
 
     -- Load homepage
     goHome browser
 
     -- Load key bindings
-    let keyBindings = importKeyBindings (mKeyBindings configuration)
+    let keyBindings = importKeyBindings (mKeys configuration)
 
     -- On new window request
     --newWindowWebView <- webViewNew
@@ -217,17 +218,34 @@ loadURL' url@URL {url_type = HostRelative} browser =
     webViewLoadUri (mWebView $ mGUI browser) ("file://" ++ exportURL url) >> putStrLn (show url)
 loadURL' url@URL {url_type = _} browser = 
     webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL url) >> print url
--- }}}
 
--- {{{ Dyre
-showError :: Configuration -> String -> Configuration
-showError configuration message = configuration { mError = Just message }
+-- Scrolling functions
+verticalHome, verticalEnd, horizontalHome, horizontalEnd :: Browser -> IO ()
+verticalHome browser = do
+    adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
+    lower       <- adjustmentGetLower adjustment
 
-hbro :: Configuration -> IO ()
-hbro = Dyre.wrapMain Dyre.defaultParams {
-    Dyre.projectName  = "hbro",
-    Dyre.showError    = showError,
-    Dyre.realMain     = realMain,
-    Dyre.ghcOpts      = ["-threaded"]
-}
+    adjustmentSetValue adjustment lower
+
+verticalEnd browser = do
+    adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
+    upper       <- adjustmentGetUpper adjustment
+
+    adjustmentSetValue adjustment upper
+
+horizontalHome browser = do
+    adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
+    lower       <- adjustmentGetLower adjustment
+
+    adjustmentSetValue adjustment lower
+
+horizontalEnd browser = do
+    adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
+    upper       <- adjustmentGetUpper adjustment
+
+    adjustmentSetValue adjustment upper 
+
+-- | Spawn a new instance of the browser
+newWindow :: Browser -> IO ()
+newWindow browser = runExternalCommand ("hbro")
 -- }}}

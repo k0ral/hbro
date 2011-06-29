@@ -30,11 +30,11 @@ data CliOptions = CliOptions {
 
 data Configuration = Configuration {
     mHomePage       :: String,              -- ^ Startup page 
-    mSocketDir      :: String,              -- ^ Path to socket directory ("/tmp" for example)
+    mSocketDir      :: String,              -- ^ Directory where 0MQ will be created ("/tmp" for example)
     mUIFile         :: String,              -- ^ Path to XML file describing UI (used by GtkBuilder)
-    mKeyBindings    :: KeyBindingsList,     -- ^ List of keybindings
-    mWebSettings    :: IO WebSettings,      -- ^ Web settings
-    mAtStartUp      :: Browser -> IO (),    -- ^ Custom startup instructions
+    mKeys           :: KeysList,            -- ^ List of keybindings
+    mWebSettings    :: IO WebSettings,      -- ^ Web settings provided by webkit (see Webkit::WebSettings documentation)
+    mSetup          :: Browser -> IO (),    -- ^ Custom startup instructions
     mError          :: Maybe String         -- ^ Error
 }
 
@@ -49,4 +49,11 @@ data GUI = GUI {
     mBuilder            :: Builder          -- ^ Builder object created from XML file
 }
 
-type KeyBindingsList = [(([Modifier], String), (Browser -> IO ()))]
+-- | List of bound keys
+-- All callbacks are fed with the Browser instance
+-- Note 1 : for modifiers, lists are used for convenience purposes,
+--          but are transformed into sets in hbro's internal machinery,
+--          so that order and repetition don't matter
+-- Note 2 : for printable characters accessed via the shift modifier,
+--          you do have to include Shift in modifiers list
+type KeysList = [(([Modifier], String), (Browser -> IO ()))]

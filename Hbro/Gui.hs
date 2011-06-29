@@ -41,9 +41,6 @@ loadGUI xmlPath = do
     -- Load main window
     window       <- builderGetObject builder castToWindow            "mainWindow"
     windowSetDefault window (Just webView)
-    --windowSetDefaultSize window 1024 768
-    --windowSetPosition   window WinPosCenter
-    --windowSetIconFromFile window "/path/to/icon"
     set window [ windowTitle := "hbro" ]
 
     scrollWindow <- builderGetObject builder castToScrolledWindow    "webViewParent"
@@ -183,6 +180,21 @@ prompt label defaultText incremental browser callback = let
                 return ()
 -- }}}
 
-fullscreen, unfullscreen :: Browser -> IO()
+-- {{{ Util
+-- | Toggle statusbar's visibility
+toggleStatusBar :: Browser -> IO ()
+toggleStatusBar browser = do
+    visibility <- get (mStatusBox $ mGUI browser) widgetVisible
+    case visibility of
+        False -> widgetShow (mStatusBox $ mGUI browser)
+        _     -> widgetHide (mStatusBox $ mGUI browser)
+
+
+-- | Set the window fullscreen
+fullscreen :: Browser -> IO ()
 fullscreen   browser = windowFullscreen   (mWindow $ mGUI browser)
+
+-- | Restore the window from fullscreen
+unfullscreen :: Browser -> IO ()
 unfullscreen browser = windowUnfullscreen (mWindow $ mGUI browser)
+-- }}}
