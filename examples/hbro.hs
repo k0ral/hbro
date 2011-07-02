@@ -3,6 +3,7 @@ module Main where
 -- {{{ Imports
 import Hbro.Config
 import Hbro.Core
+import Hbro.Extra
 import Hbro.Gui
 import Hbro.Types
 import Hbro.Util
@@ -35,7 +36,7 @@ main :: IO ()
 main = do
     configHome <- getEnv "XDG_CONFIG_HOME"
 
-    -- See Types::Configuration's documentation for fields description
+    -- See Types::Configuration documentation for fields description
     -- Commented out fields indicated default values
     hbro defaultConfiguration {
         --mSocketDir    = "/tmp/",
@@ -73,7 +74,7 @@ generalKeys = [
     (([Control],        "-"),           zoomOut),
     (([],               "<F11>"),       fullscreen),
     (([],               "<Escape>"),    unfullscreen),
-    (([Control],        "t"),           toggleStatusBar),
+    (([Control],        "b"),           toggleStatusBar),
     (([Control],        "u"),           toggleSourceMode),
 
     -- Prompt
@@ -89,12 +90,12 @@ generalKeys = [
     -- Copy/paste
     (([Control],        "y"),           copyUri),
     (([Control, Shift], "Y"),           copyTitle),
-    --(([],           "p"),           pasteUri), -- /!\ UNSTABLE, can't see why...
+    --(([],           "p"),           loadURIFromClipboard), -- /!\ UNSTABLE, can't see why...
 
     -- Others
     (([Control],        "i"),           showWebInspector),
     (([Control],        "p"),           printPage),
-    (([Control],        "<Space>"),     newWindow)
+    (([Control],        "t"),           newWindow)
     ]
 -- }}}
 
@@ -232,59 +233,7 @@ mySetup browser =
         return ()
 -- }}}
     
--- {{{ Util
-toggleSourceMode :: Browser -> IO ()
-toggleSourceMode browser = do
-    currentMode <- webViewGetViewSourceMode (mWebView $ mGUI browser)
-    webViewSetViewSourceMode (mWebView $ mGUI browser) (not currentMode)
-    reload True browser
-
-promptURL :: Bool -> Browser -> IO()        
-promptURL False browser = 
-    prompt "Open URL" "" False browser (\b -> do 
-        uri <- entryGetText (mPromptEntry $ mGUI b)
-        loadURL uri b)
-promptURL _ browser = do
-    uri <- webViewGetUri (mWebView $ mGUI browser)
-    case uri of
-        Just url -> prompt "Open URL" url False browser (\b -> do
-                        u <- entryGetText (mPromptEntry $ mGUI b)
-                        loadURL u b)
-        _ -> return ()
-
-promptFind :: Bool -> Bool -> Bool -> Browser -> IO ()
-promptFind caseSensitive forward wrap browser =
-    prompt "Search" "" True browser (\browser' -> do
-        keyWord <- entryGetText (mPromptEntry $ mGUI browser')
-        found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap
-        return ())
-
-findNext :: Bool -> Bool -> Bool -> Browser -> IO ()
-findNext caseSensitive forward wrap browser = do
-    keyWord <- entryGetText (mPromptEntry $ mGUI browser)
-    found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap 
-    return ()
-
--- Copy/paste
-copyUri, copyTitle, pasteUri :: Browser -> IO()
-copyUri browser = do
-    getUri <- webViewGetUri (mWebView $ mGUI browser)
-    case getUri of
-        Just u -> runCommand ("echo -n " ++ u ++ " | xclip") >> return ()
-        _      -> return ()
-
-copyTitle browser = do
-    getTitle <- webViewGetTitle (mWebView $ mGUI browser)
-    case getTitle of
-        Just t -> runCommand ("echo -n " ++ t ++ " | xclip") >> return ()
-        _      -> return ()
-
-pasteUri browser = do
-    uri <- readProcess "xclip" ["-o"] []
-    loadURL uri browser
-
-
--- Handlers
+-- {{{ Handlers
 downloadHandler :: String -> IO ()
 downloadHandler uri = runExternalCommand $ "wget \"" ++ uri ++ "\""
 
@@ -336,4 +285,3 @@ deleteTagFromBookmarks browser = do
     configHome <- getEnv "XDG_CONFIG_HOME"
     runExternalCommand $ configHome ++ "/hbro/scripts/bookmarks.sh delete-tag"
 -- }}}
-

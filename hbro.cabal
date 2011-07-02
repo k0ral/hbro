@@ -42,6 +42,7 @@ Library
     Exposed-modules:
         Hbro.Config,
         Hbro.Core,
+        Hbro.Extra,
         Hbro.Gui,
         Hbro.Socket,
         Hbro.Types,
