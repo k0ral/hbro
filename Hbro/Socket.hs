@@ -10,8 +10,21 @@ import Graphics.UI.Gtk.WebKit.WebView
 import System.ZMQ 
 -- }}}
     
-listenToSocket :: Socket Rep -> Browser -> IO a
-listenToSocket repSocket browser = forever $ do
+createRepSocket :: String -> Browser -> IO a
+createRepSocket socketURI browser = withContext 1 $ \context -> do
+    withSocket context Rep $ \repSocket -> do
+        bind      repSocket socketURI
+        setOption repSocket (Linger 0)
+
+        _ <- quitAdd 0 $ do
+            close repSocket
+            return False
+        
+        forever $ listenToSocket repSocket browser
+
+
+listenToSocket :: Socket Rep -> Browser -> IO ()
+listenToSocket repSocket browser = do
     command <- receive repSocket []
 
     case unpack command of
