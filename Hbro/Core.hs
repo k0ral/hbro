@@ -73,20 +73,21 @@ initBrowser configuration options = do
     let webView = mWebView gui
 
     -- Initialize IPC socket
-    pid       <- getProcessID
-    context   <- ZMQ.init 1
-    repSocket <- ZMQ.socket context ZMQ.Rep 
+    pid <- getProcessID
     let socketURI = "ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid
 
-    ZMQ.bind repSocket socketURI
-      
-    _ <- quitAdd 0 $ do
-        ZMQ.setOption repSocket (ZMQ.Linger 0)
-        ZMQ.close repSocket
-        ZMQ.term  context
-        return False
+    ZMQ.withContext 1 $ \context -> do
+        ZMQ.withSocket context ZMQ.Rep $ \repSocket -> do
+            ZMQ.bind      repSocket socketURI
+            ZMQ.setOption repSocket (ZMQ.Linger 0)
+        
+            _ <- quitAdd 0 $ do
+                ZMQ.close repSocket
+                return False
 
-    _ <- forkIO $ listenToSocket repSocket browser
+            _ <- forkIO $ listenToSocket repSocket browser
+
+            return ()
 
     -- Load configuration
     settings <- mWebSettings configuration
