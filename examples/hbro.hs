@@ -90,11 +90,11 @@ generalKeys = [
     -- Copy/paste
     (([Control],        "y"),           copyUri),
     (([Control, Shift], "Y"),           copyTitle),
-    --(([],           "p"),           loadURIFromClipboard), -- /!\ UNSTABLE, can't see why...
+    (([Control],        "p"),           loadURIFromClipboard),
 
     -- Others
     (([Control],        "i"),           showWebInspector),
-    (([Control],        "p"),           printPage),
+    (([Alt],            "p"),           printPage),
     (([Control],        "t"),           newWindow)
     ]
 -- }}}

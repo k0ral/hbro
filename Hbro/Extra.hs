@@ -15,6 +15,7 @@ import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.Gdk.EventM
+import Graphics.UI.Gtk.General.Clipboard
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebView
@@ -153,26 +154,34 @@ promptURL _ browser = do
 -- }}}
 
 -- {{{ Copy/paste
-copyUri, copyTitle, loadURIFromClipBoard :: Browser -> IO()
+copyUri, copyTitle, loadURIFromClipboard :: Browser -> IO ()
 
 -- | Copy current URI in clipboard.
 copyUri browser = do
     getUri <- webViewGetUri (mWebView $ mGUI browser)
+    primaryClip <- widgetGetClipboard (mWindow $ mGUI browser) selectionPrimary
+
     case getUri of
-        Just u -> runCommand ("echo -n " ++ u ++ " | xclip") >> return ()
+        Just u -> clipboardSetText primaryClip u
         _      -> return ()
 
 -- | Copy current page title in clipboard.
 copyTitle browser = do
-    getTitle <- webViewGetTitle (mWebView $ mGUI browser)
+    getTitle    <- webViewGetTitle (mWebView $ mGUI browser)
+    primaryClip <- widgetGetClipboard (mWindow $ mGUI browser) selectionPrimary
+
     case getTitle of
-        Just t -> runCommand ("echo -n " ++ t ++ " | xclip") >> return ()
+        Just t -> clipboardSetText primaryClip t
         _      -> return ()
 
 -- | Load URI from clipboard. Does not work for now...
-loadURIFromClipBoard browser = do
-    uri <- readProcess "xclip" ["-o"] []
-    loadURL uri browser
+loadURIFromClipboard browser = do
+    primaryClip <- widgetGetClipboard (mWindow $ mGUI browser) selectionPrimary
+
+    _ <- clipboardRequestText primaryClip $ \x -> case x of
+        Just uri -> putStrLn ("Loading URI from clipboard: " ++ uri) >> loadURL uri browser
+        _        -> putStrLn "Loading URI from clipboard: empty clipboard."
+    return ()
 -- }}}
 
 -- {{{ Others

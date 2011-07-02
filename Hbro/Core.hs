@@ -13,7 +13,6 @@ import Control.Monad.Trans(liftIO)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
---import Graphics.UI.Gtk.Abstract.IMContext
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
@@ -89,37 +88,13 @@ initBrowser configuration options = do
     let keyBindings = importKeyBindings (mKeys configuration)
 
     -- On new window request
-    --newWindowWebView <- webViewNew
     _ <- on webView createWebView $ \frame -> do
         newUri <- webFrameGetUri frame
         putStrLn "NEW WINDOW"
         case newUri of
             Just uri -> webViewLoadUri webView uri
-            --Just uri -> runExternalCommand $ "hbro " ++ uri
             Nothing  -> return ()
         return webView
---         return newWindowWebView
-
---     _ <- on newWindowWebView loadCommitted $ \frame -> do
---         getUri <- (webViewGetUri newWindowWebView)
---         case getUri of 
---             Just uri -> runExternalCommand $ "hbro \"" ++ uri ++ "\""
---             _        -> return ()
-
-
-    -- Key bindings
---     imContext <- get webView webViewImContext
---     _ <- on webView keyPressEvent $ do
---         value      <- eventKeyVal
---         modifiers  <- eventModifier
-
---         let keyString = keyToString value
---         
---         case keyString of
---             Just "<Escape>" -> do
---                 liftIO $ imContextFocusIn imContext
---                 return True
---             _               -> return False
 
     _ <- after webView keyPressEvent $ do
         value      <- eventKeyVal
@@ -135,22 +110,6 @@ initBrowser configuration options = do
             _ -> return ()
 
         return False
-
---     imContextFilterKeypress imContext $ do
---         value      <- eventKeyVal
---         modifiers  <- eventModifier
-
---         let keyString = keyToString value
---         putStrLn keyString
-
--- --         case keyString of 
--- --             Just string -> do 
--- --                 case Map.lookup (Set.fromList modifiers, string) keyBindings of
--- --                     Just callback   -> liftIO $ callback gui
--- --                     _               -> liftIO $ putStrLn string 
--- --             _ -> return ()
-
---         return False
 
     -- Connect and show.
     _ <- onDestroy (mWindow gui) mainQuit
