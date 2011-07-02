@@ -73,6 +73,7 @@ initBrowser configuration options = do
     -- Initialize IPC socket
     pid <- getProcessID
     let socketURI = "ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid
+    putStrLn $ "Listening socket " ++ socketURI
 
     _ <- forkIO $ createRepSocket socketURI browser
 

@@ -2,6 +2,8 @@
 module Hbro.Types where
 
 -- {{{ Imports
+import Data.Map
+
 import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Entry.Entry
@@ -15,6 +17,7 @@ import Graphics.UI.Gtk.Windows.Window
 import Prelude
 
 import System.Console.CmdArgs
+import System.ZMQ 
 -- }}}
 
 data Browser = Browser {
@@ -35,6 +38,7 @@ data Configuration = Configuration {
     mKeys           :: KeysList,            -- ^ List of keybindings
     mWebSettings    :: IO WebSettings,      -- ^ Web settings provided by webkit (see Webkit::WebSettings documentation)
     mSetup          :: Browser -> IO (),    -- ^ Custom startup instructions
+    mCommands       :: CommandsList,        -- ^ Custom commands to use with IPC sockets
     mError          :: Maybe String         -- ^ Error
 }
 
@@ -57,3 +61,6 @@ data GUI = GUI {
 -- Note 2 : for printable characters accessed via the shift modifier,
 --          you do have to include Shift in modifiers list
 type KeysList = [(([Modifier], String), (Browser -> IO ()))]
+
+type CommandsList = [(String, ([String] -> Socket Rep -> Browser -> IO ()))]
+type CommandsMap  = Map String ([String] -> Socket Rep -> Browser -> IO ())

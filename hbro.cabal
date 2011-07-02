@@ -35,6 +35,7 @@ Library
         mtl,
         pango,
         process,
+        split,
         url,
         webkit,
         unix,

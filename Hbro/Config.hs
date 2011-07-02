@@ -32,5 +32,6 @@ defaultConfiguration = Configuration {
     mKeys        = [],
     mWebSettings = webSettingsNew,
     mSetup       = \_ -> return () :: IO (),
+    mCommands    = [],
     mError       = Nothing
 }
