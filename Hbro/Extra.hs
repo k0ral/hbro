@@ -22,7 +22,7 @@ import Graphics.UI.Gtk.WebKit.WebView
 
 import System.Glib.Signals
 
-import System.Process
+--import System.Process
 -- }}}
 
 -- {{{ Statusbar elements
@@ -46,7 +46,9 @@ statusBarScrollPosition browser =
         case upper-lower-page of
             0 -> labelSetMarkup scrollLabel "ALL"
             x -> labelSetMarkup scrollLabel $ show (round $ current/x*100) ++ "%"
-    return ()
+
+    labelSetMarkup scrollLabel "0%"
+    --return ()
 
 
 -- | Display pressed keys in status bar.
@@ -64,9 +66,10 @@ statusBarPressedKeys browser =
         modifiers  <- eventModifier
 
         let keyString = keyToString value
-        case keyString of 
-            Just string -> liftIO $ labelSetMarkup keysLabel $ "<span foreground=\"green\">" ++ show modifiers ++ escapeMarkup string ++ "</span>"
-            _           -> return ()
+        case (keyString, modifiers) of 
+            (Just k, [])    -> liftIO $ labelSetMarkup keysLabel $ "<span foreground=\"green\">" ++ escapeMarkup k ++ "</span>"
+            (Just k, m)     -> liftIO $ labelSetMarkup keysLabel $ "<span foreground=\"green\">" ++ show m ++ escapeMarkup k ++ "</span>"
+            _               -> return ()
 
         return False
     return ()
