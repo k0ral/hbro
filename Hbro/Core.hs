@@ -104,6 +104,7 @@ initBrowser configuration options = do
         let keyString = keyToString value
 
         case keyString of 
+            Just "<Escape>" -> liftIO $ showPrompt False browser
             Just string -> do 
                 case Map.lookup (Set.fromList modifiers, string) keyBindings of
                     Just callback -> liftIO $ callback browser
