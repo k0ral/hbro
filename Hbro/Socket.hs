@@ -6,7 +6,6 @@ import Hbro.Types
 import Control.Monad
 
 import Data.ByteString.Char8 (pack, unpack)
-import Data.List.Split
 import qualified Data.Map as Map
 
 import Graphics.UI.Gtk.General.General
@@ -36,7 +35,7 @@ createRepSocket socketURI browser = withContext 1 $ \context -> do
 listenToSocket :: Socket Rep -> CommandsMap -> Browser -> IO ()
 listenToSocket repSocket commands browser = do
     message <- receive repSocket []
-    let command:arguments = splitOn " " $ unpack message
+    let command:arguments = words $ unpack message
 
     case Map.lookup command commands of
         Just callback -> callback arguments repSocket browser
