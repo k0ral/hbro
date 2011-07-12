@@ -3,28 +3,19 @@ module Main where
 -- {{{ Imports
 import Hbro.Config
 import Hbro.Core
-import Hbro.Extra
 import Hbro.Extra.Bookmarks
 import Hbro.Extra.Clipboard
+import Hbro.Extra.Misc
 import Hbro.Extra.Prompt
 import Hbro.Extra.StatusBar
 import Hbro.Gui
 import Hbro.Types
 import Hbro.Util
 
-import Control.Concurrent
-
-import Data.ByteString.Char8 (pack, unpack)
-import Data.List
-
---import Graphics.Rendering.Pango.Layout
-
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Gdk.GC
---import Graphics.UI.Gtk.Misc.Adjustment
---import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.Download
 import Graphics.UI.Gtk.WebKit.NetworkRequest
 import Graphics.UI.Gtk.WebKit.WebNavigationAction
@@ -33,13 +24,10 @@ import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
 
 import System.Environment
-import System.Exit
-import qualified System.Info as Sys
 import System.Glib.Attributes
 import System.Glib.Signals
-import System.Posix.Process
+-- import System.Posix.Process
 import System.Process 
-import System.ZMQ 
 -- }}}
 
 

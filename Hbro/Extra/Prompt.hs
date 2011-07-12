@@ -5,12 +5,8 @@ import Hbro.Core
 import Hbro.Gui
 import Hbro.Types
 
-import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Entry.Entry
-import Graphics.UI.Gtk.General.Clipboard
 import Graphics.UI.Gtk.WebKit.WebView
-
---import System.Process
 -- }}}
 
 
