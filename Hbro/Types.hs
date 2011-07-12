@@ -14,11 +14,10 @@ import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
 
-import Prelude
-
 import System.Console.CmdArgs
 import System.ZMQ 
 -- }}}
+
 
 data Browser = Browser {
     mOptions        :: CliOptions,          -- ^ Commandline options
@@ -52,6 +51,7 @@ data GUI = GUI {
     mStatusBox          :: HBox,            -- ^ Status bar's horizontal box
     mBuilder            :: Builder          -- ^ Builder object created from XML file
 }
+
 
 -- | List of bound keys
 -- All callbacks are fed with the Browser instance
