@@ -22,12 +22,12 @@ import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.WebKit.WebFrame
 
 import Network.URL
-import Prelude
 
 import System.Console.CmdArgs
 import System.Glib.Signals
 import System.Posix.Process
 -- }}}
+
 
 -- {{{ Commandline options
 cliOptions :: CliOptions
@@ -44,8 +44,9 @@ getOptions = cmdArgs $ cliOptions
     &= program "hbro"
 -- }}}
 
+
 -- {{{ Entry point
--- | Entry point of the application.
+-- | Entry point for the application.
 -- Parse arguments and step down in favour of initBrowser.
 -- Print configuration error, if any.
 realMain :: Configuration -> IO ()
@@ -58,6 +59,7 @@ realMain configuration = do
 
     initBrowser configuration options
 -- }}}
+ 
 
 -- {{{ Main function
 -- | Application's main function.
@@ -70,17 +72,17 @@ initBrowser configuration options = do
     let browser = Browser options configuration gui
     let webView = mWebView gui
 
+    -- Load addtionnal settings from configuration
+    settings <- mWebSettings configuration
+    webViewSetWebSettings webView settings
+    (mSetup configuration) browser
+
     -- Initialize IPC socket
     pid <- getProcessID
     let socketURI = "ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid
     putStrLn $ "Listening socket " ++ socketURI
 
     _ <- forkIO $ createRepSocket socketURI browser
-
-    -- Load configuration
-    settings <- mWebSettings configuration
-    webViewSetWebSettings webView settings
-    (mSetup configuration) browser
 
     -- Load homepage
     goHome browser
@@ -121,37 +123,31 @@ initBrowser configuration options = do
     mainGUI
 -- }}}
 
--- {{{ Util functions
-goHome, goBack, goForward, stopLoading :: Browser -> IO ()
 
--- | Wrapper around webViewGoBack function
-goBack      browser = webViewGoBack       (mWebView $ mGUI browser)
--- | Wrapper around webViewGoForward function
-goForward   browser = webViewGoForward    (mWebView $ mGUI browser)
--- | Wrapper around webViewStopLoading function
-stopLoading browser = webViewStopLoading  (mWebView $ mGUI browser)
+-- {{{ Browse
 -- | Load homepage (retrieved from commandline options or configuration file)
-goHome      browser = case (mURI $ mOptions browser) of
+goHome :: Browser -> IO ()
+goHome browser = case (mURI $ mOptions browser) of
     Just uri -> loadURL uri browser
     _        -> loadURL (mHomePage $ mConfiguration browser) browser
+
+-- | Wrapper around webViewGoBack function
+goBack :: Browser -> IO ()
+goBack browser = webViewGoBack (mWebView $ mGUI browser)
+
+-- | Wrapper around webViewGoForward function
+goForward :: Browser -> IO ()
+goForward browser = webViewGoForward (mWebView $ mGUI browser)
+
+-- | Wrapper around webViewStopLoading function
+stopLoading :: Browser -> IO ()
+stopLoading browser = webViewStopLoading (mWebView $ mGUI browser)
 
 -- | Wrapper around webViewReload{BypassCache}
 -- If boolean argument is False, it bypasses the cache
 reload :: Bool -> Browser -> IO()
 reload True browser = webViewReload             (mWebView $ mGUI browser)
 reload _    browser = webViewReloadBypassCache  (mWebView $ mGUI browser)
-
-zoomIn, zoomOut :: Browser -> IO()
--- | Wrapper around webViewZoomIn function
-zoomIn  browser = webViewZoomIn (mWebView $ mGUI browser)
--- | Wrapper around webViewZoomOut function
-zoomOut browser = webViewZoomOut (mWebView $ mGUI browser)
-
--- | Wrapper around webFramePrint function
-printPage :: Browser -> IO()
-printPage browser = do
-    frame <- webViewGetMainFrame (mWebView $ mGUI browser)
-    webFramePrint frame
 
 -- | Load given URL in the browser.
 loadURL :: String -> Browser -> IO ()
@@ -168,34 +164,63 @@ loadURL' url@URL {url_type = HostRelative} browser =
     webViewLoadUri (mWebView $ mGUI browser) ("file://" ++ exportURL url) >> putStrLn (show url)
 loadURL' url@URL {url_type = _} browser = 
     webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL url) >> print url
+-- }}}
 
--- Scrolling functions
-verticalHome, verticalEnd, horizontalHome, horizontalEnd :: Browser -> IO ()
+
+-- {{{ Zoom
+-- | Wrapper around webViewZoomIn function
+zoomIn :: Browser -> IO ()
+zoomIn  browser = webViewZoomIn (mWebView $ mGUI browser)
+
+-- | Wrapper around webViewZoomOut function
+zoomOut :: Browser -> IO ()
+zoomOut browser = webViewZoomOut (mWebView $ mGUI browser)
+-- }}}
+
+
+-- | Wrapper around webFramePrint function, provided for convenience.
+printPage :: Browser -> IO()
+printPage browser = do
+    frame <- webViewGetMainFrame (mWebView $ mGUI browser)
+    webFramePrint frame
+
+
+-- {{{ Scrolling
+-- | Scroll up to top of web page. Provided for convenience.
+verticalHome :: Browser -> IO ()
 verticalHome browser = do
     adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
     lower       <- adjustmentGetLower adjustment
 
     adjustmentSetValue adjustment lower
 
+
+-- | Scroll down to bottom of web page. Provided for convenience.
+verticalEnd :: Browser -> IO ()
 verticalEnd browser = do
     adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
     upper       <- adjustmentGetUpper adjustment
 
     adjustmentSetValue adjustment upper
 
+-- |
+horizontalHome :: Browser -> IO ()
 horizontalHome browser = do
     adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
     lower       <- adjustmentGetLower adjustment
 
     adjustmentSetValue adjustment lower
 
+-- |
+horizontalEnd :: Browser -> IO ()
 horizontalEnd browser = do
     adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
     upper       <- adjustmentGetUpper adjustment
 
     adjustmentSetValue adjustment upper 
-
--- | Spawn a new instance of the browser
-newWindow :: Browser -> IO ()
-newWindow browser = runExternalCommand ("hbro")
 -- }}}
+
+
+-- | Spawn a new instance of the browser.
+newWindow :: Browser -> IO ()
+newWindow browser = runExternalCommand "hbro"
