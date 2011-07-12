@@ -4,11 +4,18 @@ module Main where
 import Hbro.Config
 import Hbro.Core
 import Hbro.Extra
+import Hbro.Extra.Bookmarks
+import Hbro.Extra.Clipboard
+import Hbro.Extra.Prompt
+import Hbro.Extra.StatusBar
 import Hbro.Gui
 import Hbro.Types
 import Hbro.Util
 
 import Control.Concurrent
+
+import Data.ByteString.Char8 (pack, unpack)
+import Data.List
 
 --import Graphics.Rendering.Pango.Layout
 
@@ -26,11 +33,15 @@ import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
 
 import System.Environment
+import System.Exit
+import qualified System.Info as Sys
 import System.Glib.Attributes
 import System.Glib.Signals
 import System.Posix.Process
 import System.Process 
+import System.ZMQ 
 -- }}}
+
 
 main :: IO ()
 main = do
@@ -68,6 +79,7 @@ generalKeys = [
     (([Control],        "<Home>"),      verticalHome),
     (([Control],        "<End>"),       verticalEnd),
     (([Alt],            "<Home>"),      goHome),
+    (([Control],        "g"),           promptGoogle),
 
     -- Display
     (([Control, Shift], "+"),           zoomIn),
@@ -83,6 +95,7 @@ generalKeys = [
 
     -- Search
     (([Shift],          "/"),           promptFind False True True),
+    (([Control],        "f"),           promptFind False True True),
     (([Shift],          "?"),           promptFind False False True),
     (([Control],        "n"),           findNext False True True),
     (([Control, Shift], "N"),           findNext False False True),
@@ -97,7 +110,19 @@ generalKeys = [
     (([Alt],            "p"),           printPage),
     (([Control],        "t"),           newWindow)
     ]
+
+bookmarksKeys :: KeysList
+bookmarksKeys = [
+--  ((modifiers,        key),           callback)
+    (([Control],        "d"),           addToBookmarks),
+    (([Control, Shift], "D"),           addAllInstancesToBookmarks),
+    (([Alt],            "d"),           deleteTagFromBookmarks),
+    (([Control],        "l"),           loadFromBookmarks),
+    (([Control, Shift], "L"),           loadTagFromBookmarks)
+    ]
+
 -- }}}
+
 
 -- {{{ Web settings
 -- Commented lines correspond to default values
@@ -120,15 +145,15 @@ myWebSettings = do
         --webSettingsAutoShrinkImages               := True,
         --webSettingsDefaultEncoding                := "iso-8859-1",
         --webSettingsEditingBehavior                := EditingBehaviorWindows,
-        --webSettingsEnableCaretBrowsing            := ,
+        --webSettingsEnableCaretBrowsing              := False,
         webSettingsEnableDeveloperExtras            := True,
-        webSettingsEnableHtml5Database              := False,
-        webSettingsEnableHtml5LocalStorage          := False,
-        webSettingsEnableOfflineWebApplicationCache := True,
+        --webSettingsEnableHtml5Database              := True,
+        --webSettingsEnableHtml5LocalStorage          := True,
+        --webSettingsEnableOfflineWebApplicationCache := True,
         webSettingsEnablePlugins                    := True,
-        webSettingsEnablePrivateBrowsing            := False,
+        webSettingsEnablePrivateBrowsing            := False, -- Experimental
         webSettingsEnableScripts                    := True,
-        webSettingsEnableSpellChecking              := True,
+        --webSettingsEnableSpellChecking              := False,
         webSettingsEnableUniversalAccessFromFileUris := True,
         webSettingsEnableXssAuditor                 := True,
         --webSettingsEnableSiteSpecificQuirks       := False,
@@ -148,6 +173,7 @@ myWebSettings = do
         ]
     return settings
 -- }}}
+
 
 -- {{{ Setup
 mySetup :: Browser -> IO ()
@@ -232,6 +258,7 @@ mySetup browser =
 
         return ()
 -- }}}
+
     
 -- {{{ Handlers
 downloadHandler :: String -> IO ()
@@ -243,45 +270,11 @@ historyHandler uri title = do
     runCommand (configHome ++ "/hbro/scripts/historyHandler.sh \"" ++ uri ++ "\" \"" ++ title ++ "\"") >> return ()
 -- }}}
 
--- {{{ Bookmarks
-bookmarksKeys :: KeysList
-bookmarksKeys = [
---  ((modifiers,        key),           callback)
-    (([Control],        "d"),           addToBookmarks),
-    (([Control, Shift], "D"),           addAllInstancesToBookmarks),
-    (([Alt],            "d"),           deleteTagFromBookmarks),
-    (([Control],        "l"),           loadFromBookmarks),
-    (([Control, Shift], "L"),           loadTagFromBookmarks)
-    ]
 
-addToBookmarks, addAllInstancesToBookmarks, loadFromBookmarks, loadTagFromBookmarks, deleteTagFromBookmarks :: Browser -> IO ()
+promptGoogle :: Browser -> IO ()
+promptGoogle browser = 
+    prompt "Google search" "" False browser (\browser' -> do
+        keyWords <- entryGetText (mPromptEntry $ mGUI browser')
+        loadURL ("https://www.google.com/search?q=" ++ keyWords) browser'
+        return ())
 
-addToBookmarks browser = do
-    getUri      <- webViewGetUri (mWebView $ mGUI browser)
-    configHome  <- getEnv "XDG_CONFIG_HOME"
-    case getUri of
-        Just uri -> prompt "Bookmark with tag:" "" False browser (\b -> do 
-            tags <- entryGetText (mPromptEntry $ mGUI b)
-            runExternalCommand $ configHome ++ "/hbro/scripts/bookmarks.sh add \"" ++ uri ++ "\" " ++ tags)
-        _        -> return ()
-
-addAllInstancesToBookmarks browser = do
-    configHome <- getEnv "XDG_CONFIG_HOME"
-    prompt "Bookmark all instances with tag:" "" False browser (\b -> do 
-        tags <- entryGetText (mPromptEntry $ mGUI b)
-        _    <- forkIO $ (runCommand (configHome ++ "/hbro/scripts/bookmarks.sh add-all " ++ (mSocketDir $ mConfiguration browser) ++ " " ++ tags)) >> return ()
-        return())
-
-loadFromBookmarks browser = do 
-    pid         <- getProcessID
-    configHome  <- getEnv "XDG_CONFIG_HOME"
-    runExternalCommand $ configHome ++ "/hbro/scripts/bookmarks.sh load \"" ++ (mSocketDir $ mConfiguration browser) ++ "/hbro." ++ show pid ++ "\""
-
-loadTagFromBookmarks browser = do
-    configHome <- getEnv "XDG_CONFIG_HOME"
-    runExternalCommand $ configHome ++ "/hbro/scripts/bookmarks.sh load-tag"
-
-deleteTagFromBookmarks browser = do
-    configHome <- getEnv "XDG_CONFIG_HOME"
-    runExternalCommand $ configHome ++ "/hbro/scripts/bookmarks.sh delete-tag"
--- }}}

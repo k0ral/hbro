@@ -25,6 +25,7 @@ import System.Glib.Attributes
 import System.Glib.Signals
 -- }}}
 
+
 -- | Load GUI from XML file
 loadGUI :: String -> IO GUI
 loadGUI xmlPath = do
@@ -58,6 +59,7 @@ loadGUI xmlPath = do
     inspectorWindow <- initWebInspector inspector
 
     return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry statusBox builder
+
 
 -- {{{ Web inspector
 initWebInspector :: WebInspector -> IO (Window)
@@ -110,6 +112,7 @@ showWebInspector browser = do
     webInspectorInspectCoordinates inspector 0 0
 
 -- }}}
+
 
 -- {{{ Prompt
 -- | Show or hide the prompt bar (label + entry).
@@ -179,6 +182,7 @@ prompt label defaultText incremental browser callback = let
 
                 return ()
 -- }}}
+
 
 -- {{{ Util
 -- | Toggle statusbar's visibility

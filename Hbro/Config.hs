@@ -9,6 +9,7 @@ import qualified Config.Dyre as Dyre
 import Graphics.UI.Gtk.WebKit.WebSettings
 -- }}}
 
+
 -- {{{ Dyre
 showError :: Configuration -> String -> Configuration
 showError configuration message = configuration { mError = Just message }
@@ -21,6 +22,7 @@ hbro = Dyre.wrapMain Dyre.defaultParams {
     Dyre.ghcOpts      = ["-threaded"]
 }
 -- }}}
+
 
 -- | Default configuration.
 -- Does quite nothing.

@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             0.6.1
+Version:             0.6.3
 Synopsis:            A suckless minimal KISSy browser
 -- Description:         
 Homepage:            http://projects.haskell.org/hbro/
@@ -15,9 +15,7 @@ Maintainer:          koral at mailoo dot org
 Cabal-version:       >=1.8
 Build-type:          Simple
 Extra-source-files:  examples/hbro.hs
-Data-files:          
-    examples/ui.xml,
-    examples/scripts/bookmarks.sh
+Data-files:          examples/ui.xml
 
 Source-repository head
     Type:     git
@@ -35,7 +33,6 @@ Library
         mtl,
         pango,
         process,
-        split,
         url,
         webkit,
         unix,
@@ -43,7 +40,11 @@ Library
     Exposed-modules:
         Hbro.Config,
         Hbro.Core,
-        Hbro.Extra,
+        Hbro.Extra.Bookmarks,
+        Hbro.Extra.Clipboard,
+        Hbro.Extra.Misc,
+        Hbro.Extra.Prompt,
+        Hbro.Extra.StatusBar,
         Hbro.Gui,
         Hbro.Socket,
         Hbro.Types,
