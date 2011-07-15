@@ -30,7 +30,7 @@ copyTitle browser = do
         Just t -> clipboardSetText primaryClip t
         _      -> return ()
 
--- | Load URI from clipboard. Does not work for now...
+-- | Load URI from clipboard.
 loadURIFromClipboard :: Browser -> IO ()
 loadURIFromClipboard browser = do
     primaryClip <- widgetGetClipboard (mWindow $ mGUI browser) selectionPrimary
