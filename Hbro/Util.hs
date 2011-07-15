@@ -10,8 +10,10 @@ import Graphics.UI.Gtk
 import System.Process
 -- }}}
 
+
 instance Ord Modifier where
     m <= m' =  fromEnum m <= fromEnum m'
+
 
 -- {{{ Keys-related functions
 -- | Converts a keyVal to a String.
@@ -50,6 +52,7 @@ importKeyBindings' :: [(([Modifier], String), (Browser -> IO ()))] -> [((Set.Set
 importKeyBindings' (((a, b), c):t) = ((Set.fromList a, b), c):(importKeyBindings' t)
 importKeyBindings' _ = []
 -- }}}
+
 
 -- {{{ Run commands
 -- | Like run `runCommand`, but return IO ()

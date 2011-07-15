@@ -5,6 +5,7 @@ import Hbro.Config
 import Hbro.Core
 import Hbro.Extra.Bookmarks
 import Hbro.Extra.Clipboard
+import Hbro.Extra.History
 import Hbro.Extra.Misc
 import Hbro.Extra.Prompt
 import Hbro.Extra.StatusBar
@@ -49,7 +50,7 @@ main = do
 
 -- {{{ Keys
 myKeys :: KeysList
-myKeys = generalKeys ++ bookmarksKeys
+myKeys = generalKeys ++ bookmarksKeys ++ historyKeys
 
 generalKeys :: KeysList
 generalKeys = [
@@ -109,6 +110,10 @@ bookmarksKeys = [
     (([Control, Shift], "L"),           loadTagFromBookmarks)
     ]
 
+historyKeys :: KeysList
+historyKeys = [
+    (([Control],        "h"),           loadFromHistory)
+    ]
 -- }}}
 
 
@@ -205,10 +210,10 @@ mySetup browser =
 
         -- History handler
         _ <- on webView loadFinished $ \_ -> do
-            getUri   <- webViewGetUri webView
+            getUri   <- webViewGetUri   webView
             getTitle <- webViewGetTitle webView
             case (getUri, getTitle) of
-                (Just uri, Just title)  -> historyHandler uri title
+                (Just uri, Just title)  -> addToHistory uri title
                 _                       -> return ()
 
 
@@ -248,16 +253,8 @@ mySetup browser =
 -- }}}
 
     
--- {{{ Handlers
 downloadHandler :: String -> IO ()
 downloadHandler uri = runExternalCommand $ "wget \"" ++ uri ++ "\""
-
-historyHandler :: String -> String -> IO ()
-historyHandler uri title = do
-    configHome <- getEnv "XDG_CONFIG_HOME"
-    runCommand (configHome ++ "/hbro/scripts/historyHandler.sh \"" ++ uri ++ "\" \"" ++ title ++ "\"") >> return ()
--- }}}
-
 
 promptGoogle :: Browser -> IO ()
 promptGoogle browser = 
