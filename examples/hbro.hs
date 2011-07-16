@@ -20,6 +20,7 @@ import Graphics.UI.Gtk.Gdk.GC
 import Graphics.UI.Gtk.WebKit.Download
 import Graphics.UI.Gtk.WebKit.NetworkRequest
 import Graphics.UI.Gtk.WebKit.WebNavigationAction
+import Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
@@ -36,8 +37,8 @@ main :: IO ()
 main = do
     configHome <- getEnv "XDG_CONFIG_HOME"
 
-    -- See Types::Configuration documentation for fields description
-    -- Commented out fields indicated default values
+    -- See Hbro.Types.Configuration documentation for fields description
+    -- Commented out fields indicate default values
     hbro defaultConfiguration {
         --mSocketDir    = "/tmp/",
         mUIFile         = configHome ++ "/hbro/ui.xml",
@@ -54,7 +55,7 @@ myKeys = generalKeys ++ bookmarksKeys ++ historyKeys
 
 generalKeys :: KeysList
 generalKeys = [
-    --  ((modifiers,        key),           callback)
+--  ((modifiers,        key),           callback)
     -- Browse
     (([],               "<"),           goBack),
     (([Shift],          ">"),           goForward),
@@ -102,7 +103,6 @@ generalKeys = [
 
 bookmarksKeys :: KeysList
 bookmarksKeys = [
---  ((modifiers,        key),           callback)
     (([Control],        "d"),           addToBookmarks),
     (([Control, Shift], "D"),           addAllInstancesToBookmarks),
     (([Alt],            "d"),           deleteTagFromBookmarks),
@@ -190,31 +190,33 @@ mySetup browser =
             set window [ windowTitle := ("hbro | " ++ title)]
 
 
-        -- Special requests
+        -- Download requests
         _ <- on webView downloadRequested $ \download -> do
-            getUri <- downloadGetUri download
-            _ <- case getUri of
-                Just uri -> downloadHandler uri 
-                _        -> return ()
-            return True
+            uri  <- downloadGetUri download
+            name <- downloadGetSuggestedFilename download
+            size <- downloadGetTotalSize download
 
-        _ <- on webView mimeTypePolicyDecisionRequested $ \_ request mimetype policyDecision -> do
-            getUri <- networkRequestGetUri request
-            case (getUri, mimetype) of
-                --(Just uri, 'a':'p':'p':'l':'i':'c':'a':'t':'i':'o':'n':'/':_) -> downloadHandler uri
-                (Just uri, _) -> putStrLn $ mimetype ++ ": " ++ uri
-                _             -> putStrLn "FIXME"
-
+            case (uri, name) of
+                (Just uri', Just name') -> myDownload uri' name' 
+                _ -> return ()
             return False
+
+        -- Per MIME actions
+        _ <- on webView mimeTypePolicyDecisionRequested $ \_ request mimetype policyDecision -> do
+            show <- webViewCanShowMimeType webView mimetype
+
+            case (show, mimetype) of
+                (True, _) -> webPolicyDecisionUse policyDecision >> return True
+                _         -> webPolicyDecisionDownload policyDecision >> return True
 
 
         -- History handler
         _ <- on webView loadFinished $ \_ -> do
-            getUri   <- webViewGetUri   webView
-            getTitle <- webViewGetTitle webView
-            case (getUri, getTitle) of
-                (Just uri, Just title)  -> addToHistory uri title
-                _                       -> return ()
+            uri   <- webViewGetUri   webView
+            title <- webViewGetTitle webView
+            case (uri, title) of
+                (Just uri', Just title') -> addToHistory uri' title'
+                _ -> return ()
 
 
         -- On navigating to a new URI
@@ -253,8 +255,10 @@ mySetup browser =
 -- }}}
 
     
-downloadHandler :: String -> IO ()
-downloadHandler uri = runExternalCommand $ "wget \"" ++ uri ++ "\""
+myDownload :: String -> String -> IO ()
+myDownload uri name = do
+    home <- getEnv "HOME"
+    runExternalCommand $ "wget \"" ++ uri ++ "\" -O \"" ++ home ++ "/" ++ name ++ "\""
 
 promptGoogle :: Browser -> IO ()
 promptGoogle browser = 
