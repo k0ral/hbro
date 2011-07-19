@@ -131,14 +131,14 @@ prompt label defaultText incremental browser callback = let
         promptEntry = (mPromptEntry $ mGUI browser)
         webView     = (mWebView     $ mGUI browser)
     in do
-        -- Show prompt
-        showPrompt True browser
-
         -- Fill prompt
         labelSetText promptLabel label
         entrySetText promptEntry defaultText
-
+        
+        -- Focus on prompt
+        showPrompt True browser
         widgetGrabFocus promptEntry
+        editableSetPosition promptEntry (-1)
 
         -- Register callback
         case incremental of

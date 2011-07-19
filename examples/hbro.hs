@@ -17,6 +17,7 @@ import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Gdk.GC
+import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.WebKit.Download
 import Graphics.UI.Gtk.WebKit.NetworkRequest
 import Graphics.UI.Gtk.WebKit.WebNavigationAction
@@ -98,7 +99,8 @@ generalKeys = [
     -- Others
     (([Control],        "i"),           showWebInspector),
     (([Alt],            "p"),           printPage),
-    (([Control],        "t"),           newWindow)
+    (([Control],        "t"),           newWindow),
+    (([Control],        "w"),           \_ -> mainQuit)
     ]
 
 bookmarksKeys :: KeysList
@@ -160,7 +162,7 @@ myWebSettings = do
         --webSettingsResizableTextAreas             := True,
         webSettingsSpellCheckingLang                := Just "en_US",
         --webSettingsTabKeyCyclesThroughElements    := True,
-        webSettingsUserAgent                        := "Mozilla Firefox"
+        webSettingsUserAgent                        := "Mozilla/5.0 (X11; Linux x86_64; rv:2.0.1) Gecko/20100101 Firefox/4.0.1"
         --webSettingsUserStylesheetUri              := Nothing,
         --webSettingsZoomStep                       := 0.1
         ]
@@ -258,7 +260,9 @@ mySetup browser =
 myDownload :: String -> String -> IO ()
 myDownload uri name = do
     home <- getEnv "HOME"
-    runExternalCommand $ "wget \"" ++ uri ++ "\" -O \"" ++ home ++ "/" ++ name ++ "\""
+    --runExternalCommand $ "wget \"" ++ uri ++ "\" -O \"" ++ home ++ "/" ++ name ++ "\""
+    --runExternalCommand $ "axel \"" ++ uri ++ "\" -o \"" ++ home ++ "/" ++ name ++ "\""
+    runExternalCommand $ "aria2c \"" ++ uri ++ "\" -d " ++ home ++ "/ -o \"" ++ name ++ "\""
 
 promptGoogle :: Browser -> IO ()
 promptGoogle browser = 
