@@ -224,3 +224,11 @@ horizontalEnd browser = do
 -- | Spawn a new instance of the browser.
 newWindow :: Browser -> IO ()
 newWindow browser = runExternalCommand "hbro"
+
+-- | Execute a javascript file on current webpage.
+executeJSFile :: String -> Browser -> IO ()
+executeJSFile filePath browser = do
+    script <- readFile filePath
+    let script' = unwords . map (\line -> line ++ "\n") . lines $ script
+
+    webViewExecuteScript (mWebView $ mGUI browser) script'
