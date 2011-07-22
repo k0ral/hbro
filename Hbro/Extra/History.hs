@@ -35,7 +35,7 @@ loadFromHistory browser = do
     case (code, result) of
         (ExitSuccess, r) -> 
           let
-            _:_:uri:_ = words $ r
+            uri:_ = words $ r
           in
             loadURL uri browser
         _ -> putStrLn e
