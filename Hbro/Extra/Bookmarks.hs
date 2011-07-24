@@ -1,4 +1,14 @@
-module Hbro.Extra.Bookmarks where
+module Hbro.Extra.Bookmarks (
+    addWithTags,
+    addAllWithTags,
+    load,
+    loadWithTag,
+    deleteWithTag,
+    add,
+    appendQueue,
+    popQueue,
+    popAndLoadQueue
+) where
 
 -- {{{ Imports
 import Hbro.Core
@@ -6,37 +16,45 @@ import Hbro.Gui
 import Hbro.Types
 import Hbro.Util
 
-import Data.ByteString.Char8 (pack, unpack)
+import qualified Data.ByteString.Char8 as B
 import Data.List
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 
 import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.WebKit.WebView
 
 import System.Environment
-import System.Exit
 import qualified System.Info as Sys
+import System.IO
 import System.Posix.Process
 import System.Process 
 import System.ZMQ 
 -- }}}
 
 
--- 
-addToBookmarks :: Browser -> IO ()
-addToBookmarks browser = do
+-- | Add current URI to bookmarks.
+-- Prompt for a tags list to apply.
+addWithTags :: Browser -> IO ()
+addWithTags browser = do
     uri <- webViewGetUri (mWebView $ mGUI browser)
 
     case uri of
-        Just u -> prompt "Bookmark with tag:" "" False browser (\b -> do 
+        Just u -> prompt "Bookmark with tags:" "" False browser (\b -> do 
             tags <- entryGetText (mPromptEntry $ mGUI b)
-            bookmark u (words tags)) 
+            add u (words tags)) 
         _ -> return ()
 
--- 
-addAllInstancesToBookmarks :: Browser -> IO ()
-addAllInstancesToBookmarks browser = 
+-- | Add current URIs from all opened windows to bookmarks.
+addAllWithTags :: Browser -> IO ()
+addAllWithTags browser = 
     prompt "Bookmark all instances with tag:" "" False browser (\b -> do 
         tags          <- entryGetText (mPromptEntry $ mGUI b)
+        uri           <- webViewGetUri (mWebView $ mGUI browser)
+        case uri of
+            Just u -> add u $ words tags
+            _      -> return ()
+
         (_, pids, _)  <- readProcessWithExitCode "pidof" ["hbro"] []
         (_, pids', _) <- readProcessWithExitCode "pidof" ["hbro-" ++ Sys.os ++ "-" ++ Sys.arch] []
         myPid         <- getProcessID
@@ -49,103 +67,151 @@ addAllInstancesToBookmarks browser =
               in do
                 connect reqSocket socketURI
 
-                send reqSocket (pack "getUri") []
+                send reqSocket (B.pack "getUri") []
                 uri <- receive reqSocket []
 
-                bookmark (unpack uri) (words tags)
+                add (B.unpack uri) (words tags)
             )
 
         _ <- mapM bookmarkPID pidsList
         return ())
 
 -- |
-loadFromBookmarks :: Browser -> IO ()
-loadFromBookmarks browser = do 
+load :: Browser -> IO ()
+load browser = do 
+    -- Load bookmarks file
     configHome  <- getEnv "XDG_CONFIG_HOME"
-    file        <- readFile $ configHome ++ "/hbro/bookmarks"
+    file        <- T.readFile $ configHome ++ "/hbro/bookmarks"
 
-    let file' = unlines . sort . nub $ map reformat (lines file)
+    -- Reformat lines
+    let file' = T.unlines . sort . nub $ map reformat (T.lines file)
 
-    (code, result, e) <- readProcessWithExitCode "dmenu" ["-l", "10"] file'
-    case (code, result) of
-        (ExitSuccess, r) -> 
-          let
-            uri:_ = reverse . words $ r
-          in
-            loadURL uri browser
-        _ -> putStrLn e
+    -- Let user select a URI
+    (Just input, Just output, _, _) <- createProcess (proc "dmenu" ["-l", "10"]) {
+        std_in = CreatePipe,
+        std_out = CreatePipe }
+    _ <- T.hPutStr input file'
 
+    entry <- catch (hGetLine output) (\e -> return "ERROR" )
+    case reverse . words $ entry of
+        ["ERROR"]   -> return ()
+        uri:_       -> loadURL uri browser
+        _           -> return ()
+
+  
+reformat :: T.Text -> T.Text
+reformat line =
+    T.unwords $ tags' ++ [uri]
   where
-    reformat line =
-      let
-        uri:tags = words line 
-        tags'    = sort $ map (\tag -> "[" ++ tag ++ "]") tags
-      in 
-        unwords $ tags' ++ [uri]
+    uri:tags = T.words line 
+    tags'    = sort $ map (\tag -> T.snoc (T.cons '[' tag) ']') tags
 
 -- | 
-loadTagFromBookmarks :: Browser -> IO ()        
-loadTagFromBookmarks browser = do
+loadWithTag :: Browser -> IO ()        
+loadWithTag browser = do
+    -- Read bookmarks file
     configHome  <- getEnv "XDG_CONFIG_HOME"
-    file        <- readFile $ configHome ++ "/hbro/bookmarks"
+    file        <- T.readFile $ configHome ++ "/hbro/bookmarks"
 
-    let list = unlines . sort . nub . words . unwords $ map getTags (lines file)
+    -- Filter tags list
+    let list = T.unlines . sort . nub . T.words . T.unwords $ map getTags (T.lines file)
 
-    (code, result, e) <- readProcessWithExitCode "dmenu" [] list
-    case (code, result) of
-        (ExitSuccess, tag) -> 
-          let
-            file' = filter (tagFilter tag) (lines file)
-            uris  = map getUri file'
-          in do
-            _ <- mapM (\uri -> runExternalCommand ("hbro -u \"" ++ uri ++ "\"")) uris
+    -- Let user select a tag
+    (Just input, Just output, _, _) <- createProcess (proc "dmenu" ["-l", "10"]) {
+        std_in = CreatePipe,
+        std_out = CreatePipe }
+    _ <- T.hPutStr input list
+
+    tag <- catch (hGetLine output) (\e -> return "ERROR" )
+    case tag of
+        "ERROR" -> return ()
+        ""      -> return ()
+        t       -> do
+            _ <- mapM (\uri -> runExternalCommand ("hbro -u \"" ++ (T.unpack uri) ++ "\"")) uris
             return ()
-        
-        _ -> putStrLn e
+          where
+            file' = filter (tagFilter $ T.pack t) (T.lines file)
+            uris  = map getUri file'
 
-  where
-    tagFilter tag line = let uri:tags = words line in case (intersect [tag] tags) of
-        [t] -> True
-        _   -> False
+-- 
+tagFilter :: T.Text -> T.Text -> Bool
+tagFilter tag line = let uri:tags = T.words line in case (intersect [tag] tags) of
+    [t] -> True
+    _   -> False
 
 
 -- |
-deleteTagFromBookmarks :: Browser -> IO ()
-deleteTagFromBookmarks browser = do
+deleteWithTag :: Browser -> IO ()
+deleteWithTag browser = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
-    file        <- readFile $ configHome ++ "/hbro/bookmarks"
+    file        <- T.readFile $ configHome ++ "/hbro/bookmarks"
 
-    let tagsList = unlines . sort . nub . words . unwords $ map getTags (lines file)
+    let tagsList = T.unlines . sort . nub . T.words . T.unwords $ map getTags (T.lines file)
 
-    (code, result, e) <- readProcessWithExitCode "dmenu" [] tagsList
-    case (code, result) of
-        (ExitSuccess, tag) ->
-          let
-            file' = unlines $ filter (tagFilter tag) (lines file)
-          in do
-            writeFile (configHome ++ "/hbro/bookmarks.old") file
-            writeFile (configHome ++ "/hbro/bookmarks")     file'
+    (Just input, Just output, _, _) <- createProcess (proc "dmenu" []) {
+        std_in = CreatePipe,
+        std_out = CreatePipe }
+    _ <- T.hPutStr input tagsList
+
+    tag <- catch (hGetLine output) (\e -> return "ERROR" )
+    case tag of
+        "ERROR" -> return ()
+        ""      -> return ()
+        t       -> do
+            T.writeFile (configHome ++ "/hbro/bookmarks.old") file
+            T.writeFile (configHome ++ "/hbro/bookmarks")     file'
             return ()
-            
-
-        _ -> putStrLn e
-  where 
-    tagFilter tag line = let uri:tags = words line in case (intersect [tag] tags) of
-        [t] -> False
-        _   -> True
+          where
+            file' = T.unlines $ filter (not . (tagFilter $ T.pack tag)) (T.lines file)
 
 
--- The elementary bookmark action
-bookmark :: String -> [String] -> IO ()
-bookmark uri tags = do
+-- | The elementary bookmark action
+add :: String -> [String] -> IO ()
+add uri tags = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
     appendFile (configHome ++ "/hbro/bookmarks") $ uri ++ " " ++ (unwords tags) ++ "\n"
 
 -- |
-getTags :: String -> String
-getTags line = let _:tags = words line in unwords tags
+getTags :: T.Text -> T.Text
+getTags line = let _:tags = T.words line in T.unwords tags
 
 -- |
-getUri :: String -> String
-getUri line = let uri:_ = words line in uri
+getUri :: T.Text -> T.Text
+getUri line = let uri:_ = T.words line in uri
+
+
+-- {{{ Queueing system
+-- | 
+appendQueue :: Browser -> IO ()
+appendQueue browser = do
+    uri         <- webViewGetUri (mWebView $ mGUI browser)
+    configHome  <- getEnv "XDG_CONFIG_HOME"
+
+    case uri of
+        Just u -> appendFile (configHome ++ "/hbro/queue") u
+        _ -> return ()
+
+-- | 
+popQueue :: Browser -> IO String
+popQueue browser = do
+    configHome  <- getEnv "XDG_CONFIG_HOME"
+    file        <- catch (T.readFile $ configHome ++ "/hbro/queue") (\e -> return T.empty)
+
+    if file == T.empty
+        then return ""
+        else do
+            let fileLines = T.lines file
+            let file' = T.unlines . tail . nub $ fileLines
+        
+            T.writeFile (configHome ++ "/hbro/queue.old") file
+            T.writeFile (configHome ++ "/hbro/queue") file'
+
+            return $ T.unpack (head fileLines)
+
+popAndLoadQueue :: Browser -> IO ()
+popAndLoadQueue browser = do
+    uri <- popQueue browser
+    case uri of
+        "" -> return ()
+        _  -> loadURL uri browser 
 -- }}}

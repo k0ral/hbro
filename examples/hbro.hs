@@ -3,7 +3,7 @@ module Main where
 -- {{{ Imports
 import Hbro.Config
 import Hbro.Core
-import Hbro.Extra.Bookmarks
+import qualified Hbro.Extra.Bookmarks as Bookmarks
 import Hbro.Extra.Clipboard
 import Hbro.Extra.History
 import Hbro.Extra.Misc
@@ -51,6 +51,7 @@ main = do
 
 
 -- {{{ Keys
+-- Note that this example is suited for an azerty keyboard.
 myKeys :: KeysList
 myKeys = generalKeys ++ bookmarksKeys ++ historyKeys
 
@@ -58,8 +59,8 @@ generalKeys :: KeysList
 generalKeys = [
 --  ((modifiers,        key),           callback)
     -- Browse
-    (([],               "<"),           goBack),
-    (([Shift],          ">"),           goForward),
+    (([Control],        "<Left>"),      goBack),
+    (([Shift],          "<Right>"),     goForward),
     (([Control],        "s"),           stopLoading),
     (([],               "<F5>"),        reload True),
     (([Shift],          "<F5>"),        reload False),
@@ -105,11 +106,13 @@ generalKeys = [
 
 bookmarksKeys :: KeysList
 bookmarksKeys = [
-    (([Control],        "d"),           addToBookmarks),
-    (([Control, Shift], "D"),           addAllInstancesToBookmarks),
-    (([Alt],            "d"),           deleteTagFromBookmarks),
-    (([Control],        "l"),           loadFromBookmarks),
-    (([Control, Shift], "L"),           loadTagFromBookmarks)
+    (([Control],        "d"),           Bookmarks.addWithTags),
+    (([Control, Shift], "D"),           Bookmarks.addAllWithTags),
+    (([Alt],            "d"),           Bookmarks.deleteWithTag),
+    (([Control],        "l"),           Bookmarks.load),
+    (([Control, Shift], "L"),           Bookmarks.loadWithTag),
+    (([Control],        "q"),           Bookmarks.appendQueue),
+    (([Alt],            "q"),           Bookmarks.popAndLoadQueue)
     ]
 
 historyKeys :: KeysList
