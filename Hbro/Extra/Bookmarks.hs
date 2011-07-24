@@ -188,7 +188,7 @@ appendQueue browser = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
 
     case uri of
-        Just u -> appendFile (configHome ++ "/hbro/queue") u
+        Just u -> appendFile (configHome ++ "/hbro/queue") (u ++ "\n")
         _ -> return ()
 
 -- | 
