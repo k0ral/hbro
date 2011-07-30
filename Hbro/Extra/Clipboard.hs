@@ -36,6 +36,6 @@ loadURIFromClipboard browser = do
     primaryClip <- widgetGetClipboard (mWindow $ mGUI browser) selectionPrimary
 
     _ <- clipboardRequestText primaryClip $ \x -> case x of
-        Just uri -> putStrLn ("Loading URI from clipboard: " ++ uri) >> loadURL uri browser
+        Just uri -> putStrLn ("Loading URI from clipboard: " ++ uri) >> loadURI uri browser
         _        -> putStrLn "Loading URI from clipboard: empty clipboard."
     return ()

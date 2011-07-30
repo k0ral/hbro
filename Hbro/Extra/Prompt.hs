@@ -26,15 +26,15 @@ findNext caseSensitive forward wrap browser = do
     return ()
 
 -- | Prompt for URI to open in current window.
-promptURL :: Bool -> Browser -> IO()        
+promptURL :: Bool -> Browser -> IO ()
 promptURL False browser = 
     prompt "Open URL" "" False browser (\b -> do 
         uri <- entryGetText (mPromptEntry $ mGUI b)
-        loadURL uri b)
+        loadURI uri b)
 promptURL _ browser = do
     uri <- webViewGetUri (mWebView $ mGUI browser)
     case uri of
         Just url -> prompt "Open URL" url False browser (\b -> do
                         u <- entryGetText (mPromptEntry $ mGUI b)
-                        loadURL u b)
+                        loadURI u b)
         _ -> return ()

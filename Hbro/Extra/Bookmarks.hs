@@ -5,9 +5,6 @@ module Hbro.Extra.Bookmarks (
     loadWithTag,
     deleteWithTag,
     add,
-    appendQueue,
-    popQueue,
-    popAndLoadQueue
 ) where
 
 -- {{{ Imports
@@ -95,7 +92,7 @@ load browser = do
     entry <- catch (hGetLine output) (\e -> return "ERROR" )
     case reverse . words $ entry of
         ["ERROR"]   -> return ()
-        uri:_       -> loadURL uri browser
+        uri:_       -> loadURI uri browser
         _           -> return ()
 
   
@@ -178,40 +175,3 @@ getTags line = let _:tags = T.words line in T.unwords tags
 -- |
 getUri :: T.Text -> T.Text
 getUri line = let uri:_ = T.words line in uri
-
-
--- {{{ Queueing system
--- | 
-appendQueue :: Browser -> IO ()
-appendQueue browser = do
-    uri         <- webViewGetUri (mWebView $ mGUI browser)
-    configHome  <- getEnv "XDG_CONFIG_HOME"
-
-    case uri of
-        Just u -> appendFile (configHome ++ "/hbro/queue") (u ++ "\n")
-        _ -> return ()
-
--- | 
-popQueue :: Browser -> IO String
-popQueue browser = do
-    configHome  <- getEnv "XDG_CONFIG_HOME"
-    file        <- catch (T.readFile $ configHome ++ "/hbro/queue") (\e -> return T.empty)
-
-    if file == T.empty
-        then return ""
-        else do
-            let fileLines = T.lines file
-            let file' = T.unlines . tail . nub $ fileLines
-        
-            T.writeFile (configHome ++ "/hbro/queue.old") file
-            T.writeFile (configHome ++ "/hbro/queue") file'
-
-            return $ T.unpack (head fileLines)
-
-popAndLoadQueue :: Browser -> IO ()
-popAndLoadQueue browser = do
-    uri <- popQueue browser
-    case uri of
-        "" -> return ()
-        _  -> loadURL uri browser 
--- }}}

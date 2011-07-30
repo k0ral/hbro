@@ -4,6 +4,7 @@ module Main where
 import Hbro.Config
 import Hbro.Core
 import qualified Hbro.Extra.Bookmarks as Bookmarks
+import qualified Hbro.Extra.BookmarksQueue as Queue
 import Hbro.Extra.Clipboard
 import Hbro.Extra.History
 import Hbro.Extra.Misc
@@ -111,8 +112,10 @@ bookmarksKeys = [
     (([Alt],            "d"),           Bookmarks.deleteWithTag),
     (([Control],        "l"),           Bookmarks.load),
     (([Control, Shift], "L"),           Bookmarks.loadWithTag),
-    (([Control],        "q"),           Bookmarks.appendQueue),
-    (([Alt],            "q"),           Bookmarks.popAndLoadQueue)
+    (([Control],        "q"),           Queue.append),
+    (([Alt],            "q"),           \b -> do
+        uri <- Queue.popFront b
+        loadURI uri b)
     ]
 
 historyKeys :: KeysList
@@ -271,6 +274,6 @@ promptGoogle :: Browser -> IO ()
 promptGoogle browser = 
     prompt "Google search" "" False browser (\browser' -> do
         keyWords <- entryGetText (mPromptEntry $ mGUI browser')
-        loadURL ("https://www.google.com/search?q=" ++ keyWords) browser'
+        loadURI ("https://www.google.com/search?q=" ++ keyWords) browser'
         return ())
 

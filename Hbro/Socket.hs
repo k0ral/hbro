@@ -15,31 +15,30 @@ import System.ZMQ
 -- }}}
     
 -- | Create a response socket to listen for commands.
--- Loops on listenToSocket forever.
-createRepSocket :: String -> Browser -> IO a
-createRepSocket socketURI browser = withContext 1 $ \context -> do
+-- Loops on listenToSocket until "Quit" command is received.
+createRepSocket :: Context -> String -> Browser -> IO ()
+createRepSocket context socketURI browser =
     withSocket context Rep $ \repSocket -> do
-        bind      repSocket socketURI
-        setOption repSocket (Linger 0)
+        bind repSocket socketURI
+        listenToSocket repSocket commandsList browser
+  where
+    commandsList = Map.fromList (defaultCommandsList ++ (mCommands $ mConfiguration browser))
 
-        _ <- quitAdd 0 $ do
-            close repSocket
-            return False
-
-        let commandsList = Map.fromList (defaultCommandsList ++ (mCommands $ mConfiguration browser))
-        
-        forever $ listenToSocket repSocket commandsList browser
 
 -- | Listen for incoming requests from response socket.
 -- Parse received commands and feed the corresponding callback, if any.
 listenToSocket :: Socket Rep -> CommandsMap -> Browser -> IO ()
 listenToSocket repSocket commands browser = do
     message <- receive repSocket []
-    let command:arguments = words $ unpack message
+    case words (unpack message) of
+        []       -> send repSocket (pack "ERROR Unknown command") []
+        ["Quit"] -> send repSocket (pack "OK") []
+        command:arguments -> do
+            case Map.lookup command commands of
+                Just callback -> callback arguments repSocket browser
+                _             -> send repSocket (pack "ERROR Unknown command") []
 
-    case Map.lookup command commands of
-        Just callback -> callback arguments repSocket browser
-        _             -> send repSocket (pack "ERROR Unknown command") []
+            listenToSocket repSocket commands browser
 
 -- | List of default supported requests.
 defaultCommandsList :: CommandsList

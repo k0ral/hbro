@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             0.6.6
+Version:             0.6.7
 Synopsis:            A suckless minimal KISSy browser
 -- Description:         
 Homepage:            http://projects.haskell.org/hbro/
@@ -44,6 +44,7 @@ Library
         Hbro.Config,
         Hbro.Core,
         Hbro.Extra.Bookmarks,
+        Hbro.Extra.BookmarksQueue,
         Hbro.Extra.Clipboard,
         Hbro.Extra.History,
         Hbro.Extra.Misc,

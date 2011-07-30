@@ -10,6 +10,7 @@ import Hbro.Util
 import Control.Concurrent
 import Control.Monad.Trans(liftIO)
 
+import Data.ByteString.Char8 (pack, unpack)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -26,6 +27,7 @@ import Network.URL
 import System.Console.CmdArgs
 import System.Glib.Signals
 import System.Posix.Process
+import qualified System.ZMQ as ZMQ
 -- }}}
 
 
@@ -72,17 +74,10 @@ initBrowser configuration options = do
     let browser = Browser options configuration gui
     let webView = mWebView gui
 
-    -- Load addtionnal settings from configuration
+    -- Load additionnal settings from configuration
     settings <- mWebSettings configuration
     webViewSetWebSettings webView settings
     (mSetup configuration) browser
-
-    -- Initialize IPC socket
-    pid <- getProcessID
-    let socketURI = "ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid
-    putStrLn $ "Listening socket " ++ socketURI
-
-    _ <- forkIO $ createRepSocket socketURI browser
 
     -- Load homepage
     goHome browser
@@ -120,7 +115,22 @@ initBrowser configuration options = do
     widgetShowAll (mWindow gui)
     showPrompt False browser 
 
-    mainGUI
+
+    -- Initialize IPC socket
+    pid <- getProcessID
+    let socketURI = "ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid
+    putStrLn $ "Listening socket " ++ socketURI
+
+    ZMQ.withContext 1 $ \context -> do
+        _ <- forkIO $ createRepSocket context socketURI browser
+    
+        mainGUI
+
+        ZMQ.withSocket context ZMQ.Req $ \reqSocket -> do
+            ZMQ.connect reqSocket socketURI
+            ZMQ.send reqSocket (pack "Quit") []
+            reply <- ZMQ.receive reqSocket []
+            return ()
 -- }}}
 
 
@@ -128,8 +138,8 @@ initBrowser configuration options = do
 -- | Load homepage (retrieved from commandline options or configuration file)
 goHome :: Browser -> IO ()
 goHome browser = case (mURI $ mOptions browser) of
-    Just uri -> loadURL uri browser
-    _        -> loadURL (mHomePage $ mConfiguration browser) browser
+    Just uri -> loadURI uri browser
+    _        -> loadURI (mHomePage $ mConfiguration browser) browser
 
 -- | Wrapper around webViewGoBack function
 goBack :: Browser -> IO ()
@@ -150,19 +160,19 @@ reload True browser = webViewReload             (mWebView $ mGUI browser)
 reload _    browser = webViewReloadBypassCache  (mWebView $ mGUI browser)
 
 -- | Load given URL in the browser.
-loadURL :: String -> Browser -> IO ()
-loadURL url browser =
+loadURI :: String -> Browser -> IO ()
+loadURI url browser =
     case importURL url of
-        Just url' -> loadURL' url' browser
+        Just url' -> loadURI' url' browser
         _         -> return ()
 
--- | Backend function for loadURL.
-loadURL' :: URL -> Browser -> IO ()
-loadURL' url@URL {url_type = Absolute _} browser =
+-- | Backend function for loadURI.
+loadURI' :: URL -> Browser -> IO ()
+loadURI' url@URL {url_type = Absolute _} browser =
     webViewLoadUri (mWebView $ mGUI browser) (exportURL url)
-loadURL' url@URL {url_type = HostRelative} browser = 
+loadURI' url@URL {url_type = HostRelative} browser = 
     webViewLoadUri (mWebView $ mGUI browser) ("file://" ++ exportURL url) >> putStrLn (show url)
-loadURL' url@URL {url_type = _} browser = 
+loadURI' url@URL {url_type = _} browser = 
     webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL url) >> print url
 -- }}}
 

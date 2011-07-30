@@ -37,7 +37,7 @@ loadFromHistory browser = do
           let
             uri:_ = words $ r
           in
-            loadURL uri browser
+            loadURI uri browser
         _ -> putStrLn e
 
   where
