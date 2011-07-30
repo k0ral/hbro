@@ -3,8 +3,6 @@ module Hbro.Socket where
 -- {{{ Imports
 import Hbro.Types
 
-import Control.Monad
-
 import Data.ByteString.Char8 (pack, unpack)
 import qualified Data.Map as Map
 

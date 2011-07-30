@@ -1,7 +1,6 @@
 module Hbro.Extra.BookmarksQueue where
 
 -- {{{ Imports
-import Hbro.Core
 import Hbro.Types
 
 import Data.List

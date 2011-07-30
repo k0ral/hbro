@@ -10,7 +10,7 @@ import Hbro.Util
 import Control.Concurrent
 import Control.Monad.Trans(liftIO)
 
-import Data.ByteString.Char8 (pack, unpack)
+import Data.ByteString.Char8 (pack)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
