@@ -42,25 +42,25 @@ listenToSocket repSocket commands browser = do
 defaultCommandsList :: CommandsList
 defaultCommandsList = [
     -- Get information
-    ("getUri", \arguments repSocket browser -> do
+    ("getUri", \_arguments repSocket browser -> do
         getUri <- postGUISync $ webViewGetUri (mWebView $ mGUI browser)
         case getUri of
             Just uri -> send repSocket (pack uri) []
             _        -> send repSocket (pack "ERROR No URL opened") [] ),
 
-    ("getTitle", \arguments repSocket browser -> do
+    ("getTitle", \_arguments repSocket browser -> do
         getTitle <- postGUISync $ webViewGetTitle (mWebView $ mGUI browser)
         case getTitle of
             Just title -> send repSocket (pack title) []
             _          -> send repSocket (pack "ERROR No title") [] ),
 
-    ("getFaviconUri", \arguments repSocket browser -> do
+    ("getFaviconUri", \_arguments repSocket browser -> do
         getUri <- postGUISync $ webViewGetIconUri (mWebView $ mGUI browser)
         case getUri of
             Just uri -> send repSocket (pack uri) []
             _        -> send repSocket (pack "ERROR No favicon uri") [] ),
 
-    ("getLoadProgress", \arguments repSocket browser -> do
+    ("getLoadProgress", \_arguments repSocket browser -> do
         progress <- postGUISync $ webViewGetProgress (mWebView $ mGUI browser)
         send repSocket (pack (show progress)) [] ),
 
@@ -72,27 +72,27 @@ defaultCommandsList = [
             send repSocket (pack "OK") []
         _     -> send repSocket (pack "ERROR: argument needed.") [] ),
 
-    ("stopLoading", \arguments repSocket browser -> do
+    ("stopLoading", \_arguments repSocket browser -> do
         postGUIAsync $ webViewStopLoading (mWebView $ mGUI browser) 
         send repSocket (pack "OK") [] ),
 
-    ("reload", \arguments repSocket browser -> do
+    ("reload", \_arguments repSocket browser -> do
         postGUIAsync $ webViewReload (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] ),
 
-    ("goBack", \arguments repSocket browser -> do
+    ("goBack", \_arguments repSocket browser -> do
         postGUIAsync $ webViewGoBack (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] ),
 
-    ("goForward", \arguments repSocket browser -> do
+    ("goForward", \_arguments repSocket browser -> do
         postGUIAsync $ webViewGoForward (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] ),
 
-    ("zoomIn", \arguments repSocket browser -> do
+    ("zoomIn", \_arguments repSocket browser -> do
         postGUIAsync $ webViewZoomIn (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] ),
 
-    ("zoomOut", \arguments repSocket browser -> do
+    ("zoomOut", \_arguments repSocket browser -> do
         postGUIAsync $ webViewZoomOut (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] )
     ]

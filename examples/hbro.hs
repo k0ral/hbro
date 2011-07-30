@@ -101,7 +101,7 @@ generalKeys = [
     -- Others
     (([Control],        "i"),           showWebInspector),
     (([Alt],            "p"),           printPage),
-    (([Control],        "t"),           newWindow),
+    (([Control],        "t"),           \_ -> newWindow),
     (([Control],        "w"),           \_ -> mainQuit)
     ]
 
@@ -109,12 +109,12 @@ bookmarksKeys :: KeysList
 bookmarksKeys = [
     (([Control],        "d"),           Bookmarks.addWithTags),
     (([Control, Shift], "D"),           Bookmarks.addAllWithTags),
-    (([Alt],            "d"),           Bookmarks.deleteWithTag),
+    (([Alt],            "d"),           \_ -> Bookmarks.deleteWithTag),
     (([Control],        "l"),           Bookmarks.load),
-    (([Control, Shift], "L"),           Bookmarks.loadWithTag),
+    (([Control, Shift], "L"),           \_ -> Bookmarks.loadWithTag),
     (([Control],        "q"),           Queue.append),
     (([Alt],            "q"),           \b -> do
-        uri <- Queue.popFront b
+        uri <- Queue.popFront
         loadURI uri b)
     ]
 

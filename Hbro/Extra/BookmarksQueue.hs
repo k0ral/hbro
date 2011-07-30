@@ -28,7 +28,7 @@ push :: Browser -> IO ()
 push browser = do
     uri         <- webViewGetUri (mWebView $ mGUI browser)
     configHome  <- getEnv "XDG_CONFIG_HOME"
-    file        <- catch (T.readFile $ configHome ++ "/hbro/queue") (\e -> return T.empty)
+    file        <- catch (T.readFile $ configHome ++ "/hbro/queue") (\_error -> return T.empty)
 
     case uri of 
         Just u ->
@@ -44,10 +44,10 @@ push browser = do
         _ -> return ()
 
 -- | Return the first URI from the queue, while removing it.
-popFront :: Browser -> IO String
-popFront browser = do
+popFront :: IO String
+popFront = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
-    file        <- catch (T.readFile $ configHome ++ "/hbro/queue") (\e -> return T.empty)
+    file        <- catch (T.readFile $ configHome ++ "/hbro/queue") (\_error -> return T.empty)
 
     if file == T.empty
         then return ""
@@ -61,10 +61,10 @@ popFront browser = do
             return $ T.unpack (head fileLines)
 
 -- | Return the last URI from the queue, while removing it.
-popBack :: Browser -> IO String
-popBack browser = do
+popBack :: IO String
+popBack = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
-    file        <- catch (T.readFile $ configHome ++ "/hbro/queue") (\e -> return T.empty)
+    file        <- catch (T.readFile $ configHome ++ "/hbro/queue") (\_error -> return T.empty)
 
     if file == T.empty
         then return ""

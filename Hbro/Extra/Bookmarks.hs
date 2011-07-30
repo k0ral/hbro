@@ -65,9 +65,9 @@ addAllWithTags browser =
                 connect reqSocket socketURI
 
                 send reqSocket (B.pack "getUri") []
-                uri <- receive reqSocket []
+                uri' <- receive reqSocket []
 
-                add (B.unpack uri) (words tags)
+                add (B.unpack uri') (words tags)
             )
 
         _ <- mapM bookmarkPID pidsList
@@ -89,7 +89,7 @@ load browser = do
         std_out = CreatePipe }
     _ <- T.hPutStr input file'
 
-    entry <- catch (hGetLine output) (\e -> return "ERROR" )
+    entry <- catch (hGetLine output) (\_error -> return "ERROR" )
     case reverse . words $ entry of
         ["ERROR"]   -> return ()
         uri:_       -> loadURI uri browser
@@ -104,8 +104,8 @@ reformat line =
     tags'    = sort $ map (\tag -> T.snoc (T.cons '[' tag) ']') tags
 
 -- | 
-loadWithTag :: Browser -> IO ()        
-loadWithTag browser = do
+loadWithTag :: IO ()        
+loadWithTag = do
     -- Read bookmarks file
     configHome  <- getEnv "XDG_CONFIG_HOME"
     file        <- T.readFile $ configHome ++ "/hbro/bookmarks"
@@ -119,7 +119,7 @@ loadWithTag browser = do
         std_out = CreatePipe }
     _ <- T.hPutStr input list
 
-    tag <- catch (hGetLine output) (\e -> return "ERROR" )
+    tag <- catch (hGetLine output) (\_error -> return "ERROR" )
     case tag of
         "ERROR" -> return ()
         ""      -> return ()
@@ -132,14 +132,14 @@ loadWithTag browser = do
 
 -- 
 tagFilter :: T.Text -> T.Text -> Bool
-tagFilter tag line = let uri:tags = T.words line in case (intersect [tag] tags) of
-    [t] -> True
-    _   -> False
+tagFilter tag line = let _uri:tags = T.words line in case (intersect [tag] tags) of
+    [_tag] -> True
+    _      -> False
 
 
 -- |
-deleteWithTag :: Browser -> IO ()
-deleteWithTag browser = do
+deleteWithTag :: IO ()
+deleteWithTag = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
     file        <- T.readFile $ configHome ++ "/hbro/bookmarks"
 
@@ -150,11 +150,11 @@ deleteWithTag browser = do
         std_out = CreatePipe }
     _ <- T.hPutStr input tagsList
 
-    tag <- catch (hGetLine output) (\e -> return "ERROR" )
+    tag <- catch (hGetLine output) (\_error -> return "ERROR" )
     case tag of
         "ERROR" -> return ()
         ""      -> return ()
-        t       -> do
+        _       -> do
             T.writeFile (configHome ++ "/hbro/bookmarks.old") file
             T.writeFile (configHome ++ "/hbro/bookmarks")     file'
             return ()

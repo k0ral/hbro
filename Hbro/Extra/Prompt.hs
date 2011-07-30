@@ -15,14 +15,14 @@ promptFind :: Bool -> Bool -> Bool -> Browser -> IO ()
 promptFind caseSensitive forward wrap browser =
     prompt "Search" "" True browser (\browser' -> do
         keyWord <- entryGetText (mPromptEntry $ mGUI browser')
-        found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap
+        _found  <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap
         return ())
 
 -- | Switch to next found key word.
 findNext :: Bool -> Bool -> Bool -> Browser -> IO ()
 findNext caseSensitive forward wrap browser = do
     keyWord <- entryGetText (mPromptEntry $ mGUI browser)
-    found   <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap 
+    _found  <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap 
     return ()
 
 -- | Prompt for URI to open in current window.

@@ -43,7 +43,7 @@ loadFromHistory browser = do
   where
     reformat line =
       let
-        date:time:uri:title = words line 
+        _date:_time:uri:title = words line 
       in 
         unwords $ [uri] ++ title
     

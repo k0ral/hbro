@@ -17,26 +17,20 @@ import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebView
 
 import System.Glib.Signals
-
---import System.Process
 -- }}}
 
 
 -- | Display scroll position in status bar.
--- Needs a Label intitled "scroll" from the builder.
+-- Needs a Label entitled "scroll" from the builder.
 statusBarScrollPosition :: Browser -> IO ()
-statusBarScrollPosition browser = 
-  let
-    builder         = mBuilder      (mGUI browser)
-    scrollWindow    = mScrollWindow (mGUI browser)
-  in do
-    scrollLabel     <- builderGetObject builder castToLabel "scroll"
+statusBarScrollPosition browser = do
+    scrollLabel <- builderGetObject builder castToLabel "scroll"
+    adjustment  <- scrolledWindowGetVAdjustment scrollWindow
 
-    adjustment <- scrolledWindowGetVAdjustment scrollWindow
     _ <- onValueChanged adjustment $ do
-        current <- adjustmentGetValue adjustment
-        lower   <- adjustmentGetLower adjustment
-        upper   <- adjustmentGetUpper adjustment
+        current <- adjustmentGetValue    adjustment
+        lower   <- adjustmentGetLower    adjustment
+        upper   <- adjustmentGetUpper    adjustment
         page    <- adjustmentGetPageSize adjustment
         
         case upper-lower-page of
@@ -44,7 +38,10 @@ statusBarScrollPosition browser =
             x -> labelSetMarkup scrollLabel $ show (round $ current/x*100) ++ "%"
 
     labelSetMarkup scrollLabel "0%"
-    --return ()
+
+  where
+    builder      = mBuilder      (mGUI browser)
+    scrollWindow = mScrollWindow (mGUI browser)
 
 
 -- | Display pressed keys in status bar.
@@ -97,25 +94,32 @@ statusBarLoadProgress browser =
 
 
 -- | Display current URI, or the destination of a hovered link, in the status bar.
--- Needs a Label intitled "uri" from the builder.
+-- Needs a Label named "uri" from the builder.
 statusBarURI :: Browser -> IO ()
-statusBarURI browser = 
-  let
-    builder         = mBuilder      (mGUI browser)
-    webView         = mWebView      (mGUI browser)
-  in do
+statusBarURI browser = do
     uriLabel <- builderGetObject builder castToLabel "uri"
     
     _ <- on webView loadCommitted $ \_ -> do
         getUri <- (webViewGetUri webView)
-        case getUri of 
-            Just uri -> labelSetMarkup uriLabel $ "<span weight=\"bold\" foreground=\"white\">" ++ escapeMarkup uri ++ "</span>"
-            _        -> labelSetMarkup uriLabel "<span weight=\"bold\" foreground=\"red\">ERROR</span>"
+        let (color, uri) = case getUri of 
+                             Just (u@('h':'t':'t':'p':'s':_)) -> ("orange", u)
+                             Just u -> ("gray", u) 
+                             _ -> ("red", "ERROR")
+            
+        labelSetMarkup uriLabel $ "<span weight=\"bold\" foreground=\"" ++ color ++ "\">" ++ escapeMarkup uri ++ "</span>"
 
-    _ <- on webView hoveringOverLink $ \title hoveredUri -> do
+    _ <- on webView hoveringOverLink $ \_title hoveredUri -> do
         getUri <- (webViewGetUri webView)
-        case (hoveredUri, getUri) of
-            (Just u, _) -> labelSetMarkup uriLabel $ "<span foreground=\"#5555ff\">" ++ escapeMarkup u ++ "</span>"
-            (_, Just u) -> labelSetMarkup uriLabel $ "<span foreground=\"white\" weight=\"bold\">" ++ escapeMarkup u ++ "</span>"
-            _           -> putStrLn "FIXME"
+        let (color, uri) = case (hoveredUri, getUri) of
+                             (Just u, _) -> ("#5555ff", u)
+                             (_, Just (u@('h':'t':'t':'p':'s':_))) -> ("orange", u)
+                             (_, Just u) -> ("white", u)
+                             _  -> ("red", "ERROR")
+        
+        labelSetMarkup uriLabel $ "<span weight=\"bold\" foreground=\"" ++ color ++ "\">" ++ escapeMarkup uri ++ "</span>"
     return ()
+
+  where
+    builder = mBuilder (mGUI browser)
+    webView = mWebView (mGUI browser)
+    

@@ -126,31 +126,33 @@ realMain config = do
         ZMQ.withSocket context ZMQ.Req $ \reqSocket -> do
             ZMQ.connect reqSocket socketURI
             ZMQ.send reqSocket (pack "Quit") []
-            reply <- ZMQ.receive reqSocket []
+            _ <- ZMQ.receive reqSocket []
             return ()
 -- }}}
 
 
--- {{{ Browse
+-- {{{ Browsing functions
 -- | Load homepage (set from configuration file).
 goHome :: Browser -> IO ()
 goHome browser = loadURI (mHomePage $ mConfiguration browser) browser
 
--- | Wrapper around webViewGoBack function
+-- | Wrapper around webViewGoBack function, provided for convenience.
 goBack :: Browser -> IO ()
 goBack browser = webViewGoBack (mWebView $ mGUI browser)
 
--- | Wrapper around webViewGoForward function
+-- | Wrapper around webViewGoForward function, provided for convenience.
 goForward :: Browser -> IO ()
 goForward browser = webViewGoForward (mWebView $ mGUI browser)
 
--- | Wrapper around webViewStopLoading function
+-- | Wrapper around webViewStopLoading function, provided for convenience.
 stopLoading :: Browser -> IO ()
 stopLoading browser = webViewStopLoading (mWebView $ mGUI browser)
 
--- | Wrapper around webViewReload{BypassCache}
--- If boolean argument is False, it bypasses the cache
-reload :: Bool -> Browser -> IO()
+-- | Wrapper around webViewReload{BypassCache}.
+reload 
+    :: Bool     -- ^ If False, cache is bypassed.
+    -> Browser
+    -> IO ()
 reload True browser = webViewReload             (mWebView $ mGUI browser)
 reload _    browser = webViewReloadBypassCache  (mWebView $ mGUI browser)
 
@@ -166,18 +168,18 @@ loadURI' :: URL -> Browser -> IO ()
 loadURI' url@URL {url_type = Absolute _} browser =
     webViewLoadUri (mWebView $ mGUI browser) (exportURL url)
 loadURI' url@URL {url_type = HostRelative} browser = 
-    webViewLoadUri (mWebView $ mGUI browser) ("file://" ++ exportURL url) >> putStrLn (show url)
+    webViewLoadUri (mWebView $ mGUI browser) ("file://" ++ exportURL url)
 loadURI' url@URL {url_type = _} browser = 
-    webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL url) >> print url
+    webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL url)
 -- }}}
 
 
 -- {{{ Zoom
--- | Wrapper around webViewZoomIn function
+-- | Wrapper around webViewZoomIn function, provided for convenience.
 zoomIn :: Browser -> IO ()
-zoomIn  browser = webViewZoomIn (mWebView $ mGUI browser)
+zoomIn browser = webViewZoomIn (mWebView $ mGUI browser)
 
--- | Wrapper around webViewZoomOut function
+-- | Wrapper around webViewZoomOut function, provided for convenience.
 zoomOut :: Browser -> IO ()
 zoomOut browser = webViewZoomOut (mWebView $ mGUI browser)
 -- }}}
@@ -227,8 +229,8 @@ horizontalEnd browser = do
 
 
 -- | Spawn a new instance of the browser.
-newWindow :: Browser -> IO ()
-newWindow browser = runExternalCommand "hbro"
+newWindow :: IO ()
+newWindow = runExternalCommand "hbro"
 
 -- | Execute a javascript file on current webpage.
 executeJSFile :: String -> Browser -> IO ()
