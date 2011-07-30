@@ -49,41 +49,41 @@ getOptions = cmdArgs $ cliOptions
 
 -- {{{ Entry point
 -- | Entry point for the application.
--- Parse arguments and step down in favour of initBrowser.
--- Print configuration error, if any.
+-- Parse commandline arguments, print configuration error if any,
+-- create browser and load homepage.
 realMain :: Configuration -> IO ()
-realMain configuration = do
+realMain config = do
+    -- Parse commandline arguments
     options <- getOptions
 
-    case (mError configuration) of
+    -- Print configuration error, if any
+    case (mError config) of
         Just e -> putStrLn e
         _      -> return ()
 
-    initBrowser configuration options
--- }}}
- 
-
--- {{{ Main function
--- | Application's main function.
--- Create browser and load homepage.
-initBrowser :: Configuration -> CliOptions -> IO ()
-initBrowser configuration options = do
-    -- Initialize browser
+    -- Initialize GUI
     _   <- initGUI
-    gui <- loadGUI (mUIFile configuration)
-    let browser = Browser options configuration gui
+    gui <- loadGUI (mUIFile config)
+    let browser = Browser options config gui
     let webView = mWebView gui
+    let window  = mWindow gui
+
+    _ <- onDestroy window mainQuit
+    widgetShowAll window
+    showPrompt False browser 
 
     -- Load additionnal settings from configuration
-    settings <- mWebSettings configuration
+    settings <- mWebSettings config
     webViewSetWebSettings webView settings
-    (mSetup configuration) browser
+    (mSetup config) browser
 
     -- Load homepage
-    goHome browser
+    case (mURI options) of
+        Just uri -> loadURI uri browser
+        _        -> goHome browser
 
     -- Load key bindings
-    let keyBindings = importKeyBindings (mKeys configuration)
+    let keyBindings = importKeyBindings (mKeys config)
 
     -- On new window request
     _ <- on webView createWebView $ \frame -> do
@@ -94,6 +94,7 @@ initBrowser configuration options = do
             Nothing  -> return ()
         return webView
 
+    -- Manage keys
     _ <- after webView keyPressEvent $ do
         value      <- eventKeyVal
         modifiers  <- eventModifier
@@ -110,22 +111,18 @@ initBrowser configuration options = do
 
         return False
 
-    -- Connect and show.
-    _ <- onDestroy (mWindow gui) mainQuit
-    widgetShowAll (mWindow gui)
-    showPrompt False browser 
-
 
     -- Initialize IPC socket
     pid <- getProcessID
-    let socketURI = "ipc://" ++ (mSocketDir configuration) ++ "/hbro." ++ show pid
+    let socketURI = "ipc://" ++ (mSocketDir config) ++ "/hbro." ++ show pid
     putStrLn $ "Listening socket " ++ socketURI
 
     ZMQ.withContext 1 $ \context -> do
         _ <- forkIO $ createRepSocket context socketURI browser
     
-        mainGUI
+        mainGUI -- Main loop
 
+        -- Make sure response socket is closed at exit
         ZMQ.withSocket context ZMQ.Req $ \reqSocket -> do
             ZMQ.connect reqSocket socketURI
             ZMQ.send reqSocket (pack "Quit") []
@@ -135,11 +132,9 @@ initBrowser configuration options = do
 
 
 -- {{{ Browse
--- | Load homepage (retrieved from commandline options or configuration file)
+-- | Load homepage (set from configuration file).
 goHome :: Browser -> IO ()
-goHome browser = case (mURI $ mOptions browser) of
-    Just uri -> loadURI uri browser
-    _        -> loadURI (mHomePage $ mConfiguration browser) browser
+goHome browser = loadURI (mHomePage $ mConfiguration browser) browser
 
 -- | Wrapper around webViewGoBack function
 goBack :: Browser -> IO ()
