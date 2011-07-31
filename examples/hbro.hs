@@ -15,6 +15,8 @@ import Hbro.Types
 import Hbro.Util
 
 import Graphics.UI.Gtk.Abstract.Widget
+import Graphics.UI.Gtk.Builder
+import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Gdk.GC
@@ -203,10 +205,13 @@ mySetup browser =
             uri  <- downloadGetUri download
             name <- downloadGetSuggestedFilename download
             size <- downloadGetTotalSize download
+            feedbackLabel <- builderGetObject builder castToLabel "feedback"
 
             case (uri, name) of
-                (Just uri', Just name') -> myDownload uri' name' 
-                _ -> return ()
+                (Just uri', Just name') -> do
+                    myDownload uri' name' 
+                    labelSetMarkupTemporary feedbackLabel "<span foreground=\"green\">Download started</span>" 5000
+                _ -> labelSetMarkupTemporary feedbackLabel "<span foreground=\"red\">Unable to download</span>" 5000
             return False
 
         -- Per MIME actions

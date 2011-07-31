@@ -55,7 +55,7 @@
                             <property name="yalign">0</property>
                         </object>
                     </child>
-                    
+
                     <child>
                         <object class="GtkLabel" id="scroll"></object>
                         <packing>
@@ -73,6 +73,16 @@
                             <property name="expand">False</property>
                         </packing>
                     </child>
+
+                    <child>
+                        <object class="GtkLabel" id="feedback"></object>
+                        <packing>
+                            <property name="pack-type">GTK_PACK_END</property>
+                            <property name="fill">False</property>
+                            <property name="expand">False</property>
+                        </packing>
+                    </child>
+                    
                 </object>
 
                 <packing>

@@ -65,3 +65,11 @@ runCommand' command = runCommand command >> return ()
 runExternalCommand :: String -> IO ()
 runExternalCommand command = runCommand' $ "nohup " ++ command ++ " > /dev/null 2>&1"
 -- }}}
+
+-- | Set a temporary markup text to a label that disappears after some delay.
+labelSetMarkupTemporary :: Label -> String -> Int -> IO HandlerId
+labelSetMarkupTemporary label text delay = do
+    labelSetMarkup label text
+    timeoutAdd clear delay
+  where
+    clear = labelSetMarkup label "" >> return False
