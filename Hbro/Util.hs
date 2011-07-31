@@ -62,8 +62,9 @@ runCommand' command = runCommand command >> return ()
 -- | Run external command and won't kill when parent process exit.
 -- nohup for ignore all hup signal. 
 -- `> /dev/null 2>&1` redirect all stdout (1) and stderr (2) to `/dev/null`
-runExternalCommand :: String -> IO ()
-runExternalCommand command = runCommand' $ "nohup " ++ command ++ " > /dev/null 2>&1"
+spawn :: CreateProcess -> IO ()
+--spawn command = runCommand' $ "nohup " ++ command ++ " > /dev/null 2>&1"
+spawn command = createProcess command { std_in = CreatePipe,  std_out = CreatePipe, std_err = CreatePipe, close_fds = True } >> return ()
 -- }}}
 
 -- | Set a temporary markup text to a label that disappears after some delay.

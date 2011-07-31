@@ -124,7 +124,7 @@ loadWithTag = do
         "ERROR" -> return ()
         ""      -> return ()
         t       -> do
-            _ <- mapM (\uri -> runExternalCommand ("hbro -u \"" ++ (T.unpack uri) ++ "\"")) uris
+            _ <- mapM (\uri -> spawn (proc "hbro" ["-u", (T.unpack uri)])) uris
             return ()
           where
             file' = filter (tagFilter $ T.pack t) (T.lines file)

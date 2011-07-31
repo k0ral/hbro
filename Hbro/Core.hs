@@ -26,6 +26,7 @@ import Network.URL
 
 import System.Console.CmdArgs
 import System.Glib.Signals
+import System.Process
 import System.Posix.Process
 import qualified System.ZMQ as ZMQ
 -- }}}
@@ -210,7 +211,7 @@ verticalEnd browser = do
 
     adjustmentSetValue adjustment upper
 
--- |
+-- | Scroll to the left edge of web page. Provided for convenience.
 horizontalHome :: Browser -> IO ()
 horizontalHome browser = do
     adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
@@ -218,7 +219,7 @@ horizontalHome browser = do
 
     adjustmentSetValue adjustment lower
 
--- |
+-- | Scroll to the right edge of web page. Provided for convenience.
 horizontalEnd :: Browser -> IO ()
 horizontalEnd browser = do
     adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
@@ -229,8 +230,8 @@ horizontalEnd browser = do
 
 
 -- | Spawn a new instance of the browser.
-newWindow :: IO ()
-newWindow = runExternalCommand "hbro"
+newInstance :: IO ()
+newInstance = spawn (proc "hbro" [])
 
 -- | Execute a javascript file on current webpage.
 executeJSFile :: String -> Browser -> IO ()
