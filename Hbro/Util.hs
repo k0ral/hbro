@@ -6,7 +6,12 @@ import Hbro.Types
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import Graphics.UI.Gtk
+import Graphics.UI.Gtk.Display.Label
+import Graphics.UI.Gtk.Gdk.EventM
+import Graphics.UI.Gtk.Gdk.Keys
+import Graphics.UI.Gtk.General.General
+
+import System.Console.CmdArgs (whenLoud, whenNormal)
 import System.Process
 -- }}}
 

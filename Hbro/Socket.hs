@@ -9,13 +9,15 @@ import qualified Data.Map as Map
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.WebKit.WebView
 
+import System.Console.CmdArgs (whenNormal, whenLoud)
 import System.ZMQ 
 -- }}}
     
 -- | Create a response socket to listen for commands.
 -- Loops on listenToSocket until "Quit" command is received.
 createRepSocket :: Context -> String -> Browser -> IO ()
-createRepSocket context socketURI browser =
+createRepSocket context socketURI browser = do
+    whenNormal $ putStrLn ("Listening socket at " ++ socketURI)
     withSocket context Rep $ \repSocket -> do
         bind repSocket socketURI
         listenToSocket repSocket commandsList browser
@@ -27,11 +29,17 @@ createRepSocket context socketURI browser =
 -- Parse received commands and feed the corresponding callback, if any.
 listenToSocket :: Socket Rep -> CommandsMap -> Browser -> IO ()
 listenToSocket repSocket commands browser = do
-    message <- receive repSocket []
-    case words (unpack message) of
-        []       -> send repSocket (pack "ERROR Unknown command") []
+    message      <- receive repSocket []
+    let message' =  unpack message
+
+    case words message' of
+    -- Empty command
+        [] -> send repSocket (pack "ERROR Unknown command") []
+    -- Exit command
         ["Quit"] -> send repSocket (pack "OK") []
+    -- Valid command
         command:arguments -> do
+            whenLoud $ putStrLn ("Receiving command: " ++ message')
             case Map.lookup command commands of
                 Just callback -> callback arguments repSocket browser
                 _             -> send repSocket (pack "ERROR Unknown command") []
@@ -96,6 +104,4 @@ defaultCommandsList = [
         postGUIAsync $ webViewZoomOut (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] )
     ]
-
-
 

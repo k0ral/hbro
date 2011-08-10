@@ -54,15 +54,15 @@ getOptions = cmdArgs $ cliOptions
 -- create browser and load homepage.
 realMain :: Configuration -> IO ()
 realMain config = do
-    -- Parse commandline arguments
+-- Parse commandline arguments
     options <- getOptions
 
-    -- Print configuration error, if any
+-- Print configuration error, if any
     case (mError config) of
         Just e -> putStrLn e
         _      -> return ()
 
-    -- Initialize GUI
+-- Initialize GUI
     _   <- initGUI
     gui <- loadGUI (mUIFile config)
     let browser = Browser options config gui
@@ -73,29 +73,25 @@ realMain config = do
     widgetShowAll window
     showPrompt False browser 
 
-    -- Load additionnal settings from configuration
+-- Load additionnal settings from configuration
     settings <- mWebSettings config
     webViewSetWebSettings webView settings
     (mSetup config) browser
 
-    -- Load homepage
-    case (mURI options) of
-        Just uri -> loadURI uri browser
-        _        -> goHome browser
-
-    -- Load key bindings
+-- Load key bindings
     let keyBindings = importKeyBindings (mKeys config)
 
-    -- On new window request
+-- On new window request
     _ <- on webView createWebView $ \frame -> do
         newUri <- webFrameGetUri frame
-        putStrLn "NEW WINDOW"
         case newUri of
-            Just uri -> webViewLoadUri webView uri
+            Just uri -> do
+                whenLoud $ putStrLn ("Requesting new window: " ++ uri ++ "...")
+                webViewLoadUri webView uri
             Nothing  -> return ()
         return webView
 
-    -- Manage keys
+-- Manage keys
     _ <- after webView keyPressEvent $ do
         value      <- eventKeyVal
         modifiers  <- eventModifier
@@ -106,36 +102,53 @@ realMain config = do
             Just "<Escape>" -> liftIO $ showPrompt False browser
             Just string -> do 
                 case Map.lookup (Set.fromList modifiers, string) keyBindings of
-                    Just callback -> liftIO $ callback browser
-                    _             -> liftIO $ putStrLn string 
+                    Just callback -> do
+                        liftIO $ callback browser
+                        liftIO $ whenLoud (putStrLn $ "Key pressed: " ++ show modifiers ++ string ++ " (mapped)")
+                    _ -> liftIO $ whenLoud (putStrLn $ "Key pressed: " ++ show modifiers ++ string ++ " (unmapped)")
             _ -> return ()
 
         return False
 
+-- Load homepage
+    case (mURI options) of
+        Just uri -> do 
+            webViewLoadUri webView uri
+            whenLoud $ putStrLn ("Loading " ++ uri ++ "...")
+        _        -> goHome browser
 
-    -- Initialize IPC socket
+
+-- Initialize IPC socket
     pid <- getProcessID
     let socketURI = "ipc://" ++ (mSocketDir config) ++ "/hbro." ++ show pid
-    putStrLn $ "Listening socket " ++ socketURI
+
+    --timeoutAdd (putStrLn "OK" >> return True) 2000
 
     ZMQ.withContext 1 $ \context -> do
         _ <- forkIO $ createRepSocket context socketURI browser
     
         mainGUI -- Main loop
 
-        -- Make sure response socket is closed at exit
+    -- Make sure response socket is closed at exit
+        whenLoud $ putStrLn "Closing socket..."
         ZMQ.withSocket context ZMQ.Req $ \reqSocket -> do
             ZMQ.connect reqSocket socketURI
             ZMQ.send reqSocket (pack "Quit") []
             _ <- ZMQ.receive reqSocket []
             return ()
+
+        whenNormal $ putStrLn "Exiting..."
 -- }}}
 
 
 -- {{{ Browsing functions
 -- | Load homepage (set from configuration file).
 goHome :: Browser -> IO ()
-goHome browser = loadURI (mHomePage $ mConfiguration browser) browser
+goHome browser = do
+    whenLoud $ putStrLn ("Loading homepage: " ++ uri)
+    loadURI uri browser
+  where
+    uri = mHomePage $ mConfiguration browser
 
 -- | Wrapper around webViewGoBack function, provided for convenience.
 goBack :: Browser -> IO ()
@@ -161,8 +174,10 @@ reload _    browser = webViewReloadBypassCache  (mWebView $ mGUI browser)
 loadURI :: String -> Browser -> IO ()
 loadURI url browser =
     case importURL url of
-        Just url' -> loadURI' url' browser
-        _         -> return ()
+        Just url' -> do
+            whenLoud $ putStrLn ("Loading URI: " ++ url)
+            loadURI' url' browser
+        _ -> return ()
 
 -- | Backend function for loadURI.
 loadURI' :: URL -> Browser -> IO ()
@@ -236,6 +251,7 @@ newInstance = spawn (proc "hbro" [])
 -- | Execute a javascript file on current webpage.
 executeJSFile :: String -> Browser -> IO ()
 executeJSFile filePath browser = do
+    whenNormal $ putStrLn ("Executing Javascript file: " ++ filePath)
     script <- readFile filePath
     let script' = unwords . map (\line -> line ++ "\n") . lines $ script
 

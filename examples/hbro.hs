@@ -246,7 +246,7 @@ mySetup browser =
                 Just uri -> 
                     case mouseButton of
                         1 -> return False -- Left button 
-                        2 -> spawn (proc "hbro" ["-u", uri]) >> return True -- Middle button
+                        2 -> spawn (proc "hbro" ["-u", uri]) >> putStrLn uri >> return True -- Middle button
                         3 -> return False -- Right button
                         _ -> return False -- No mouse button pressed
                 _        -> return False
@@ -256,7 +256,7 @@ mySetup browser =
         _ <- on webView newWindowPolicyDecisionRequested $ \_ request action policyDecision -> do
             getUri <- networkRequestGetUri request
             case getUri of
-                Just uri -> spawn $ proc "hbro" ["-u", uri]
+                Just uri -> (spawn $ proc "hbro" ["-u", uri]) >> putStrLn uri
                 _        -> putStrLn "ERROR: wrong URI given, unable to open window."
 
             return True

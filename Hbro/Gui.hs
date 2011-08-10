@@ -6,7 +6,6 @@ import Hbro.Types
 
 import Control.Monad.Trans(liftIO)
 
---import Graphics.UI.Gtk.Abstract.Misc
 import Graphics.UI.Gtk.Abstract.Container
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Builder
@@ -21,6 +20,7 @@ import Graphics.UI.Gtk.WebKit.WebInspector
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
 
+import System.Console.CmdArgs (whenNormal, whenLoud)
 import System.Glib.Attributes
 import System.Glib.Signals
 -- }}}
@@ -29,20 +29,22 @@ import System.Glib.Signals
 -- | Load GUI from XML file
 loadGUI :: String -> IO GUI
 loadGUI xmlPath = do
+    whenNormal $ putStrLn ("Loading GUI from " ++ xmlPath ++ "...")
+
+-- 
     builder <- builderNew
     builderAddFromFile builder xmlPath
 
-    -- Init main web view
+-- Init main web view
     webView <- webViewNew
     set webView [ widgetCanDefault := True ]
     _ <- on webView closeWebView $ do
         mainQuit
         return True
 
-    -- Load main window
+-- Load main window
     window       <- builderGetObject builder castToWindow            "mainWindow"
     windowSetDefault window (Just webView)
-    set window [ windowTitle := "hbro" ]
 
     scrollWindow <- builderGetObject builder castToScrolledWindow    "webViewParent"
     containerAdd scrollWindow webView 
@@ -54,10 +56,11 @@ loadGUI xmlPath = do
     promptEntry  <- builderGetObject builder castToEntry             "promptEntry"
     statusBox    <- builderGetObject builder castToHBox              "statusBox"
 
-    -- Create web inspector's window
+-- Create web inspector's window
     inspector       <- webViewGetInspector webView
     inspectorWindow <- initWebInspector inspector
-
+    
+    whenLoud $ putStrLn "Done."
     return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry statusBox builder
 
 
@@ -131,16 +134,16 @@ prompt label defaultText incremental browser callback = let
         promptEntry = (mPromptEntry $ mGUI browser)
         webView     = (mWebView     $ mGUI browser)
     in do
-        -- Fill prompt
+    -- Fill prompt
         labelSetText promptLabel label
         entrySetText promptEntry defaultText
         
-        -- Focus on prompt
+    -- Focus on prompt
         showPrompt True browser
         widgetGrabFocus promptEntry
         editableSetPosition promptEntry (-1)
 
-        -- Register callback
+    -- Register callback
         case incremental of
             True -> do 
                 id1 <- on promptEntry editableChanged $  
