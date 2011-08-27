@@ -63,7 +63,7 @@ generalKeys = [
 --  ((modifiers,        key),           callback)
     -- Browse
     (([Control],        "<Left>"),      goBack),
-    (([Shift],          "<Right>"),     goForward),
+    (([Control],       "<Right>"),     goForward),
     (([Control],        "s"),           stopLoading),
     (([],               "<F5>"),        reload True),
     (([Shift],          "<F5>"),        reload False),
