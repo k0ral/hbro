@@ -19,8 +19,9 @@ import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
-import Graphics.UI.Gtk.WebKit.WebView
+import Graphics.UI.Gtk.WebKit.WebDataSource
 import Graphics.UI.Gtk.WebKit.WebFrame
+import Graphics.UI.Gtk.WebKit.WebView
 
 import Network.URL
 
@@ -256,3 +257,18 @@ executeJSFile filePath browser = do
     let script' = unwords . map (\line -> line ++ "\n") . lines $ script
 
     webViewExecuteScript (mWebView $ mGUI browser) script'
+
+
+-- | Save current web page to a file,
+-- along with all its resources in a separated directory.
+-- Doesn't work for now, because web_resource_get_data's binding is missing...
+savePage :: String -> Browser -> IO ()
+savePage path browser = do
+    frame        <- webViewGetMainFrame webView
+    dataSource   <- webFrameGetDataSource frame
+    mainResource <- webDataSourceGetMainResource dataSource
+    subResources <- webDataSourceGetSubresources dataSource
+    return ()
+    
+  where
+    webView  = mWebView $ mGUI browser
