@@ -63,7 +63,7 @@ generalKeys = [
 --  ((modifiers,        key),           callback)
     -- Browse
     (([Control],        "<Left>"),      goBack),
-    (([Control],       "<Right>"),     goForward),
+    (([Control],        "<Right>"),     goForward),
     (([Control],        "s"),           stopLoading),
     (([],               "<F5>"),        reload True),
     (([Shift],          "<F5>"),        reload False),
@@ -99,6 +99,7 @@ generalKeys = [
     (([Control],        "y"),           copyUri),
     (([Control, Shift], "Y"),           copyTitle),
     (([Control],        "p"),           loadURIFromClipboard),
+    (([Control, Shift], "P"),           newInstanceFromClipboard),
 
     -- Others
     (([Control],        "i"),           showWebInspector),
