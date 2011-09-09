@@ -28,7 +28,7 @@ loadFromHistory browser = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
     file        <- readFile $ configHome ++ "/hbro/history"
 
-    let file' = unlines . sort . nub $ map reformat (lines file)
+    let file' = unlines . nub $ map reformat (sort . lines $ file)
 
     (code, result, e) <- readProcessWithExitCode "dmenu" ["-l", "10"] file'
     return ()
