@@ -1,6 +1,6 @@
 Name:                hbro
-Version:             0.6.7
-Synopsis:            A suckless minimal KISSy browser
+Version:             0.6.8
+Synopsis:            A minimal KISS compliant browser
 -- Description:         
 Homepage:            http://projects.haskell.org/hbro/
 Category:            Browser,Web
@@ -27,6 +27,7 @@ Library
         bytestring,
         cmdargs,
         containers,
+        directory,
         dyre,
         glib,
         gtk,
@@ -49,6 +50,7 @@ Library
         Hbro.Extra.History,
         Hbro.Extra.Misc,
         Hbro.Extra.Prompt,
+        Hbro.Extra.Session,
         Hbro.Extra.StatusBar,
         Hbro.Gui,
         Hbro.Socket,

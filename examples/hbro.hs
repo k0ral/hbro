@@ -9,6 +9,7 @@ import Hbro.Extra.Clipboard
 import Hbro.Extra.History
 import Hbro.Extra.Misc
 import Hbro.Extra.Prompt
+import Hbro.Extra.Session
 import Hbro.Extra.StatusBar
 import Hbro.Gui
 import Hbro.Types
@@ -56,12 +57,12 @@ main = do
 -- {{{ Keys
 -- Note that this example is suited for an azerty keyboard.
 myKeys :: KeysList
-myKeys = generalKeys ++ bookmarksKeys ++ historyKeys
+myKeys = generalKeys ++ bookmarksKeys ++ historyKeys ++ sessionKeys
 
 generalKeys :: KeysList
 generalKeys = [
 --  ((modifiers,        key),           callback)
-    -- Browse
+-- Browse
     (([Control],        "<Left>"),      goBack),
     (([Control],        "<Right>"),     goForward),
     (([Control],        "s"),           stopLoading),
@@ -76,7 +77,7 @@ generalKeys = [
     (([Alt],            "<Home>"),      goHome),
     (([Control],        "g"),           promptGoogle),
 
-    -- Display
+-- Display
     (([Control, Shift], "+"),           zoomIn),
     (([Control],        "-"),           zoomOut),
     (([],               "<F11>"),       fullscreen),
@@ -84,24 +85,24 @@ generalKeys = [
     (([Control],        "b"),           toggleStatusBar),
     (([Control],        "u"),           toggleSourceMode),
 
-    -- Prompt
+-- Prompt
     (([Control],        "o"),           promptURL False), 
     (([Control, Shift], "O"),           promptURL True),
 
-    -- Search
+-- Search
     (([Shift],          "/"),           promptFind False True True),
     (([Control],        "f"),           promptFind False True True),
     (([Shift],          "?"),           promptFind False False True),
     (([Control],        "n"),           findNext False True True),
     (([Control, Shift], "N"),           findNext False False True),
 
-    -- Copy/paste
+-- Copy/paste
     (([Control],        "y"),           copyUri),
     (([Control, Shift], "Y"),           copyTitle),
     (([Control],        "p"),           loadURIFromClipboard),
     (([Control, Shift], "P"),           newInstanceFromClipboard),
 
-    -- Others
+-- Others
     (([Control],        "i"),           showWebInspector),
     (([Alt],            "p"),           printPage),
     (([Control],        "t"),           \_ -> newInstance),
@@ -125,8 +126,12 @@ historyKeys :: KeysList
 historyKeys = [
     (([Control],        "h"),           loadFromHistory)
     ]
--- }}}
 
+sessionKeys :: KeysList
+sessionKeys = [
+    (([Alt],            "l"),           loadFromSession)
+    ]
+-- }}}
 
 -- {{{ Web settings
 -- Commented lines correspond to default values
@@ -178,7 +183,6 @@ myWebSettings = do
     return settings
 -- }}}
 
-
 -- {{{ Setup
 mySetup :: Browser -> IO ()
 mySetup browser = 
@@ -188,20 +192,23 @@ mySetup browser =
         scrollWindow    = mScrollWindow (mGUI browser)
         window          = mWindow       (mGUI browser)
     in do
-        -- Default background (for status bar)
+    -- Default background (basically for status bar)
         widgetModifyBg window StateNormal (Color 0 0 10000)
         
-        -- Status bar
+    -- Status bar
         statusBarScrollPosition browser
         statusBarPressedKeys    browser
         statusBarLoadProgress   browser
         statusBarURI            browser
 
+    -- Session manager
+        setupSession browser
+
         _ <- on webView titleChanged $ \_ title ->
             set window [ windowTitle := ("hbro | " ++ title)]
 
 
-        -- Download requests
+    -- Download requests
         _ <- on webView downloadRequested $ \download -> do
             uri  <- downloadGetUri download
             name <- downloadGetSuggestedFilename download
@@ -215,7 +222,7 @@ mySetup browser =
                 _ -> labelSetMarkupTemporary feedbackLabel "<span foreground=\"red\">Unable to download</span>" 5000
             return False
 
-        -- Per MIME actions
+    -- Per MIME actions
         _ <- on webView mimeTypePolicyDecisionRequested $ \_ request mimetype policyDecision -> do
             show <- webViewCanShowMimeType webView mimetype
 
@@ -224,7 +231,7 @@ mySetup browser =
                 _         -> webPolicyDecisionDownload policyDecision >> return True
 
 
-        -- History handler
+    -- History handler
         _ <- on webView loadFinished $ \_ -> do
             uri   <- webViewGetUri   webView
             title <- webViewGetTitle webView
@@ -233,8 +240,8 @@ mySetup browser =
                 _ -> return ()
 
 
-        -- On navigating to a new URI
-        -- Return True to forbid navigation, False to allow
+    -- On navigating to a new URI
+    -- Return True to forbid navigation, False to allow
         _ <- on webView navigationPolicyDecisionRequested $ \_ request action policyDecision -> do
             getUri      <- networkRequestGetUri request
             reason      <- webNavigationActionGetReason action
@@ -253,7 +260,7 @@ mySetup browser =
                 _        -> return False
 
             
-        -- On requesting new window
+    -- On requesting new window
         _ <- on webView newWindowPolicyDecisionRequested $ \_ request action policyDecision -> do
             getUri <- networkRequestGetUri request
             case getUri of
@@ -262,7 +269,7 @@ mySetup browser =
 
             return True
 
-        -- Favicon
+    -- Favicon
         --_ <- on webView iconLoaded $ \uri -> do something
 
         return ()
@@ -272,8 +279,8 @@ mySetup browser =
 myDownload :: String -> String -> IO ()
 myDownload uri name = do
     home <- getEnv "HOME"
-    --runExternalCommand $ "wget \"" ++ uri ++ "\" -O \"" ++ home ++ "/" ++ name ++ "\""
-    --runExternalCommand $ "axel \"" ++ uri ++ "\" -o \"" ++ home ++ "/" ++ name ++ "\""
+    --spawn $ proc "wget [uri, "-O", home ++ "/" ++ name]
+    --spawn $ proc "axel [uri, "-o", home ++ "/" ++ name]
     spawn $ proc "aria2c" [uri, "-d", home ++ "/", "-o", name]
 
 promptGoogle :: Browser -> IO ()

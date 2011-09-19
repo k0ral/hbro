@@ -59,9 +59,7 @@ realMain config = do
     options <- getOptions
 
 -- Print configuration error, if any
-    case (mError config) of
-        Just e -> putStrLn e
-        _      -> return ()
+    maybe (return ()) putStrLn (mError config)
 
 -- Initialize GUI
     _   <- initGUI
