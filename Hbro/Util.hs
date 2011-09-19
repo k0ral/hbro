@@ -11,7 +11,7 @@ import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Gdk.Keys
 import Graphics.UI.Gtk.General.General
 
-import System.Console.CmdArgs (whenLoud, whenNormal)
+--import System.Console.CmdArgs (whenLoud, whenNormal)
 import System.Process
 -- }}}
 

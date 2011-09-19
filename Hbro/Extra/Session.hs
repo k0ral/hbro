@@ -64,7 +64,7 @@ loadFromSession browser = do
         "ERROR" -> return ()
         ""      -> return ()
         u       -> do
-            _ <- spawn (proc "hbro" ["-u", uri])
+            _ <- spawn (proc "hbro" ["-u", u])
             return ()
     
 getSessionURI :: String -> IO T.Text

@@ -261,11 +261,11 @@ executeJSFile filePath browser = do
 -- along with all its resources in a separated directory.
 -- Doesn't work for now, because web_resource_get_data's binding is missing...
 savePage :: String -> Browser -> IO ()
-savePage path browser = do
+savePage _path browser = do
     frame        <- webViewGetMainFrame webView
     dataSource   <- webFrameGetDataSource frame
-    mainResource <- webDataSourceGetMainResource dataSource
-    subResources <- webDataSourceGetSubresources dataSource
+    _mainResource <- webDataSourceGetMainResource dataSource
+    _subResources <- webDataSourceGetSubresources dataSource
     return ()
     
   where
