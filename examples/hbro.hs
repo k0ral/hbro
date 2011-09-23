@@ -2,7 +2,7 @@ module Main where
 
 -- {{{ Imports
 import Hbro.Config
-import Hbro.Core
+import Hbro.Core hiding(goBack, goForward)
 import qualified Hbro.Extra.Bookmarks as Bookmarks
 import qualified Hbro.Extra.BookmarksQueue as Queue
 import Hbro.Extra.Clipboard

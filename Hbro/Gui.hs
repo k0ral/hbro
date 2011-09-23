@@ -31,7 +31,7 @@ loadGUI :: String -> IO GUI
 loadGUI xmlPath = do
     whenNormal $ putStrLn ("Loading GUI from " ++ xmlPath ++ "...")
 
--- 
+-- Load XML
     builder <- builderNew
     builderAddFromFile builder xmlPath
 

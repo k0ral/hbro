@@ -1,25 +1,34 @@
-module Hbro.Config where
+module Hbro.Config (
+    hbro,
+    defaultConfiguration
+) where
 
 -- {{{ Imports
 import Hbro.Core
 import Hbro.Types
 
-import qualified Config.Dyre as Dyre
+import qualified Config.Dyre as D
 
 import Graphics.UI.Gtk.WebKit.WebSettings
+
+import System.IO
 -- }}}
+
+-- | Browser's main function.
+-- To be called in function "main" with a proper configuration.
+hbro :: Configuration -> IO ()
+hbro = D.wrapMain D.defaultParams {
+    D.projectName  = "hbro",
+    D.showError    = showError,
+    D.realMain     = realMain,
+    D.ghcOpts      = ["-threaded"],
+    D.statusOut    = hPutStrLn stderr
+}
 
 
 showError :: Configuration -> String -> Configuration
 showError configuration message = configuration { mError = Just message }
 
-hbro :: Configuration -> IO ()
-hbro = Dyre.wrapMain Dyre.defaultParams {
-    Dyre.projectName  = "hbro",
-    Dyre.showError    = showError,
-    Dyre.realMain     = realMain,
-    Dyre.ghcOpts      = ["-threaded"]
-}
 
 -- | Default configuration.
 -- Does quite nothing.

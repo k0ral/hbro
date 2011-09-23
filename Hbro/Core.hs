@@ -32,8 +32,8 @@ import System.Posix.Process
 import qualified System.ZMQ as ZMQ
 -- }}}
 
-
 -- {{{ Commandline options
+-- | Available commandline options
 cliOptions :: CliOptions
 cliOptions = CliOptions{
     mURI = def &= help "URI to open at start-up" &= explicit &= name "u" &= name "uri" &= typ "URI"
@@ -48,7 +48,6 @@ getOptions = cmdArgs $ cliOptions
     &= program "hbro"
 -- }}}
 
-
 -- {{{ Entry point
 -- | Entry point for the application.
 -- Parse commandline arguments, print configuration error if any,
@@ -59,11 +58,11 @@ realMain config = do
     options <- getOptions
 
 -- Print configuration error, if any
-    maybe (return ()) putStrLn (mError config)
+    maybe (return ()) putStrLn $ mError config
 
 -- Initialize GUI
     _   <- initGUI
-    gui <- loadGUI (mUIFile config)
+    gui <- loadGUI $ mUIFile config
     let browser = Browser options config gui
     let webView = mWebView gui
     let window  = mWindow gui
