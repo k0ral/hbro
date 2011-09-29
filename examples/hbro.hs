@@ -1,7 +1,6 @@
 module Main where
 
 -- {{{ Imports
-import Hbro.Config
 import Hbro.Core hiding(goBack, goForward)
 import qualified Hbro.Extra.Bookmarks as Bookmarks
 import qualified Hbro.Extra.BookmarksQueue as Queue
@@ -65,6 +64,8 @@ generalKeys = [
 -- Browse
     (([Control],        "<Left>"),      goBack),
     (([Control],        "<Right>"),     goForward),
+    (([Alt],            "<Left>"),      goBackList),
+    (([Alt],            "<Right>"),     goForwardList),
     (([Control],        "s"),           stopLoading),
     (([],               "<F5>"),        reload True),
     (([Shift],          "<F5>"),        reload False),

@@ -29,7 +29,7 @@ import System.Glib.Signals
 -- | Load GUI from XML file
 loadGUI :: String -> IO GUI
 loadGUI xmlPath = do
-    whenNormal $ putStrLn ("Loading GUI from " ++ xmlPath ++ "...")
+    whenNormal $ putStr ("Loading GUI from " ++ xmlPath ++ "... ")
 
 -- Load XML
     builder <- builderNew
@@ -60,7 +60,7 @@ loadGUI xmlPath = do
     inspector       <- webViewGetInspector webView
     inspectorWindow <- initWebInspector inspector
     
-    whenLoud $ putStrLn "Done."
+    whenNormal $ putStrLn "Done."
     return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry statusBox builder
 
 
