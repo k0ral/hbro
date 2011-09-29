@@ -7,6 +7,9 @@ import Hbro.Socket
 import Hbro.Types
 import Hbro.Util
 
+import qualified Config.Dyre as D
+import Config.Dyre.Paths
+
 import Control.Concurrent
 import Control.Monad.Trans(liftIO)
 
@@ -21,12 +24,14 @@ import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebDataSource
 import Graphics.UI.Gtk.WebKit.WebFrame
+import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView
 
 import Network.URL
 
 import System.Console.CmdArgs
 import System.Glib.Signals
+import System.IO
 import System.Process
 import System.Posix.Process
 import qualified System.ZMQ as ZMQ
@@ -35,7 +40,7 @@ import qualified System.ZMQ as ZMQ
 -- {{{ Commandline options
 -- | Available commandline options
 cliOptions :: CliOptions
-cliOptions = CliOptions{
+cliOptions = CliOptions {
     mURI = def &= help "URI to open at start-up" &= explicit &= name "u" &= name "uri" &= typ "URI"
 }
 
@@ -48,7 +53,40 @@ getOptions = cmdArgs $ cliOptions
     &= program "hbro"
 -- }}}
 
+-- {{{ Configuration
+dyreParameters :: D.Params Configuration
+dyreParameters = D.defaultParams {
+    D.projectName  = "hbro",
+    D.showError    = showError,
+    D.realMain     = realMain,
+    D.ghcOpts      = ["-threaded"],
+    D.statusOut    = hPutStrLn stderr
+}
+
+showError :: Configuration -> String -> Configuration
+showError configuration message = configuration { mError = Just message }
+
+-- | Default configuration.
+-- Does quite nothing.
+defaultConfiguration :: Configuration
+defaultConfiguration = Configuration {
+    mHomePage    = "https://www.google.com",
+    mSocketDir   = "/tmp/",
+    mUIFile      = "~/.config/hbro/ui.xml",
+    mKeys        = [],
+    mWebSettings = webSettingsNew,
+    mSetup       = \_ -> return () :: IO (),
+    mCommands    = [],
+    mError       = Nothing
+}
+-- }}}
+
 -- {{{ Entry point
+-- | Browser's main function.
+-- To be called in function "main" with a proper configuration.
+hbro :: Configuration -> IO ()
+hbro = D.wrapMain dyreParameters
+
 -- | Entry point for the application.
 -- Parse commandline arguments, print configuration error if any,
 -- create browser and load homepage.
@@ -56,6 +94,16 @@ realMain :: Configuration -> IO ()
 realMain config = do
 -- Parse commandline arguments
     options <- getOptions
+
+-- Print in-use paths
+    (a, b, c, d, e) <- getPaths dyreParameters
+    whenLoud $ do
+        putStrLn ("Current binary:  " ++ a)
+        putStrLn ("Custom binary:   " ++ b)
+        putStrLn ("Config file:     " ++ c)
+        putStrLn ("Cache directory: " ++ d)
+        putStrLn ("Lib directory:   " ++ e)
+        putStrLn ""
 
 -- Print configuration error, if any
     maybe (return ()) putStrLn $ mError config
@@ -137,7 +185,6 @@ realMain config = do
 
         whenNormal $ putStrLn "Exiting..."
 -- }}}
-
 
 -- {{{ Browsing functions
 -- | Load homepage (set from configuration file).
@@ -244,7 +291,9 @@ horizontalEnd browser = do
 
 -- | Spawn a new instance of the browser.
 newInstance :: IO ()
-newInstance = spawn (proc "hbro" [])
+newInstance = do 
+    (binary, _, _, _, _) <- getPaths dyreParameters 
+    spawn $ proc binary []
 
 -- | Execute a javascript file on current webpage.
 executeJSFile :: String -> Browser -> IO ()
