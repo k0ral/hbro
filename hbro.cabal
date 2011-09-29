@@ -42,7 +42,6 @@ Library
         unix,
         zeromq-haskell
     Exposed-modules:
-        Hbro.Config,
         Hbro.Core,
         Hbro.Extra.Bookmarks,
         Hbro.Extra.BookmarksQueue,
