@@ -17,7 +17,7 @@ Build-type:          Simple
 Extra-source-files:  examples/hbro.hs
 Data-files:          examples/ui.xml
 
-Source-repositVory head
+Source-repository head
     Type:     git
     Location: git@twyk.org/haskell-browser.git
 
