@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             0.6.8
+Version:             0.6.8.1
 Synopsis:            A minimal KISS compliant browser
 -- Description:         
 Homepage:            http://projects.haskell.org/hbro/
@@ -17,9 +17,9 @@ Build-type:          Simple
 Extra-source-files:  examples/hbro.hs
 Data-files:          examples/ui.xml
 
-Source-repository head
+Source-repositVory head
     Type:     git
-    Location: git@twyk.tk/haskell-browser.git
+    Location: git@twyk.org/haskell-browser.git
 
 Library
     Build-depends:
