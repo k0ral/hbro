@@ -30,6 +30,7 @@ import Graphics.UI.Gtk.WebKit.WebView
 import Network.URL
 
 import System.Console.CmdArgs
+import System.Directory
 import System.Glib.Signals
 import System.IO
 import System.Process
@@ -159,9 +160,13 @@ realMain config = do
 -- Load homepage
     case (mURI options) of
         Just uri -> do 
-            webViewLoadUri webView uri
+            fileURI <- doesFileExist uri
+            case fileURI of
+                True -> getCurrentDirectory >>= \cwd -> webViewLoadUri webView $ "file://" ++ cwd ++ "/" ++ uri
+                _    -> webViewLoadUri webView uri
+            
             whenLoud $ putStrLn ("Loading " ++ uri ++ "...")
-        _        -> goHome browser
+        _ -> goHome browser
 
 
 -- Initialize IPC socket
@@ -222,16 +227,16 @@ loadURI url browser =
         Just url' -> do
             whenLoud $ putStrLn ("Loading URI: " ++ url)
             loadURI' url' browser
-        _ -> return ()
+        _ -> putStrLn $ "WARNING: not a valid URI: " ++ url
 
 -- | Backend function for loadURI.
 loadURI' :: URL -> Browser -> IO ()
-loadURI' url@URL {url_type = Absolute _} browser =
-    webViewLoadUri (mWebView $ mGUI browser) (exportURL url)
-loadURI' url@URL {url_type = HostRelative} browser = 
-    webViewLoadUri (mWebView $ mGUI browser) ("file://" ++ exportURL url)
-loadURI' url@URL {url_type = _} browser = 
-    webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL url)
+loadURI' uri@URL {url_type = Absolute _} browser =
+    webViewLoadUri (mWebView $ mGUI browser) (exportURL uri)
+loadURI' uri@URL {url_type = HostRelative} browser = 
+    webViewLoadUri (mWebView $ mGUI browser) ("file://" ++ exportURL uri)
+loadURI' uri@URL {url_type = _} browser = 
+    webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL uri)
 -- }}}
 
 
