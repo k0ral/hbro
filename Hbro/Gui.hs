@@ -8,6 +8,7 @@ import Control.Monad.Trans(liftIO)
 
 import Graphics.Rendering.Pango.Enums
 import Graphics.UI.Gtk.Abstract.Container
+import Graphics.UI.Gtk.Abstract.Box
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
@@ -16,6 +17,7 @@ import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Layout.HBox
+import Graphics.UI.Gtk.Layout.VBox
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebInspector
 import Graphics.UI.Gtk.WebKit.WebView
@@ -62,15 +64,16 @@ loadGUI xmlPath = do
 
 -- Create web inspector's window
     inspector       <- webViewGetInspector webView
-    inspectorWindow <- initWebInspector inspector
+    windowBox       <- builderGetObject builder castToVBox           "windowBox"
+    inspectorWindow <- initWebInspector inspector windowBox
     
     whenNormal $ putStrLn "Done."
     return $ GUI window inspectorWindow scrollWindow webView promptLabel promptEntry statusBox builder
 
 
 -- {{{ Web inspector
-initWebInspector :: WebInspector -> IO (Window)
-initWebInspector inspector = do 
+initWebInspector :: WebInspector -> VBox -> IO (Window)
+initWebInspector inspector windowBox = do 
     inspectorWindow <- windowNew
     set inspectorWindow [ windowTitle := "hbro | Web inspector" ]
 
@@ -83,31 +86,35 @@ initWebInspector inspector = do
         widgetShowAll inspectorWindow
         return True
 
-    -- TODO: when does this signal happen ?!
+-- TODO: when does this signal happen ?!
     --_ <- on inspector finished $ return ()
 
---     _ <- on inspector attachWindow $ do
---         getWebView <- webInspectorGetWebView inspector
---         case getWebView of
---             Just webView -> do widgetHide (mInspectorWindow gui)
---                                containerRemove (mInspectorWindow gui) webView
---                                widgetSetSizeRequest webView (-1) 250
---                                boxPackEnd (mWindowBox gui) webView PackNatural 0
---                                widgetShow webView
---                                return True
---             _            -> return False
+-- Attach inspector to browser's main window
+    _ <- on inspector attachWindow $ do
+        getWebView <- webInspectorGetWebView inspector
+        case getWebView of
+            Just webView -> do 
+                widgetHide inspectorWindow
+                containerRemove inspectorWindow webView
+                widgetSetSizeRequest webView (-1) 250
+                boxPackEnd windowBox webView PackNatural 0
+                widgetShow webView
+                return True
+            _ -> return False
 
---     _ <- on inspector detachWindow $ do
---         getWebView <- webInspectorGetWebView inspector
---         _ <- case getWebView of
---             Just webView -> do containerRemove (mWindowBox gui) webView
---                                containerAdd (mInspectorWindow gui) webView
---                                widgetShowAll (mInspectorWindow gui)
---                                return True
---             _            -> return False
+-- Detach inspector in a distinct window
+    _ <- on inspector detachWindow $ do
+        getWebView <- webInspectorGetWebView inspector
+        _ <- case getWebView of
+            Just webView -> do
+                containerRemove windowBox webView
+                containerAdd inspectorWindow webView
+                widgetShowAll inspectorWindow
+                return True
+            _ -> return False
         
---         widgetShowAll (mInspectorWindow gui)
---         return True
+        widgetShowAll inspectorWindow
+        return True
 
     return inspectorWindow
 
