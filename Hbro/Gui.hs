@@ -6,6 +6,7 @@ import Hbro.Types
 
 import Control.Monad.Trans(liftIO)
 
+import Graphics.Rendering.Pango.Enums
 import Graphics.UI.Gtk.Abstract.Container
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Builder
@@ -44,15 +45,18 @@ loadGUI xmlPath = do
 
 -- Load main window
     window       <- builderGetObject builder castToWindow            "mainWindow"
-    windowSetDefault window (Just webView)
+    windowSetDefault window $ Just webView
 
     scrollWindow <- builderGetObject builder castToScrolledWindow    "webViewParent"
     containerAdd scrollWindow webView 
-    set scrollWindow [
-        scrolledWindowHscrollbarPolicy := PolicyNever,
-        scrolledWindowVscrollbarPolicy := PolicyNever ]
+    scrolledWindowSetPolicy scrollWindow PolicyNever PolicyNever
 
     promptLabel  <- builderGetObject builder castToLabel             "promptDescription"
+    labelSetAttributes promptLabel [
+      AttrStyle  {paStart = 0, paEnd = -1, paStyle = StyleItalic},
+      AttrWeight {paStart = 0, paEnd = -1, paWeight = WeightBold}
+      ]
+    
     promptEntry  <- builderGetObject builder castToEntry             "promptEntry"
     statusBox    <- builderGetObject builder castToHBox              "statusBox"
 

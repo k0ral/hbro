@@ -66,6 +66,15 @@
                     </child>
 
                     <child>
+                        <object class="GtkLabel" id="zoom"></object>
+                        <packing>
+                            <property name="pack-type">GTK_PACK_END</property>
+                            <property name="fill">False</property>
+                            <property name="expand">False</property>
+                        </packing>
+                    </child>
+
+                    <child>
                         <object class="GtkLabel" id="keys"></object>
                         <packing>
                             <property name="pack-type">GTK_PACK_END</property>

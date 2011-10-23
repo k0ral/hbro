@@ -198,6 +198,7 @@ mySetup browser =
         
     -- Status bar
         statusBarScrollPosition browser
+        statusBarZoomLevel      browser
         statusBarPressedKeys    browser
         statusBarLoadProgress   browser
         statusBarURI            browser
