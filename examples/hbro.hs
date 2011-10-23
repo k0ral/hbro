@@ -38,7 +38,9 @@ import System.Process
 
 -- | Main function, basically launches hbro.
 main :: IO ()
-main = hbro myConfiguration
+main = do
+    config <- myConfiguration
+    hbro config
 
 
 -- | Custom configuration.
