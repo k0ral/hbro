@@ -31,6 +31,7 @@ import Network.URL
 
 import System.Console.CmdArgs
 import System.Directory
+import System.Glib.Attributes
 import System.Glib.Signals
 import System.IO
 import System.Process
@@ -75,7 +76,7 @@ defaultConfiguration = Configuration {
     mSocketDir   = "/tmp/",
     mUIFile      = "~/.config/hbro/ui.xml",
     mKeys        = [],
-    mWebSettings = webSettingsNew,
+    mWebSettings = [],
     mSetup       = \_ -> return () :: IO (),
     mCommands    = [],
     mError       = Nothing
@@ -121,8 +122,10 @@ realMain config = do
     showPrompt False browser 
 
 -- Load additionnal settings from configuration
-    settings <- mWebSettings config
+    settings <- webSettingsNew
+    set settings $ mWebSettings config
     webViewSetWebSettings webView settings
+    
     (mSetup config) browser
 
 -- Load key bindings

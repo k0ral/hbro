@@ -15,6 +15,7 @@ import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
 
 import System.Console.CmdArgs
+import System.Glib.Attributes
 import System.ZMQ 
 -- }}}
 
@@ -35,7 +36,7 @@ data Configuration = Configuration {
     mSocketDir      :: String,              -- ^ Directory where 0MQ will be created ("/tmp" for example)
     mUIFile         :: String,              -- ^ Path to XML file describing UI (used by GtkBuilder)
     mKeys           :: KeysList,            -- ^ List of keybindings
-    mWebSettings    :: IO WebSettings,      -- ^ Web settings provided by webkit (see Webkit::WebSettings documentation)
+    mWebSettings    :: [AttrOp WebSettings], -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
     mSetup          :: Browser -> IO (),    -- ^ Custom startup instructions
     mCommands       :: CommandsList,        -- ^ Custom commands to use with IPC sockets
     mError          :: Maybe String         -- ^ Error

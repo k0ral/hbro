@@ -41,9 +41,7 @@ loadGUI xmlPath = do
 -- Init main web view
     webView <- webViewNew
     set webView [ widgetCanDefault := True ]
-    _ <- on webView closeWebView $ do
-        mainQuit
-        return False
+    _ <- on webView closeWebView $ mainQuit >> return False
 
 -- Load main window
     window       <- builderGetObject builder castToWindow            "mainWindow"

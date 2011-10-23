@@ -36,21 +36,26 @@ import System.Glib.Signals
 import System.Process 
 -- }}}
 
-
+-- | Main function, basically launches hbro.
 main :: IO ()
-main = do
-    configHome <- getEnv "XDG_CONFIG_HOME"
+main = hbro myConfiguration
 
-    -- See Hbro.Types.Configuration documentation for fields description
-    -- Commented out fields indicate default values
-    hbro defaultConfiguration {
-        --mSocketDir    = "/tmp/",
-        mUIFile         = configHome ++ "/hbro/ui.xml",
-        --mHomePage     = "https://www.google.com",
-        mKeys           = myKeys,
-        mWebSettings    = myWebSettings,
-        mSetup          = mySetup
-    }
+
+-- | Custom configuration.
+-- See Hbro.Types.Configuration documentation for fields description.
+-- Commented out fields indicate default values.
+myConfiguration :: IO (Configuration)
+myConfiguration = do
+    configHome <- getEnv "XDG_CONFIG_HOME"                  
+    
+    return defaultConfiguration {
+      --mSocketDir    = "/tmp/",
+      mUIFile         = configHome ++ "/hbro/ui.xml",
+      --mHomePage     = "https://www.google.com",
+      mKeys           = myKeys,
+      mWebSettings    = myWebSettings,
+      mSetup          = mySetup
+}
 
 
 -- {{{ Keys
@@ -136,52 +141,49 @@ sessionKeys = [
 
 -- {{{ Web settings
 -- Commented lines correspond to default values
-myWebSettings :: IO WebSettings
-myWebSettings = do
-    settings <- webSettingsNew
-    set settings [
-        --SETTING                                      DEFAULT VALUE 
-        --webSettingsCursiveFontFamily              := "serif",
-        --webSettingsDefaultFontFamily              := "sans-serif",
-        --webSettingsFantasyFontFamily              := ,
-        --webSettingsMonospaceFontFamily            := "monospace",
-        --webSettingsSansFontFamily                 := "sans-serif",
-        --webSettingsSerifFontFamily                := "serif",
-        --webSettingsDefaultFontSize                := ,
-        --webSettingsDefaultMonospaceFontSize       := 10,
-        --webSettingsMinimumFontSize                := 5,
-        --webSettingsMinimumLogicalFontSize         := 5,
-        --webSettingsAutoLoadImages                 := True,
-        --webSettingsAutoShrinkImages               := True,
-        --webSettingsDefaultEncoding                := "iso-8859-1",
-        --webSettingsEditingBehavior                := EditingBehaviorWindows,
-        --webSettingsEnableCaretBrowsing              := False,
-        webSettingsEnableDeveloperExtras            := True,
-        --webSettingsEnableHtml5Database              := True,
-        --webSettingsEnableHtml5LocalStorage          := True,
-        --webSettingsEnableOfflineWebApplicationCache := True,
-        webSettingsEnablePlugins                    := True,
-        webSettingsEnablePrivateBrowsing            := False, -- Experimental
-        webSettingsEnableScripts                    := True,
-        --webSettingsEnableSpellChecking              := False,
-        webSettingsEnableUniversalAccessFromFileUris := True,
-        webSettingsEnableXssAuditor                 := True,
-        --webSettingsEnableSiteSpecificQuirks       := False,
-        --webSettingsEnableDomPaste                 := False,
-        --webSettingsEnableDefaultContextMenu       := True,
-        webSettingsEnablePageCache                  := True,
-        --webSettingsEnableSpatialNavigation        := False,
-        --webSettingsEnforce96Dpi                   := ,
-        webSettingsJSCanOpenWindowAuto              := True,
-        --webSettingsPrintBackgrounds               := True,
-        --webSettingsResizableTextAreas             := True,
-        webSettingsSpellCheckingLang                := Just "en_US",
-        --webSettingsTabKeyCyclesThroughElements    := True,
-        webSettingsUserAgent                        := "Mozilla/5.0 (X11; Linux x86_64; rv:2.0.1) Gecko/20100101 Firefox/4.0.1"
-        --webSettingsUserStylesheetUri              := Nothing,
-        --webSettingsZoomStep                       := 0.1
-        ]
-    return settings
+myWebSettings :: [AttrOp WebSettings]
+myWebSettings = [
+    --SETTING                                      DEFAULT VALUE 
+    --webSettingsCursiveFontFamily              := "serif",
+    --webSettingsDefaultFontFamily              := "sans-serif",
+    --webSettingsFantasyFontFamily              := ,
+    --webSettingsMonospaceFontFamily            := "monospace",
+    --webSettingsSansFontFamily                 := "sans-serif",
+    --webSettingsSerifFontFamily                := "serif",
+    --webSettingsDefaultFontSize                := ,
+    --webSettingsDefaultMonospaceFontSize       := 10,
+    --webSettingsMinimumFontSize                := 5,
+    --webSettingsMinimumLogicalFontSize         := 5,
+    --webSettingsAutoLoadImages                 := True,
+    --webSettingsAutoShrinkImages               := True,
+    --webSettingsDefaultEncoding                := "iso-8859-1",
+    --webSettingsEditingBehavior                := EditingBehaviorWindows,
+    --webSettingsEnableCaretBrowsing              := False,
+    webSettingsEnableDeveloperExtras            := True,
+    --webSettingsEnableHtml5Database              := True,
+    --webSettingsEnableHtml5LocalStorage          := True,
+    --webSettingsEnableOfflineWebApplicationCache := True,
+    webSettingsEnablePlugins                    := True,
+    webSettingsEnablePrivateBrowsing            := False, -- Experimental
+    webSettingsEnableScripts                    := True,
+    --webSettingsEnableSpellChecking              := False,
+    webSettingsEnableUniversalAccessFromFileUris := True,
+    webSettingsEnableXssAuditor                 := True,
+    --webSettingsEnableSiteSpecificQuirks       := False,
+    --webSettingsEnableDomPaste                 := False,
+    --webSettingsEnableDefaultContextMenu       := True,
+    webSettingsEnablePageCache                  := True,
+    --webSettingsEnableSpatialNavigation        := False,
+    --webSettingsEnforce96Dpi                   := ,
+    webSettingsJSCanOpenWindowAuto              := True,
+    --webSettingsPrintBackgrounds               := True,
+    --webSettingsResizableTextAreas             := True,
+    webSettingsSpellCheckingLang                := Just "en_US",
+    --webSettingsTabKeyCyclesThroughElements    := True,
+    webSettingsUserAgent                        := "Mozilla/5.0 (X11; Linux x86_64; rv:2.0.1) Gecko/20100101 Firefox/4.0.1"
+    --webSettingsUserStylesheetUri              := Nothing,
+    --webSettingsZoomStep                       := 0.1
+    ]
 -- }}}
 
 -- {{{ Setup
