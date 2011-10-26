@@ -39,24 +39,22 @@ import System.Process
 -- | Main function, basically launches hbro.
 main :: IO ()
 main = do
-    config <- myConfiguration
-    hbro config
+    configHome <- getEnv "XDG_CONFIG_HOME"                  
+    
+    hbro $ myConfiguration configHome
 
 
 -- | Custom configuration.
 -- See Hbro.Types.Configuration documentation for fields description.
 -- Commented out fields indicate default values.
-myConfiguration :: IO (Configuration)
-myConfiguration = do
-    configHome <- getEnv "XDG_CONFIG_HOME"                  
-    
-    return defaultConfiguration {
-      --mSocketDir    = "/tmp/",
-      mUIFile         = configHome ++ "/hbro/ui.xml",
-      --mHomePage     = "https://www.google.com",
-      mKeys           = myKeys,
-      mWebSettings    = myWebSettings,
-      mSetup          = mySetup
+myConfiguration :: String -> Configuration
+myConfiguration configHome = defaultConfiguration {
+    --mSocketDir    = "/tmp/",
+    mUIFile         = configHome ++ "/hbro/ui.xml",
+    --mHomePage     = "https://www.google.com",
+    mKeys           = myKeys,
+    mWebSettings    = myWebSettings,
+    mSetup          = mySetup
 }
 
 
@@ -196,10 +194,7 @@ mySetup browser =
         webView         = mWebView      (mGUI browser)
         scrollWindow    = mScrollWindow (mGUI browser)
         window          = mWindow       (mGUI browser)
-    in do
-    -- Default background (basically for status bar)
-        widgetModifyBg window StateNormal (Color 0 0 10000)
-        
+    in do        
     -- Status bar
         statusBarScrollPosition browser
         statusBarZoomLevel      browser
@@ -212,7 +207,6 @@ mySetup browser =
 
         _ <- on webView titleChanged $ \_ title ->
             set window [ windowTitle := ("hbro | " ++ title)]
-
 
     -- Download requests
         _ <- on webView downloadRequested $ \download -> do
@@ -236,7 +230,6 @@ mySetup browser =
                 (True, _) -> webPolicyDecisionUse policyDecision >> return True
                 _         -> webPolicyDecisionDownload policyDecision >> return True
 
-
     -- History handler
         _ <- on webView loadFinished $ \_ -> do
             uri   <- webViewGetUri   webView
@@ -244,7 +237,6 @@ mySetup browser =
             case (uri, title) of
                 (Just uri', Just title') -> addToHistory uri' title'
                 _ -> return ()
-
 
     -- On navigating to a new URI
     -- Return True to forbid navigation, False to allow
@@ -264,7 +256,6 @@ mySetup browser =
                         3 -> return False -- Right button
                         _ -> return False -- No mouse button pressed
                 _        -> return False
-
             
     -- On requesting new window
         _ <- on webView newWindowPolicyDecisionRequested $ \_ request action policyDecision -> do
@@ -291,8 +282,7 @@ myDownload uri name = do
 
 promptGoogle :: Browser -> IO ()
 promptGoogle browser = 
-    prompt "Google search" "" False browser (\browser' -> do
-        keyWords <- entryGetText (mPromptEntry $ mGUI browser')
+    prompt "Google search" "" False browser (\keyWords browser' -> do
         loadURI ("https://www.google.com/search?q=" ++ keyWords) browser'
         return ())
 

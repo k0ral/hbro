@@ -18,7 +18,6 @@ import Data.List
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.WebKit.WebView
 
 import System.Environment
@@ -37,16 +36,13 @@ addWithTags browser = do
     uri <- webViewGetUri (mWebView $ mGUI browser)
 
     case uri of
-        Just u -> prompt "Bookmark with tags:" "" False browser (\b -> do 
-            tags <- entryGetText (mPromptEntry $ mGUI b)
-            add u (words tags)) 
+        Just u -> prompt "Bookmark with tags:" "" False browser (\tags b -> add u (words tags)) 
         _ -> return ()
 
 -- | Add current URIs from all opened windows to bookmarks.
 addAllWithTags :: Browser -> IO ()
 addAllWithTags browser = 
-    prompt "Bookmark all instances with tag:" "" False browser (\b -> do 
-        tags          <- entryGetText (mPromptEntry $ mGUI b)
+    prompt "Bookmark all instances with tag:" "" False browser (\tags b -> do 
         uri           <- webViewGetUri (mWebView $ mGUI browser)
         case uri of
             Just u -> add u $ words tags

@@ -46,6 +46,8 @@ loadGUI xmlPath = do
 -- Load main window
     window       <- builderGetObject builder castToWindow            "mainWindow"
     windowSetDefault window $ Just webView
+    widgetModifyBg window StateNormal (Color 0 0 10000)
+
 
     scrollWindow <- builderGetObject builder castToScrolledWindow    "webViewParent"
     containerAdd scrollWindow webView 
@@ -137,7 +139,7 @@ showPrompt toShow browser = case toShow of
 
 -- | Show the prompt bar label and default text.
 -- As the user validates its entry, the given callback is executed.
-prompt :: String -> String -> Bool -> Browser -> (Browser -> IO ()) -> IO ()
+prompt :: String -> String -> Bool -> Browser -> (String -> Browser -> IO ()) -> IO ()
 prompt label defaultText incremental browser callback = let
         promptLabel = (mPromptLabel $ mGUI browser)
         promptEntry = (mPromptEntry $ mGUI browser)
@@ -155,8 +157,9 @@ prompt label defaultText incremental browser callback = let
     -- Register callback
         case incremental of
             True -> do 
-                id1 <- on promptEntry editableChanged $  
-                    liftIO $ callback browser
+                id1 <- on promptEntry editableChanged $ do
+                    text <- entryGetText promptEntry
+                    liftIO $ callback text browser
                 rec id2 <- on promptEntry keyPressEvent $ do
                     key <- eventKeyName
                     
@@ -177,12 +180,13 @@ prompt label defaultText incremental browser callback = let
 
             _ -> do
                 rec id <- on promptEntry keyPressEvent $ do
-                    key <- eventKeyName
+                    key  <- eventKeyName
+                    text <- liftIO $ entryGetText promptEntry
 
                     case key of
                         "Return" -> do
                             liftIO $ showPrompt False browser
-                            liftIO $ callback browser
+                            liftIO $ callback text browser
                             liftIO $ signalDisconnect id
                             liftIO $ widgetGrabFocus webView
                         "Escape" -> do

@@ -13,8 +13,8 @@ import Graphics.UI.Gtk.WebKit.WebView
 -- | Prompt for key words to search in current webpage.
 promptFind :: Bool -> Bool -> Bool -> Browser -> IO ()
 promptFind caseSensitive forward wrap browser =
-    prompt "Search" "" True browser (\browser' -> do
-        keyWord <- entryGetText (mPromptEntry $ mGUI browser')
+    prompt "Search" "" True browser (\keyWord browser' -> do
+        --keyWord <- entryGetText (mPromptEntry $ mGUI browser')
         _found  <- webViewSearchText (mWebView $ mGUI browser) keyWord caseSensitive forward wrap
         return ())
 
@@ -28,13 +28,13 @@ findNext caseSensitive forward wrap browser = do
 -- | Prompt for URI to open in current window.
 promptURL :: Bool -> Browser -> IO ()
 promptURL False browser = 
-    prompt "Open URL" "" False browser (\b -> do 
-        uri <- entryGetText (mPromptEntry $ mGUI b)
+    prompt "Open URL" "" False browser (\uri b -> do 
+        --uri <- entryGetText (mPromptEntry $ mGUI b)
         loadURI uri b)
 promptURL _ browser = do
     uri <- webViewGetUri (mWebView $ mGUI browser)
     case uri of
-        Just url -> prompt "Open URL" url False browser (\b -> do
-                        u <- entryGetText (mPromptEntry $ mGUI b)
+        Just url -> prompt "Open URL" url False browser (\u b -> do
+                        --u <- entryGetText (mPromptEntry $ mGUI b)
                         loadURI u b)
         _ -> return ()
