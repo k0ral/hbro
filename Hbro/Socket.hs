@@ -45,6 +45,15 @@ listenToSocket repSocket commands browser = do
                 _             -> send repSocket (pack "ERROR Unknown command") []
 
             listenToSocket repSocket commands browser
+        
+closeSocket :: Context -> String -> IO ()
+closeSocket context socketURI = do
+    withSocket context Req $ \reqSocket -> do
+        connect reqSocket socketURI
+        send reqSocket (pack "Quit") []
+        _ <- receive reqSocket []
+        return ()
+
 
 -- | List of default supported requests.
 defaultCommandsList :: CommandsList

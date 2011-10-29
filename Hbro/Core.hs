@@ -13,7 +13,7 @@ import Config.Dyre.Paths
 import Control.Concurrent
 import Control.Monad.Trans(liftIO)
 
-import Data.ByteString.Char8 (pack)
+--import Data.ByteString.Char8 (pack)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -36,6 +36,7 @@ import System.Glib.Signals
 import System.IO
 import System.Process
 import System.Posix.Process
+import System.Posix.Signals
 import qualified System.ZMQ as ZMQ
 -- }}}
 
@@ -94,6 +95,9 @@ hbro = D.wrapMain dyreParameters
 -- create browser and load homepage.
 realMain :: Configuration -> IO ()
 realMain config = do
+-- Print configuration error, if any
+    maybe (return ()) putStrLn $ mError config
+
 -- Parse commandline arguments
     options <- getOptions
 
@@ -106,9 +110,6 @@ realMain config = do
         putStrLn ("Cache directory: " ++ d)
         putStrLn ("Lib directory:   " ++ e)
         putStrLn ""
-
--- Print configuration error, if any
-    maybe (return ()) putStrLn $ mError config
 
 -- Initialize GUI
     _   <- initGUI
@@ -128,9 +129,6 @@ realMain config = do
     
     (mSetup config) browser
 
--- Load key bindings
-    let keyBindings = importKeyBindings (mKeys config)
-
 -- On new window request
     _ <- on webView createWebView $ \frame -> do
         newUri <- webFrameGetUri frame
@@ -142,6 +140,8 @@ realMain config = do
         return webView
 
 -- Manage keys
+    let keyBindings = importKeyBindings $ mKeys config
+
     _ <- after webView keyPressEvent $ do
         value      <- eventKeyVal
         modifiers  <- eventModifier
@@ -171,7 +171,6 @@ realMain config = do
             whenLoud $ putStrLn ("Loading " ++ uri ++ "...")
         _ -> goHome browser
 
-
 -- Initialize IPC socket
     pid <- getProcessID
     let socketURI = "ipc://" ++ (mSocketDir config) ++ "/hbro." ++ show pid
@@ -181,17 +180,21 @@ realMain config = do
     ZMQ.withContext 1 $ \context -> do
         _ <- forkIO $ createRepSocket context socketURI browser
     
+    -- Manage POSIX signals
+        _ <- installHandler sigINT (Catch $ interruptHandler context socketURI) Nothing
+    
         mainGUI -- Main loop
 
     -- Make sure response socket is closed at exit
         whenLoud $ putStrLn "Closing socket..."
-        ZMQ.withSocket context ZMQ.Req $ \reqSocket -> do
-            ZMQ.connect reqSocket socketURI
-            ZMQ.send reqSocket (pack "Quit") []
-            _ <- ZMQ.receive reqSocket []
-            return ()
-
+        closeSocket context socketURI
         whenNormal $ putStrLn "Exiting..."
+
+-- | POSIX signal SIGINT handler
+interruptHandler :: ZMQ.Context -> String -> IO ()
+interruptHandler context socketURI = do
+    whenLoud $ putStrLn "Received SIGINT."
+    mainQuit
 -- }}}
 
 -- {{{ Browsing functions
