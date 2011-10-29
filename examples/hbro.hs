@@ -51,7 +51,7 @@ myConfiguration :: String -> Configuration
 myConfiguration configHome = defaultConfiguration {
     --mSocketDir    = "/tmp/",
     mUIFile         = configHome ++ "/hbro/ui.xml",
-    --mHomePage     = "https://www.google.com",
+    mHomePage       = "https://duckduckgo.com",
     mKeys           = myKeys,
     mWebSettings    = myWebSettings,
     mSetup          = mySetup
@@ -72,10 +72,10 @@ generalKeys = [
     (([Alt],            "<Left>"),      goBackList),
     (([Alt],            "<Right>"),     goForwardList),
     (([Control],        "s"),           stopLoading),
-    (([],               "<F5>"),        reload True),
-    (([Shift],          "<F5>"),        reload False),
-    (([Control],        "r"),           reload True),
-    (([Control, Shift], "R"),           reload False),
+    (([],               "<F5>"),        reload),
+    (([Control],        "<F5>"),        reloadBypassCache),
+    --(([Control],        "r"),           reload),
+    --(([Control, Alt],   "r"),           reloadBypassCache),
     (([Control],        "^"),           horizontalHome),
     (([Control],        "$"),           horizontalEnd),
     (([Control],        "<Home>"),      verticalHome),

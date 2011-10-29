@@ -47,7 +47,7 @@ loadGUI xmlPath = do
     window       <- builderGetObject builder castToWindow            "mainWindow"
     windowSetDefault window $ Just webView
     widgetModifyBg window StateNormal (Color 0 0 10000)
-
+    _ <- onDestroy window mainQuit
 
     scrollWindow <- builderGetObject builder castToScrolledWindow    "webViewParent"
     containerAdd scrollWindow webView 

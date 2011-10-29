@@ -112,4 +112,4 @@ toggleSourceMode :: Browser -> IO ()
 toggleSourceMode browser = do
     currentMode <- webViewGetViewSourceMode (mWebView $ mGUI browser)
     webViewSetViewSourceMode (mWebView $ mGUI browser) (not currentMode)
-    reload True browser
+    reload browser

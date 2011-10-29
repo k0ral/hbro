@@ -118,7 +118,6 @@ realMain config = do
     let webView = mWebView gui
     let window  = mWindow gui
 
-    _ <- onDestroy window mainQuit
     widgetShowAll window
     showPrompt False browser 
 
@@ -181,7 +180,7 @@ realMain config = do
         _ <- forkIO $ createRepSocket context socketURI browser
     
     -- Manage POSIX signals
-        _ <- installHandler sigINT (Catch $ interruptHandler context socketURI) Nothing
+        _ <- installHandler sigINT (Catch interruptHandler) Nothing
     
         mainGUI -- Main loop
 
@@ -191,8 +190,8 @@ realMain config = do
         whenNormal $ putStrLn "Exiting..."
 
 -- | POSIX signal SIGINT handler
-interruptHandler :: ZMQ.Context -> String -> IO ()
-interruptHandler context socketURI = do
+interruptHandler :: IO ()
+interruptHandler = do
     whenLoud $ putStrLn "Received SIGINT."
     mainQuit
 -- }}}
@@ -218,13 +217,13 @@ goForward browser = webViewGoForward (mWebView $ mGUI browser)
 stopLoading :: Browser -> IO ()
 stopLoading browser = webViewStopLoading (mWebView $ mGUI browser)
 
--- | Wrapper around webViewReload{BypassCache}.
-reload 
-    :: Bool     -- ^ If False, cache is bypassed.
-    -> Browser
-    -> IO ()
-reload True browser = webViewReload             (mWebView $ mGUI browser)
-reload _    browser = webViewReloadBypassCache  (mWebView $ mGUI browser)
+-- | Wrapper around webViewReload, provided for convenience.
+reload :: Browser -> IO ()
+reload browser = webViewReload (mWebView $ mGUI browser)
+
+-- | Wrapper around webViewReloadBypassCache, provided for convenience.
+reloadBypassCache :: Browser -> IO ()
+reloadBypassCache browser = webViewReloadBypassCache (mWebView $ mGUI browser)
 
 -- | Load given URL in the browser.
 loadURI :: String -> Browser -> IO ()
@@ -244,7 +243,6 @@ loadURI' uri@URL {url_type = HostRelative} browser =
 loadURI' uri@URL {url_type = _} browser = 
     webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL uri)
 -- }}}
-
 
 -- {{{ Zoom
 -- | Wrapper around webViewZoomIn function, provided for convenience.
