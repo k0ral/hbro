@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable #-} 
+{-# LANGUAGE ExistentialQuantification #-}
 module Hbro.Types where
 
 -- {{{ Imports
@@ -20,10 +21,10 @@ import System.ZMQ
 -- }}}
 
 
-data Browser = Browser {
-    mOptions        :: CliOptions,          -- ^ Commandline options
-    mConfiguration  :: Configuration,       -- ^ Custom configuration provided by user
-    mGUI            :: GUI                  -- ^ Graphical widgets
+data Environment = Environment {
+    mOptions :: CliOptions,          -- ^ Commandline options
+    mConfig  :: Config,              -- ^ Configuration parameters (constants) provided by user
+    mGUI     :: GUI                  -- ^ Graphical widgets
 }
 
 data CliOptions = CliOptions {
@@ -31,15 +32,16 @@ data CliOptions = CliOptions {
 } deriving (Data, Typeable, Show, Eq)
 
 
-data Configuration = Configuration {
-    mHomePage       :: String,              -- ^ Startup page 
-    mSocketDir      :: String,              -- ^ Directory where 0MQ will be created ("/tmp" for example)
-    mUIFile         :: String,              -- ^ Path to XML file describing UI (used by GtkBuilder)
-    mKeys           :: KeysList,            -- ^ List of keybindings
-    mWebSettings    :: [AttrOp WebSettings], -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
-    mSetup          :: Browser -> IO (),    -- ^ Custom startup instructions
-    mCommands       :: CommandsList,        -- ^ Custom commands to use with IPC sockets
-    mError          :: Maybe String         -- ^ Error
+data Config = {-forall a.-} Config {
+    mHomePage    :: String,                    -- ^ Startup page 
+    mSocketDir   :: String,                    -- ^ Directory where 0MQ will be created ("/tmp" for example)
+    mUIFile      :: String,                    -- ^ Path to XML file describing UI (used by GtkBuilder)
+    mKeys        :: Environment -> KeysList,   -- ^ List of keybindings
+    mWebSettings :: [AttrOp WebSettings],      -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
+    mSetup       :: Environment -> IO (),      -- ^ Custom startup instructions
+    mCommands    :: CommandsList,              -- ^ Custom commands to use with IPC sockets
+    mError       :: Maybe String               -- ^ Error
+    --mCustom      :: a
 }
 
 data GUI = GUI {
@@ -47,10 +49,15 @@ data GUI = GUI {
     mInspectorWindow    :: Window,          -- ^ WebInspector window
     mScrollWindow       :: ScrolledWindow,  -- ^ ScrolledWindow containing the webview
     mWebView            :: WebView,         -- ^ Browser's webview
-    mPromptLabel        :: Label,           -- ^ Description of current prompt
-    mPromptEntry        :: Entry,           -- ^ Prompt entry
+    mPromptBar          :: PromptBar, 
     mStatusBox          :: HBox,            -- ^ Status bar's horizontal box
     mBuilder            :: Builder          -- ^ Builder object created from XML file
+}
+
+data PromptBar = PromptBar {
+    mBox         :: HBox,
+    mDescription :: Label, -- ^ Description of current prompt
+    mEntry       :: Entry -- ^ Prompt entry
 }
 
 
@@ -61,7 +68,7 @@ data GUI = GUI {
 --          so that order and repetition don't matter
 -- Note 2 : for printable characters accessed via the shift modifier,
 --          you do have to include Shift in modifiers list
-type KeysList = [(([Modifier], String), (Browser -> IO ()))]
+type KeysList = [(([Modifier], String), IO ())]
 
-type CommandsList = [(String, ([String] -> Socket Rep -> Browser -> IO ()))]
-type CommandsMap  = Map String ([String] -> Socket Rep -> Browser -> IO ())
+type CommandsList = [(String, ([String] -> Socket Rep -> Environment -> IO ()))]
+type CommandsMap  = Map String ([String] -> Socket Rep -> Environment -> IO ())

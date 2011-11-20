@@ -1,11 +1,15 @@
 module Hbro.Extra.Misc where
 
 -- {{{ Imports
-import Hbro.Core hiding(goBack, goForward)
-import Hbro.Types
+--import Hbro.Core
+--import Hbro.Types
 import Hbro.Util
 
+import Control.Monad.Reader
+
 import Data.Maybe
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 
 import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
@@ -14,87 +18,66 @@ import Graphics.UI.Gtk.WebKit.WebHistoryItem
 import Graphics.UI.Gtk.WebKit.WebView
 
 import System.IO
-import System.Process 
 -- }}}
 
 
 -- | Same as goBack function from Hbro.Core,
 -- but with feedback in case of failure.
-goForward :: Browser -> IO ()
-goForward browser = do
-    result        <- webViewCanGoForward webView
-    feedbackLabel <- builderGetObject builder castToLabel "feedback"
-
-    case result of
-        True -> webViewGoForward webView
-        _    -> labelSetMarkupTemporary feedbackLabel "<span foreground=\"red\">Unable to go forward !</span>" 5000 >> return ()
-
-  where
-    webView = mWebView $ mGUI browser
-    builder = mBuilder $ mGUI browser
-
--- | Same as goBack function from Hbro.Core,
--- but with feedback in case of failure.
-goBack :: Browser -> IO ()
-goBack browser = do
-    result        <- webViewCanGoBack webView
-    feedbackLabel <- builderGetObject builder castToLabel "feedback"
-
-    case result of
-        True -> webViewGoBack webView
-        _    -> labelSetMarkupTemporary feedbackLabel "<span foreground=\"red\">Unable to go back !</span>" 5000 >> return ()
-
-  where
-    webView = mWebView $ mGUI browser
-    builder = mBuilder $ mGUI browser
+--goForward :: WebView -> IO ()
+--goForward webView = do
+--    result        <- webViewCanGoForward webView
+--    feedbackLabel <- builderGetObject builder castToLabel "feedback"
+-- 
+--    case result of
+--        True -> webViewGoForward webView
+--        _    -> labelSetMarkupTemporary feedbackLabel "<span foreground=\"red\">Unable to go forward !</span>" 5000 >> return ()
+-- 
+--  where
+--    webView = mWebView $ mGUI browser
+--    builder = mBuilder $ mGUI browser
+-- 
+---- | Same as goBack function from Hbro.Core,
+---- but with feedback in case of failure.
+--goBack :: Browser -> IO ()
+--goBack browser = do
+--    result        <- webViewCanGoBack webView
+--    feedbackLabel <- builderGetObject builder castToLabel "feedback"
+-- 
+--    case result of
+--        True -> webViewGoBack webView
+--        _    -> labelSetMarkupTemporary feedbackLabel "<span foreground=\"red\">Unable to go back !</span>" 5000 >> return ()
+-- 
+--  where
+--    webView = mWebView $ mGUI browser
+--    builder = mBuilder $ mGUI browser
 
 
 -- | List preceding URIs in dmenu and let the user select which one to load.
-goBackList :: Browser -> IO ()
-goBackList browser = do
+goBackList :: WebView -> [String] -> IO (Maybe String)
+goBackList webView dmenuOptions = do
     list           <- webViewGetBackForwardList webView
     n              <- webBackForwardListGetBackLength list
     backList       <- webBackForwardListGetBackListWithLimit list n
     dmenuList      <- mapM itemToEntry backList
+    selection      <- dmenu dmenuOptions $ (T.pack . unlines) (catMaybes dmenuList)
 
-    (Just input, Just output, _, _) <- createProcess (proc "dmenu" ["-l", "10"]) {
-        std_in = CreatePipe,
-        std_out = CreatePipe }
-
-    _     <- hPutStr input $ unlines (catMaybes dmenuList)
-    entry <- catch (hGetLine output) (\_error -> return "ERROR" )
-
-    case words entry of
-        ["ERROR"]   -> return ()
-        uri:_       -> loadURI uri browser
-        _           -> return ()
-    return ()
-  where
-    webView = mWebView $ mGUI browser
+    case words selection of
+        uri:_ -> return $ Just uri
+        _     -> return Nothing
     
 
 -- | List succeeding URIs in dmenu and let the user select which one to load.
-goForwardList :: Browser -> IO ()
-goForwardList browser = do
+goForwardList :: WebView -> [String] -> IO (Maybe String)
+goForwardList webView dmenuOptions = do
     list        <- webViewGetBackForwardList webView
     n           <- webBackForwardListGetForwardLength list
     forwardList <- webBackForwardListGetForwardListWithLimit list n
     dmenuList   <- mapM itemToEntry forwardList
-
-    (Just input, Just output, _, _) <- createProcess (proc "dmenu" ["-l", "10"]) {
-        std_in = CreatePipe,
-        std_out = CreatePipe }
-
-    _     <- hPutStr input $ unlines (catMaybes dmenuList)
-    entry <- catch (hGetLine output) (\_error -> return "ERROR" )
-
-    case words entry of
-        ["ERROR"]   -> return ()
-        uri:_       -> loadURI uri browser
-        _           -> return ()
-    return ()
-  where
-    webView = mWebView $ mGUI browser
+    selection   <- dmenu dmenuOptions $ (T.pack . unlines) (catMaybes dmenuList)
+    
+    case words selection of
+        uri:_       -> return $ Just uri
+        _           -> return Nothing
 
 
 itemToEntry :: WebHistoryItem -> IO (Maybe String)
@@ -108,8 +91,8 @@ itemToEntry item = do
 
 -- | Toggle source display.
 -- Current implementation forces a refresh of current web page, which may be undesired.
-toggleSourceMode :: Browser -> IO ()
-toggleSourceMode browser = do
-    currentMode <- webViewGetViewSourceMode (mWebView $ mGUI browser)
-    webViewSetViewSourceMode (mWebView $ mGUI browser) (not currentMode)
-    reload browser
+toggleSourceMode :: WebView -> IO ()
+toggleSourceMode webView = do
+    currentMode <- webViewGetViewSourceMode webView
+    webViewSetViewSourceMode webView (not currentMode)
+    webViewReload webView

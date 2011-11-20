@@ -14,6 +14,6 @@ main = do
 --     putStrLn "[WARNING] You are running the default configuration which provides hardly no feature."
 --     putStrLn $ "[WARNING] You should copy the example configuration files hbro.hs and ui.xml in " ++ configHome ++ "/hbro and start hacking them."
 
-    hbro defaultConfiguration {
+    launchHbro defaultConfig {
         mUIFile = uiFile
     }

@@ -1,7 +1,7 @@
 module Hbro.Extra.StatusBar where
 
 -- {{{ Imports
-import Hbro.Types
+--import Hbro.Types
 import Hbro.Util 
 
 import Control.Monad.Trans(liftIO)
@@ -12,7 +12,6 @@ import Graphics.Rendering.Pango.Enums
 import Graphics.Rendering.Pango.Layout
 
 import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Misc.Adjustment
@@ -25,12 +24,14 @@ import System.Glib.Signals
 -- }}}
 
 
--- | Display scroll position in status bar.
--- Needs a Label entitled "scroll" from the builder.
-statusBarScrollPosition :: Browser -> IO ()
-statusBarScrollPosition browser = do
-    scrollLabel <- builderGetObject builder castToLabel "scroll"
-    adjustment  <- scrolledWindowGetVAdjustment scrollWindow
+-- | Write current scroll position in the given Label.
+setupScrollWidget :: Label -> ScrolledWindow -> IO ()
+setupScrollWidget widget window = do
+    labelSetAttributes widget [
+        AttrForeground {paStart = 0, paEnd = -1, paColor = Color 32767 32767 32767}
+        ]
+      
+    adjustment  <- scrolledWindowGetVAdjustment window
 
     _ <- onValueChanged adjustment $ do
         current <- adjustmentGetValue    adjustment
@@ -39,40 +40,26 @@ statusBarScrollPosition browser = do
         page    <- adjustmentGetPageSize adjustment
         
         case upper-lower-page of
-            0 -> labelSetMarkup scrollLabel "ALL"
-            x -> labelSetMarkup scrollLabel $ show (round $ current/x*100) ++ "%"
+            0 -> labelSetText widget "ALL"
+            x -> labelSetText widget $ show (round $ current/x*100) ++ "%"
 
-    labelSetMarkup scrollLabel "0%"
-
-  where
-    builder      = mBuilder      (mGUI browser)
-    scrollWindow = mScrollWindow (mGUI browser)
+    labelSetText widget "0%"
 
 
--- | Display current zoom level in status bar.
--- Needs a Label entitled "zoom" from the builder.
-statusBarZoomLevel :: Browser -> IO ()
-statusBarZoomLevel browser = do
+-- | /!\ Doesn't work for now.
+-- Write current zoom level in the given Label.
+statusBarZoomLevel :: Label -> WebView -> IO ()
+statusBarZoomLevel widget webView = do
     zoomLevel <- webViewGetZoomLevel webView
-    zoomLabel <- builderGetObject builder castToLabel "zoom"
             
-    labelSetMarkup zoomLabel $ "<span foreground=\"white\">x" ++ escapeMarkup (show zoomLevel) ++ "</span>"
-  where
-    builder = mBuilder (mGUI browser)
-    webView = mWebView (mGUI browser)
-
+    labelSetMarkup widget $ "<span foreground=\"white\">x" ++ escapeMarkup (show zoomLevel) ++ "</span>"
 
 
 -- | Display pressed keys in status bar.
 -- Needs a Label entitled "keys" from the builder.
-statusBarPressedKeys :: Browser -> IO ()
-statusBarPressedKeys browser = 
-  let
-    builder         = mBuilder      (mGUI browser)
-    webView         = mWebView      (mGUI browser)
-  in do
-    keysLabel <- builderGetObject builder castToLabel "keys"
-    labelSetAttributes keysLabel [
+statusBarPressedKeys :: Label -> WebView -> IO ()
+statusBarPressedKeys widget webView = do
+    labelSetAttributes widget [
         AttrForeground {paStart = 0, paEnd = -1, paColor = Color 0 65535 0}
         ]
     
@@ -82,61 +69,53 @@ statusBarPressedKeys browser =
 
         let keyString = keyToString value
         case (keyString, modifiers) of 
-            (Just k, [])    -> liftIO $ labelSetText keysLabel k
-            (Just k, m)     -> liftIO $ labelSetText keysLabel (show m ++ k)
+            (Just k, [])    -> liftIO $ labelSetText widget k
+            (Just k, m)     -> liftIO $ labelSetText widget (show m ++ k)
             _               -> return ()
 
         return False
     return ()
 
 
--- | Display load progress in status bar.
--- Needs a Label entitled "progress" from the builder.
-statusBarLoadProgress :: Browser -> IO ()
-statusBarLoadProgress browser = 
-  let
-    builder         = mBuilder      (mGUI browser)
-    webView         = mWebView      (mGUI browser)
-  in do
-    progressLabel <- builderGetObject builder castToLabel "progress"
+-- | Write current load progress in the given Label.
+statusBarLoadProgress :: Label -> WebView -> IO ()
+statusBarLoadProgress widget webView = do
 -- Load started
     _ <- on webView loadStarted $ \_ -> do
-        labelSetAttributes progressLabel [
+        labelSetAttributes widget [
             AttrForeground {paStart = 0, paEnd = -1, paColor = Color 65535 0 0}
             ]
-        labelSetText progressLabel "0%"
+        labelSetText widget "0%"
 -- Progress changed    
     _ <- on webView progressChanged $ \progress' -> do
-        labelSetAttributes progressLabel [
+        labelSetAttributes widget [
             AttrForeground {paStart = 0, paEnd = -1, paColor = Color 65535 65535 0}
             ]
-        labelSetText progressLabel $ show progress' ++ "%"
+        labelSetText widget $ show progress' ++ "%"
 -- Load finished
     _ <- on webView loadFinished $ \_ -> do
-        labelSetAttributes progressLabel [
+        labelSetAttributes widget [
             AttrForeground {paStart = 0, paEnd = -1, paColor = Color 0 65535 0}
             ]
-        labelSetText progressLabel "100%"
+        labelSetText widget "100%"
 -- Error
     _ <- on webView loadError $ \_ _ _ -> do
-        labelSetAttributes progressLabel [
+        labelSetAttributes widget [
             AttrForeground {paStart = 0, paEnd = -1, paColor = Color 65535 0 0}
             ]
-        labelSetText progressLabel "ERROR"
+        labelSetText widget "ERROR"
         return False
     
     return ()
 
 
--- | Display current URI, or the destination of a hovered link, in the status bar.
--- Needs a Label named "uri" from the builder.
-statusBarURI :: Browser -> IO ()
-statusBarURI browser = do
-    uriLabel <- builderGetObject builder castToLabel "uri"
+-- | Write current URI, or the destination of a hovered link, in the given Label.
+statusBarURI :: Label -> WebView -> IO ()
+statusBarURI widget webView = do
 -- URI changed
     _ <- on webView loadCommitted $ \_ -> do
         getUri <- (webViewGetUri webView) 
-        maybe (return ()) (\x -> setURILabel x uriLabel) getUri
+        maybe (return ()) (flip setURILabel widget) getUri
 
 -- Hovering link
     _ <- on webView hoveringOverLink $ \_title hoveredUri -> do
@@ -146,21 +125,19 @@ statusBarURI browser = do
                              (_, Just u) -> u
                              (_, _)      -> "ERROR"
         
-        setURILabel uri uriLabel
+        setURILabel uri widget
         
     return ()
 
   where
-    builder = mBuilder (mGUI browser)
-    webView = mWebView (mGUI browser)
     setURILabel uri label = do
         let uri' = importURL uri
         case uri' of
             Just u -> do
                 case url_type u of
-                    Absolute host -> do
-                        let host'           = exportHost host
-                        let secure'         = secure host
+                    Absolute host_ -> do
+                        let host'           = exportHost host_
+                        let secure'         = secure host_
                         let protocolColor   = Color 20000 20000 20000
                         let hostColor       = case secure' of
                               True -> Color 0 65535 0

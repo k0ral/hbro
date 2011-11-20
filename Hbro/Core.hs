@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-} 
+{-# LANGUAGE ExistentialQuantification #-}
 module Hbro.Core where
 
 -- {{{ Imports
@@ -11,30 +12,31 @@ import qualified Config.Dyre as D
 import Config.Dyre.Paths
 
 import Control.Concurrent
-import Control.Monad.Trans(liftIO)
+--import Control.Monad.Trans(liftIO)
+import Control.Monad.Reader
 
 --import Data.ByteString.Char8 (pack)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.General.General
+import Graphics.UI.Gtk.General.General hiding(initGUI)
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebDataSource
 import Graphics.UI.Gtk.WebKit.WebFrame
-import Graphics.UI.Gtk.WebKit.WebSettings
+--import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView
 
 import Network.URL
 
 import System.Console.CmdArgs
 import System.Directory
-import System.Glib.Attributes
+--import System.Glib.Attributes
 import System.Glib.Signals
 import System.IO
-import System.Process
+--import System.Process
 import System.Posix.Process
 import System.Posix.Signals
 import qualified System.ZMQ as ZMQ
@@ -51,13 +53,13 @@ getOptions :: IO CliOptions
 getOptions = cmdArgs $ cliOptions
     &= verbosityArgs [explicit, name "Verbose", name "v"] []
     &= versionArg [ignore]
-    &= help "A suckless minimal KISSy browser."
+    &= help "A minimal KISS-compliant browser."
     &= helpArg [explicit, name "help", name "h"]
     &= program "hbro"
 -- }}}
 
 -- {{{ Configuration
-dyreParameters :: D.Params Configuration
+dyreParameters :: D.Params Config
 dyreParameters = D.defaultParams {
     D.projectName  = "hbro",
     D.showError    = showError,
@@ -66,19 +68,19 @@ dyreParameters = D.defaultParams {
     D.statusOut    = hPutStrLn stderr
 }
 
-showError :: Configuration -> String -> Configuration
-showError configuration message = configuration { mError = Just message }
+showError :: Config -> String -> Config
+showError config message = config { mError = Just message }
 
 -- | Default configuration.
 -- Does quite nothing.
-defaultConfiguration :: Configuration
-defaultConfiguration = Configuration {
+defaultConfig :: Config 
+defaultConfig = Config {
     mHomePage    = "https://www.google.com",
     mSocketDir   = "/tmp/",
     mUIFile      = "~/.config/hbro/ui.xml",
-    mKeys        = [],
+    mKeys        = \_ -> [],
     mWebSettings = [],
-    mSetup       = \_ -> return () :: IO (),
+    mSetup       = const (return () :: IO ()),
     mCommands    = [],
     mError       = Nothing
 }
@@ -87,13 +89,13 @@ defaultConfiguration = Configuration {
 -- {{{ Entry point
 -- | Browser's main function.
 -- To be called in function "main" with a proper configuration.
-hbro :: Configuration -> IO ()
-hbro = D.wrapMain dyreParameters
+launchHbro :: Config -> IO ()
+launchHbro = D.wrapMain dyreParameters
 
--- | Entry point for the application.
+-- | Virtual entry point for the application.
 -- Parse commandline arguments, print configuration error if any,
--- create browser and load homepage.
-realMain :: Configuration -> IO ()
+-- and forward the parameters to realMain through a Reader monad.
+realMain :: Config -> IO ()
 realMain config = do
 -- Print configuration error, if any
     maybe (return ()) putStrLn $ mError config
@@ -102,45 +104,34 @@ realMain config = do
     options <- getOptions
 
 -- Print in-use paths
-    (a, b, c, d, e) <- getPaths dyreParameters
-    whenLoud $ do
+    getPaths dyreParameters >>= \(a,b,c,d,e) -> whenLoud $ do 
         putStrLn ("Current binary:  " ++ a)
         putStrLn ("Custom binary:   " ++ b)
         putStrLn ("Config file:     " ++ c)
         putStrLn ("Cache directory: " ++ d)
         putStrLn ("Lib directory:   " ++ e)
         putStrLn ""
-
+        
 -- Initialize GUI
-    _   <- initGUI
-    gui <- loadGUI $ mUIFile config
-    let browser = Browser options config gui
-    let webView = mWebView gui
-    let window  = mWindow gui
-
-    widgetShowAll window
-    showPrompt False browser 
-
--- Load additionnal settings from configuration
-    settings <- webSettingsNew
-    set settings $ mWebSettings config
-    webViewSetWebSettings webView settings
+    gui <- initGUI (mUIFile config) (mWebSettings config)
     
-    (mSetup config) browser
+    realMain' config options gui
 
--- On new window request
-    _ <- on webView createWebView $ \frame -> do
-        newUri <- webFrameGetUri frame
-        case newUri of
-            Just uri -> do
-                whenLoud $ putStrLn ("Requesting new window: " ++ uri ++ "...")
-                webViewLoadUri webView uri
-            Nothing  -> return ()
-        return webView
+
+-- | Entry point for the application.
+-- Create browser and load homepage.
+realMain' :: Config -> CliOptions -> GUI -> IO ()
+realMain' config options gui@GUI {mWebView = webView, mWindow = window} = let
+    environment = Environment options config gui
+    keys        = importKeyBindings $ (mKeys config) environment
+    setup       = mSetup config
+    socketDir   = mSocketDir config 
+    commands    = mCommands config
+  in do
+-- Apply custom setup
+    setup environment
 
 -- Manage keys
-    let keyBindings = importKeyBindings $ mKeys config
-
     _ <- after webView keyPressEvent $ do
         value      <- eventKeyVal
         modifiers  <- eventModifier
@@ -148,11 +139,11 @@ realMain config = do
         let keyString = keyToString value
 
         case keyString of 
-            Just "<Escape>" -> liftIO $ showPrompt False browser
+            Just "<Escape>" -> liftIO $ widgetHide ((mBox . mPromptBar) gui)
             Just string -> do 
-                case Map.lookup (Set.fromList modifiers, string) keyBindings of
+                case Map.lookup (Set.fromList modifiers, string) keys of
                     Just callback -> do
-                        liftIO $ callback browser
+                        liftIO $ callback
                         liftIO $ whenLoud (putStrLn $ "Key pressed: " ++ show modifiers ++ string ++ " (mapped)")
                     _ -> liftIO $ whenLoud (putStrLn $ "Key pressed: " ++ show modifiers ++ string ++ " (unmapped)")
             _ -> return ()
@@ -164,23 +155,24 @@ realMain config = do
         Just uri -> do 
             fileURI <- doesFileExist uri
             case fileURI of
-                True -> getCurrentDirectory >>= \cwd -> webViewLoadUri webView $ "file://" ++ cwd ++ "/" ++ uri
+                True -> getCurrentDirectory >>= \dir -> webViewLoadUri webView $ "file://" ++ dir ++ "/" ++ uri
                 _    -> webViewLoadUri webView uri
             
             whenLoud $ putStrLn ("Loading " ++ uri ++ "...")
-        _ -> goHome browser
+        _ -> goHome webView config
 
 -- Initialize IPC socket
-    pid <- getProcessID
-    let socketURI = "ipc://" ++ (mSocketDir config) ++ "/hbro." ++ show pid
+    pid              <- getProcessID
+    let commandsList =  Map.fromList $ defaultCommandsList ++ commands
+    let socketURI    =  "ipc://" ++ socketDir ++ "/hbro." ++ show pid
 
     --timeoutAdd (putStrLn "OK" >> return True) 2000
-
-    ZMQ.withContext 1 $ \context -> do
-        _ <- forkIO $ createRepSocket context socketURI browser
+    
+    ZMQ.withContext 1 (\context -> do
+        void $ forkIO (openRepSocket context socketURI (listenToCommands environment commandsList))
     
     -- Manage POSIX signals
-        _ <- installHandler sigINT (Catch interruptHandler) Nothing
+        void $ installHandler sigINT (Catch interruptHandler) Nothing
     
         mainGUI -- Main loop
 
@@ -188,6 +180,7 @@ realMain config = do
         whenLoud $ putStrLn "Closing socket..."
         closeSocket context socketURI
         whenNormal $ putStrLn "Exiting..."
+        )
 
 -- | POSIX signal SIGINT handler
 interruptHandler :: IO ()
@@ -198,132 +191,89 @@ interruptHandler = do
 
 -- {{{ Browsing functions
 -- | Load homepage (set from configuration file).
-goHome :: Browser -> IO ()
-goHome browser = do
+goHome :: WebView -> Config -> IO ()
+goHome webView config = do
     whenLoud $ putStrLn ("Loading homepage: " ++ uri)
-    loadURI uri browser
+    loadURI webView uri
   where
-    uri = mHomePage $ mConfiguration browser
-
--- | Wrapper around webViewGoBack function, provided for convenience.
-goBack :: Browser -> IO ()
-goBack browser = webViewGoBack (mWebView $ mGUI browser)
-
--- | Wrapper around webViewGoForward function, provided for convenience.
-goForward :: Browser -> IO ()
-goForward browser = webViewGoForward (mWebView $ mGUI browser)
-
--- | Wrapper around webViewStopLoading function, provided for convenience.
-stopLoading :: Browser -> IO ()
-stopLoading browser = webViewStopLoading (mWebView $ mGUI browser)
-
--- | Wrapper around webViewReload, provided for convenience.
-reload :: Browser -> IO ()
-reload browser = webViewReload (mWebView $ mGUI browser)
-
--- | Wrapper around webViewReloadBypassCache, provided for convenience.
-reloadBypassCache :: Browser -> IO ()
-reloadBypassCache browser = webViewReloadBypassCache (mWebView $ mGUI browser)
+    uri = mHomePage config
 
 -- | Load given URL in the browser.
-loadURI :: String -> Browser -> IO ()
-loadURI url browser =
-    case importURL url of
-        Just url' -> do
-            whenLoud $ putStrLn ("Loading URI: " ++ url)
-            loadURI' url' browser
-        _ -> putStrLn $ "WARNING: not a valid URI: " ++ url
-
--- | Backend function for loadURI.
-loadURI' :: URL -> Browser -> IO ()
-loadURI' uri@URL {url_type = Absolute _} browser =
-    webViewLoadUri (mWebView $ mGUI browser) (exportURL uri)
-loadURI' uri@URL {url_type = HostRelative} browser = 
-    webViewLoadUri (mWebView $ mGUI browser) ("file://" ++ exportURL uri)
-loadURI' uri@URL {url_type = _} browser = 
-    webViewLoadUri (mWebView $ mGUI browser) ("http://" ++ exportURL uri)
+loadURI :: WebView -> String -> IO ()
+loadURI webView uri = do
+    whenLoud $ putStrLn ("Loading URI: " ++ uri)
+    case importURL uri of
+        Just uri'@URL {url_type = Absolute _}   -> webViewLoadUri webView (exportURL uri')
+        Just uri'@URL {url_type = HostRelative} -> webViewLoadUri webView ("file://" ++ exportURL uri')
+        Just uri'@URL {url_type = _}            -> webViewLoadUri webView ("http://" ++ exportURL uri')
+        _ -> whenNormal $ putStrLn ("WARNING: not a valid URI: " ++ uri)
 -- }}}
-
--- {{{ Zoom
--- | Wrapper around webViewZoomIn function, provided for convenience.
-zoomIn :: Browser -> IO ()
-zoomIn browser = webViewZoomIn (mWebView $ mGUI browser)
-
--- | Wrapper around webViewZoomOut function, provided for convenience.
-zoomOut :: Browser -> IO ()
-zoomOut browser = webViewZoomOut (mWebView $ mGUI browser)
--- }}}
-
 
 -- | Wrapper around webFramePrint function, provided for convenience.
-printPage :: Browser -> IO()
-printPage browser = do
-    frame <- webViewGetMainFrame (mWebView $ mGUI browser)
+printPage :: WebView -> IO ()
+printPage webView = do
+    frame <- webViewGetMainFrame webView
     webFramePrint frame
 
 
 -- {{{ Scrolling
 -- | Scroll up to top of web page. Provided for convenience.
-verticalHome :: Browser -> IO ()
-verticalHome browser = do
-    adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
+goTop :: ScrolledWindow -> IO ()
+goTop window = do
+    adjustment  <- scrolledWindowGetVAdjustment window
     lower       <- adjustmentGetLower adjustment
 
     adjustmentSetValue adjustment lower
 
 
 -- | Scroll down to bottom of web page. Provided for convenience.
-verticalEnd :: Browser -> IO ()
-verticalEnd browser = do
-    adjustment  <- scrolledWindowGetVAdjustment (mScrollWindow $ mGUI browser)
+goBottom :: ScrolledWindow -> IO ()
+goBottom window = do
+    adjustment  <- scrolledWindowGetVAdjustment window
     upper       <- adjustmentGetUpper adjustment
 
     adjustmentSetValue adjustment upper
 
 -- | Scroll to the left edge of web page. Provided for convenience.
-horizontalHome :: Browser -> IO ()
-horizontalHome browser = do
-    adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
+goLeft :: ScrolledWindow -> IO ()
+goLeft window = do
+    adjustment  <- scrolledWindowGetHAdjustment window
     lower       <- adjustmentGetLower adjustment
 
     adjustmentSetValue adjustment lower
 
 -- | Scroll to the right edge of web page. Provided for convenience.
-horizontalEnd :: Browser -> IO ()
-horizontalEnd browser = do
-    adjustment  <- scrolledWindowGetHAdjustment (mScrollWindow $ mGUI browser)
+goRight :: ScrolledWindow -> IO ()
+goRight window = do
+    adjustment  <- scrolledWindowGetHAdjustment window
     upper       <- adjustmentGetUpper adjustment
 
     adjustmentSetValue adjustment upper 
 -- }}}
 
-
 -- | Spawn a new instance of the browser.
 newInstance :: IO ()
 newInstance = do 
     (binary, _, _, _, _) <- getPaths dyreParameters 
-    spawn $ proc binary []
+    spawn binary []
 
 -- | Execute a javascript file on current webpage.
-executeJSFile :: String -> Browser -> IO ()
-executeJSFile filePath browser = do
+executeJSFile :: String -> WebView -> IO ()
+executeJSFile filePath webView = do
     whenNormal $ putStrLn ("Executing Javascript file: " ++ filePath)
     script <- readFile filePath
     let script' = unwords . map (\line -> line ++ "\n") . lines $ script
 
-    webViewExecuteScript (mWebView $ mGUI browser) script'
+    webViewExecuteScript webView script'
 
 
 -- | Save current web page to a file,
 -- along with all its resources in a separated directory.
 -- Doesn't work for now, because web_resource_get_data's binding is missing...
-savePage :: String -> Browser -> IO ()
-savePage _path browser = do
+savePage :: String -> WebView -> IO ()
+savePage _path webView = do
     frame        <- webViewGetMainFrame webView
     dataSource   <- webFrameGetDataSource frame
     _mainResource <- webDataSourceGetMainResource dataSource
     _subResources <- webDataSourceGetSubresources dataSource
     return ()
-    
-  where
-    webView  = mWebView $ mGUI browser

@@ -1,7 +1,7 @@
 module Hbro.Extra.Session where
 
 -- {{{ Imports
-import Hbro.Types
+--import Hbro.Types
 import Hbro.Util
 
 import qualified Data.Text as T
@@ -18,8 +18,8 @@ import System.Posix.Process
 import System.Process 
 -- }}}
 
-setupSession :: Browser -> IO ()
-setupSession browser = do
+setupSession :: WebView -> IO ()
+setupSession webView = do
     pid             <- getProcessID
     configHome      <- getEnv "XDG_CONFIG_HOME"
     previousSession <- getDirectoryContents (configHome ++ "/hbro/") >>= return . (filter sessionFilesFilter)
@@ -38,39 +38,29 @@ setupSession browser = do
     
     return ()
 
-  where
-    webView = mWebView $ mGUI browser
-
 sessionFilesFilter :: String -> Bool
 sessionFilesFilter ('s':'e':'s':'s':'i':'o':'n':'.':_) = True
 sessionFilesFilter _ = False
 
 
-loadFromSession :: Browser -> IO ()
-loadFromSession browser = do
+loadFromSession :: [String] -> IO ()
+loadFromSession dmenuOptions = do
     configHome      <- getEnv "XDG_CONFIG_HOME"
-    previousSession <- getDirectoryContents (configHome ++ "/hbro/") >>= return . (filter sessionFilesFilter)
+    previousSession <- getDirectoryContents (configHome ++ "/hbro/sessions/") >>= return . (filter sessionFilesFilter)
     sessionURIs     <- mapM getSessionURI previousSession 
 
-
-    (Just input, Just output, _, _) <- createProcess (proc "dmenu" ["-l", "10"]) {
-        std_in = CreatePipe,
-        std_out = CreatePipe }
-    _ <- T.hPutStr input (T.unlines sessionURIs)
+    selection <- dmenu dmenuOptions (T.unlines sessionURIs)
     
-    uri <- catch (hGetLine output) (\_error -> return "ERROR" )
-    
-    case uri of
-        "ERROR" -> return ()
+    case selection of
         ""      -> return ()
         u       -> do
-            _ <- spawn (proc "hbro" ["-u", u])
+            _ <- spawn "hbro" ["-u", u]
             return ()
     
 getSessionURI :: String -> IO T.Text
 getSessionURI fileName = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
-    file        <- T.readFile $ configHome ++ "/hbro/" ++ fileName
+    file        <- T.readFile $ configHome ++ "/hbro/sessions/" ++ fileName
 
     return $ (head . T.lines) file
 

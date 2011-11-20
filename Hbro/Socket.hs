@@ -1,7 +1,11 @@
 module Hbro.Socket where
     
 -- {{{ Imports
+import Hbro.Util
 import Hbro.Types
+
+import Control.Monad
+import Control.Monad.Reader
 
 import Data.ByteString.Char8 (pack, unpack)
 import qualified Data.Map as Map
@@ -10,25 +14,24 @@ import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.WebKit.WebView
 
 import System.Console.CmdArgs (whenNormal, whenLoud)
+--import System.Posix.Types
 import System.ZMQ 
 -- }}}
     
 -- | Create a response socket to listen for commands.
 -- Loops on listenToSocket until "Quit" command is received.
-createRepSocket :: Context -> String -> Browser -> IO ()
-createRepSocket context socketURI browser = do
-    whenNormal $ putStrLn ("Listening socket at " ++ socketURI)
+openRepSocket :: Context -> String -> (Socket Rep -> IO ()) -> IO ()
+openRepSocket context socketURI listen = do    
+    whenNormal $ putStrLn ("Opening socket at " ++ socketURI)
     withSocket context Rep $ \repSocket -> do
         bind repSocket socketURI
-        listenToSocket repSocket commandsList browser
-  where
-    commandsList = Map.fromList (defaultCommandsList ++ (mCommands $ mConfiguration browser))
+        listen repSocket
 
 
 -- | Listen for incoming requests from response socket.
 -- Parse received commands and feed the corresponding callback, if any.
-listenToSocket :: Socket Rep -> CommandsMap -> Browser -> IO ()
-listenToSocket repSocket commands browser = do
+listenToCommands :: Environment -> CommandsMap -> Socket Rep -> IO ()
+listenToCommands environment commands repSocket = do
     message      <- receive repSocket []
     let message' =  unpack message
 
@@ -36,80 +39,94 @@ listenToSocket repSocket commands browser = do
     -- Empty command
         [] -> send repSocket (pack "ERROR Unknown command") []
     -- Exit command
-        ["Quit"] -> send repSocket (pack "OK") []
+        ["QUIT"] -> do
+            whenLoud $ putStrLn "Receiving QUIT command"
+            send repSocket (pack "OK") []
     -- Valid command
         command:arguments -> do
             whenLoud $ putStrLn ("Receiving command: " ++ message')
             case Map.lookup command commands of
-                Just callback -> callback arguments repSocket browser
+                Just callback -> callback arguments repSocket environment
                 _             -> send repSocket (pack "ERROR Unknown command") []
 
-            listenToSocket repSocket commands browser
+            listenToCommands environment commands repSocket
         
+
+-- | Close the response socket by sending it the command "Quit".
+-- Typically called when exiting application.            
 closeSocket :: Context -> String -> IO ()
-closeSocket context socketURI = do
+closeSocket context socketURI = void $ sendCommand context socketURI "QUIT"
+        
+                                
+processIDToSocket :: String -> String -> String
+processIDToSocket pid socketDir = "ipc://" ++ socketDir ++ "/hbro." ++ pid
+  
+  
+sendCommand :: Context -> String -> String -> IO String
+sendCommand context socketURI command = do
     withSocket context Req $ \reqSocket -> do
         connect reqSocket socketURI
-        send reqSocket (pack "Quit") []
-        _ <- receive reqSocket []
-        return ()
-
+        send reqSocket (pack command) []
+        receive reqSocket [] >>= return . unpack
+        
+sendCommandToAll :: Context -> FilePath -> String -> IO [String]
+sendCommandToAll context socketDir command = getAllProcessIDs >>= mapM (\pid -> sendCommand context (processIDToSocket pid socketDir) command)
 
 -- | List of default supported requests.
 defaultCommandsList :: CommandsList
 defaultCommandsList = [
     -- Get information
-    ("getUri", \_arguments repSocket browser -> do
+    ("GET_URI", \_arguments repSocket browser -> liftIO $ do
         getUri <- postGUISync $ webViewGetUri (mWebView $ mGUI browser)
         case getUri of
             Just uri -> send repSocket (pack uri) []
             _        -> send repSocket (pack "ERROR No URL opened") [] ),
 
-    ("getTitle", \_arguments repSocket browser -> do
+    ("GET_TITLE", \_arguments repSocket browser -> liftIO $ do
         getTitle <- postGUISync $ webViewGetTitle (mWebView $ mGUI browser)
         case getTitle of
             Just title -> send repSocket (pack title) []
             _          -> send repSocket (pack "ERROR No title") [] ),
 
-    ("getFaviconUri", \_arguments repSocket browser -> do
+    ("GET_FAVICON_URI", \_arguments repSocket browser -> liftIO $ do
         getUri <- postGUISync $ webViewGetIconUri (mWebView $ mGUI browser)
         case getUri of
             Just uri -> send repSocket (pack uri) []
             _        -> send repSocket (pack "ERROR No favicon uri") [] ),
 
-    ("getLoadProgress", \_arguments repSocket browser -> do
+    ("GET_LOAD_PROGRESS", \_arguments repSocket browser -> liftIO $ do
         progress <- postGUISync $ webViewGetProgress (mWebView $ mGUI browser)
         send repSocket (pack (show progress)) [] ),
 
 
     -- Trigger actions
-    ("loadUri", \arguments repSocket browser -> case arguments of 
+    ("LOAD_URI", \arguments repSocket browser -> liftIO $ case arguments of 
         uri:_ -> do
             postGUIAsync $ webViewLoadUri (mWebView $ mGUI browser) uri
             send repSocket (pack "OK") []
         _     -> send repSocket (pack "ERROR: argument needed.") [] ),
 
-    ("stopLoading", \_arguments repSocket browser -> do
+    ("STOP_LOADING", \_arguments repSocket browser -> liftIO $do
         postGUIAsync $ webViewStopLoading (mWebView $ mGUI browser) 
         send repSocket (pack "OK") [] ),
 
-    ("reload", \_arguments repSocket browser -> do
+    ("RELOAD", \_arguments repSocket browser -> liftIO $ do
         postGUIAsync $ webViewReload (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] ),
 
-    ("goBack", \_arguments repSocket browser -> do
+    ("GO_BACK", \_arguments repSocket browser -> liftIO $ do
         postGUIAsync $ webViewGoBack (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] ),
 
-    ("goForward", \_arguments repSocket browser -> do
+    ("GO_FORWARD", \_arguments repSocket browser -> liftIO $ do
         postGUIAsync $ webViewGoForward (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] ),
 
-    ("zoomIn", \_arguments repSocket browser -> do
+    ("ZOOM_IN", \_arguments repSocket browser -> liftIO $ do
         postGUIAsync $ webViewZoomIn (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] ),
 
-    ("zoomOut", \_arguments repSocket browser -> do
+    ("ZOOM_OUT", \_arguments repSocket browser -> liftIO $ do
         postGUIAsync $ webViewZoomOut (mWebView $ mGUI browser)
         send repSocket (pack "OK") [] )
     ]

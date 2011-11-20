@@ -48,7 +48,6 @@ Library
         Hbro.Extra.Clipboard,
         Hbro.Extra.History,
         Hbro.Extra.Misc,
-        Hbro.Extra.Prompt,
         Hbro.Extra.Session,
         Hbro.Extra.StatusBar,
         Hbro.Gui,

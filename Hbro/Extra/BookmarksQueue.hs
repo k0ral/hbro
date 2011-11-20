@@ -1,47 +1,37 @@
 module Hbro.Extra.BookmarksQueue where
 
 -- {{{ Imports
-import Hbro.Types
+--import Hbro.Types
 
 import Data.List
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-
-import Graphics.UI.Gtk.WebKit.WebView
 
 import System.Environment
 -- }}}
 
 
 -- | Add current URI to the end of the queue.
-append :: Browser -> IO ()
-append browser = do
-    uri         <- webViewGetUri (mWebView $ mGUI browser)
+append :: String -> IO ()
+append uri = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
-
-    case uri of
-        Just u -> appendFile (configHome ++ "/hbro/queue") (u ++ "\n")
-        _ -> return ()
+    appendFile (configHome ++ "/hbro/queue") (uri ++ "\n")
 
 -- | Add current URI to the beginning of the queue.
-push :: Browser -> IO ()
-push browser = do
-    uri         <- webViewGetUri (mWebView $ mGUI browser)
+push :: String -> IO ()
+push uri = do
     configHome  <- getEnv "XDG_CONFIG_HOME"
     file        <- catch (T.readFile $ configHome ++ "/hbro/queue") (\_error -> return T.empty)
 
-    case uri of 
-        Just u ->
-            if (file == T.empty)
-                then return ()
-                else do
-                    let fileLines = T.lines file
-                    let file' = T.unlines . nub $ (T.pack u):fileLines
-                
-                    T.writeFile (configHome ++ "/hbro/queue") file'
-
-                    return ()
-        _ -> return ()
+    if (file == T.empty)
+      then return ()
+      else do
+        let fileLines = T.lines file
+        let file' = T.unlines . nub $ (T.pack uri):fileLines
+        
+        T.writeFile (configHome ++ "/hbro/queue") file'
+        
+        return ()
 
 -- | Return the first URI from the queue, while removing it.
 popFront :: IO String
