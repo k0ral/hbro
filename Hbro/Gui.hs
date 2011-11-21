@@ -1,5 +1,11 @@
 {-# LANGUAGE DoRec #-}
-module Hbro.Gui where
+module Hbro.Gui (
+    initGUI,
+    showWebInspector,
+    prompt,
+    promptIncremental,
+    toggleVisibility
+) where
 
 -- {{{ Imports
 import Hbro.Types
@@ -32,7 +38,6 @@ import System.Glib.Signals
 -- }}}
 
 
--- | Load GUI from XML file
 initGUI :: FilePath -> [AttrOp WebSettings] -> IO GUI
 initGUI xmlPath settings = do
     whenNormal $ putStr ("Loading GUI from " ++ xmlPath ++ "... ")
@@ -45,7 +50,7 @@ initGUI xmlPath settings = do
 -- Init components
     (webView, sWindow) <- initWebView        builder settings
     (window, wBox)     <- initWindow         builder webView
-    promptBar          <- initPrompt         builder
+    promptBar          <- initPromptBar      builder
     statusBar          <- initStatusBar      builder
     inspectorWindow    <- initWebInspector   webView wBox
     
@@ -56,8 +61,6 @@ initGUI xmlPath settings = do
     whenNormal $ putStrLn "Done."
     return $ GUI window inspectorWindow sWindow webView promptBar statusBar builder
 
-
--- | Create and configure a webview
 initWebView :: Builder -> [AttrOp WebSettings] -> IO (WebView, ScrolledWindow)
 initWebView builder settings = do
     webView     <- webViewNew
@@ -84,22 +87,21 @@ initWebView builder settings = do
     scrolledWindowSetPolicy window PolicyNever PolicyNever
     
     return (webView, window)
- 
--- | Load and configure main window
+
 initWindow :: Builder -> WebView -> IO (Window, VBox)
 initWindow builder webView = do
     window <- builderGetObject builder castToWindow "mainWindow"
     windowSetDefault window $ Just webView
+    windowSetDefaultSize window 800 600
     widgetModifyBg window StateNormal (Color 0 0 10000)
     _ <- onDestroy window GTK.mainQuit
     
     box <- builderGetObject builder castToVBox "windowBox"
     
     return (window, box)
- 
--- | Load and configure prompt bar
-initPrompt :: Builder -> IO PromptBar
-initPrompt builder = do
+
+initPromptBar :: Builder -> IO PromptBar
+initPromptBar builder = do
     label  <- builderGetObject builder castToLabel "promptDescription"
     labelSetAttributes label [
       AttrStyle  {paStart = 0, paEnd = -1, paStyle = StyleItalic},
@@ -111,7 +113,6 @@ initPrompt builder = do
     
     return $ PromptBar box label entry
     
--- | Load and configure status bar
 initStatusBar :: Builder -> IO HBox
 initStatusBar builder = builderGetObject builder castToHBox "statusBox"
     
@@ -175,7 +176,7 @@ showWebInspector webView = do
 
 -- {{{ Prompt
 openPrompt :: PromptBar -> String -> String -> IO ()
-openPrompt promptBar@PromptBar {mBox = promptBox, mDescription = description, mEntry = entry} newDescription defaultText = do
+openPrompt _promptBar@PromptBar {mBox = promptBox, mDescription = description, mEntry = entry} newDescription defaultText = do
     labelSetText description newDescription
     entrySetText entry defaultText
     
@@ -183,12 +184,12 @@ openPrompt promptBar@PromptBar {mBox = promptBox, mDescription = description, mE
     widgetGrabFocus entry
     editableSetPosition entry (-1)
     
-
--- | Show the prompt bar label and default text.
--- As the user validates its entry, the given callback is executed.
+-- | Open prompt bar with given description and default value,
+-- and register a callback to trigger at validation.
 prompt :: String -> String -> (String -> IO ()) -> PromptBar -> IO ()
 prompt l d = prompt' l d False
 
+-- | Same as 'prompt', but callback is triggered for each change in prompt's entry.
 promptIncremental :: String -> String -> (String -> IO ()) -> PromptBar -> IO ()
 promptIncremental l d = prompt' l d True
 
@@ -244,7 +245,7 @@ prompt' description defaultText incremental callback promptBar = do
 
 
 -- {{{ Util
--- | Toggle a widget's visibility
+-- | Toggle a widget's visibility (provided for convenience).
 toggleVisibility :: WidgetClass a => a -> IO ()
 toggleVisibility widget = do
     visibility <- get widget widgetVisible

@@ -1,6 +1,20 @@
-{-# LANGUAGE OverloadedStrings #-} 
-{-# LANGUAGE ExistentialQuantification #-}
-module Hbro.Core where
+{-# LANGUAGE OverloadedStrings #-}
+module Hbro.Core (
+-- * Main
+    defaultConfig,
+    launchHbro,
+-- * Browsing
+    goHome,
+    loadURI,
+-- * Scrolling    
+    goTop,
+    goBottom,
+    goLeft,
+    goRight,
+-- * Misc
+    printPage,
+    executeJSFile
+) where
 
 -- {{{ Imports
 import Hbro.Gui
@@ -12,7 +26,6 @@ import qualified Config.Dyre as D
 import Config.Dyre.Paths
 
 import Control.Concurrent
---import Control.Monad.Trans(liftIO)
 import Control.Monad.Reader
 
 import qualified Data.Map as Map
@@ -25,24 +38,20 @@ import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebDataSource
 import Graphics.UI.Gtk.WebKit.WebFrame
---import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView
 
 import Network.URL
 
 import System.Console.CmdArgs
 import System.Directory
---import System.Glib.Attributes
 import System.Glib.Signals
 import System.IO
---import System.Process
 import System.Posix.Process
 import System.Posix.Signals
 import qualified System.ZMQ as ZMQ
 -- }}}
 
 -- {{{ Commandline options
--- | Available commandline options
 cliOptions :: CliOptions
 cliOptions = CliOptions {
     mURI = def &= help "URI to open at start-up" &= explicit &= name "u" &= name "uri" &= typ "URI"
@@ -57,7 +66,7 @@ getOptions = cmdArgs $ cliOptions
     &= program "hbro"
 -- }}}
 
--- {{{ Configuration
+-- {{{ Configuration (Dyre)
 dyreParameters :: D.Params Config
 dyreParameters = D.defaultParams {
     D.projectName  = "hbro",
@@ -71,10 +80,11 @@ showError :: Config -> String -> Config
 showError config message = config { mError = Just message }
 
 -- | Default configuration.
--- Does quite nothing.
+-- Homepage: Google, socket directory: /tmp,
+-- UI file: ~/.config/hbro/, no key/command binding.
 defaultConfig :: FilePath -> FilePath -> Config 
 defaultConfig home tmp = Config {
-    mHomePage    = "https://www.google.com",
+    mHomePage    = "https://encrypted.google.com/",
     mSocketDir   = tmp,
     mUIFile      = home ++ "/.config/hbro/ui.xml",
     mKeys        = const [],
@@ -87,13 +97,11 @@ defaultConfig home tmp = Config {
 
 -- {{{ Entry point
 -- | Browser's main function.
--- To be called in function "main" with a proper configuration.
+-- To be called in main function with a proper configuration.
+-- See Hbro.Main for an example.
 launchHbro :: Config -> IO ()
 launchHbro = D.wrapMain dyreParameters
 
--- | Entry point for the application.
--- Print configuration error if any, parse commandline arguments,
--- initialize the GUI and forward the environment to realMain.
 realMain :: Config -> IO ()
 realMain config = do
 -- Print configuration error, if any
@@ -117,9 +125,6 @@ realMain config = do
 -- Initialize IPC socket
     ZMQ.withContext 1 $ realMain' config options gui
 
-
--- | Entry point for the application.
--- Create browser and load homepage.
 realMain' :: Config -> CliOptions -> GUI -> ZMQ.Context -> IO ()
 realMain' config options gui@GUI {mWebView = webView, mWindow = window} context = let
     environment = Environment options config gui context
@@ -178,7 +183,6 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
     closeSocket context socketURI
     whenNormal $ putStrLn "Exiting..."
 
--- | POSIX signal SIGINT handler.
 interruptHandler :: IO ()
 interruptHandler = do
     whenLoud $ putStrLn "Received SIGINT."
@@ -206,13 +210,6 @@ loadURI webView uri = do
         _ -> whenNormal $ putStrLn ("WARNING: not a valid URI: " ++ uri)
 -- }}}
 
--- | Wrapper around webFramePrint function, provided for convenience.
-printPage :: WebView -> IO ()
-printPage webView = do
-    frame <- webViewGetMainFrame webView
-    webFramePrint frame
-
-
 -- {{{ Scrolling
 -- | Scroll up to top of web page. Provided for convenience.
 goTop :: ScrolledWindow -> IO ()
@@ -221,7 +218,6 @@ goTop window = do
     lower       <- adjustmentGetLower adjustment
 
     adjustmentSetValue adjustment lower
-
 
 -- | Scroll down to bottom of web page. Provided for convenience.
 goBottom :: ScrolledWindow -> IO ()
@@ -248,6 +244,13 @@ goRight window = do
     adjustmentSetValue adjustment upper 
 -- }}}
 
+-- {{{ Misc
+-- | Wrapper around webFramePrint function, provided for convenience.
+printPage :: WebView -> IO ()
+printPage webView = do
+    frame <- webViewGetMainFrame webView
+    webFramePrint frame
+
 
 -- | Execute a javascript file on current webpage.
 executeJSFile :: String -> WebView -> IO ()
@@ -257,13 +260,14 @@ executeJSFile filePath webView = do
     let script' = unwords . map (\line -> line ++ "\n") . lines $ script
 
     webViewExecuteScript webView script'
+-- }}}
 
 
 -- | Save current web page to a file,
 -- along with all its resources in a separated directory.
 -- Doesn't work for now, because web_resource_get_data's binding is missing...
-savePage :: String -> WebView -> IO ()
-savePage _path webView = do
+_savePage :: String -> WebView -> IO ()
+_savePage _path webView = do
     frame        <- webViewGetMainFrame webView
     dataSource   <- webFrameGetDataSource frame
     _mainResource <- webDataSourceGetMainResource dataSource

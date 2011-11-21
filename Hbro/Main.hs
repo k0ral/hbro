@@ -9,6 +9,7 @@ import Paths_hbro
 import System.Directory
 -- }}}
 
+-- | Default main function provided as example.
 main :: IO ()
 main = do
     home   <- getHomeDirectory
@@ -16,7 +17,7 @@ main = do
     uiFile <- getDataFileName "examples/ui.xml"
 
 --     putStrLn "[WARNING] You are running the default configuration which provides hardly no feature."
---     putStrLn $ "[WARNING] You should copy the example configuration files hbro.hs and ui.xml in " ++ configHome ++ "/hbro and start hacking them."
+--     putStrLn "[WARNING] You should copy the example configuration files hbro.hs and ui.xml in ~/.config/hbro/hbro and start hacking them."
 
     launchHbro $ (defaultConfig home tmp) {
         mUIFile = uiFile

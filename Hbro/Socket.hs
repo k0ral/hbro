@@ -14,7 +14,6 @@ import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.WebKit.WebView
 
 import System.Console.CmdArgs (whenNormal, whenLoud)
---import System.Posix.Types
 import System.ZMQ 
 -- }}}
     
@@ -26,7 +25,6 @@ openRepSocket context socketURI listen = do
     withSocket context Rep $ \repSocket -> do
         bind repSocket socketURI
         listen repSocket
-
 
 -- | Listen for incoming requests from response socket.
 -- Parse received commands and feed the corresponding callback, if any.
@@ -57,11 +55,12 @@ listenToCommands environment commands repSocket = do
 closeSocket :: Context -> String -> IO ()
 closeSocket context socketURI = void $ sendCommand context socketURI "QUIT"
         
-                                
+-- | Return the socket path to use for the given browser's process ID.
 processIDToSocket :: String -> String -> String
 processIDToSocket pid socketDir = "ipc://" ++ socketDir ++ "/hbro." ++ pid
   
-  
+-- | Send a single command (through a Request socket) to the given Response socket,
+-- and return the answer.
 sendCommand :: Context -> String -> String -> IO String
 sendCommand context socketURI command = do
     withSocket context Req $ \reqSocket -> do
@@ -69,6 +68,7 @@ sendCommand context socketURI command = do
         send reqSocket (pack command) []
         receive reqSocket [] >>= return . unpack
         
+-- | Same as 'sendCommand', but for all running instances of the browser.
 sendCommandToAll :: Context -> FilePath -> String -> IO [String]
 sendCommandToAll context socketDir command = getAllProcessIDs >>= mapM (\pid -> sendCommand context (processIDToSocket pid socketDir) command)
 

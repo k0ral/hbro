@@ -18,13 +18,12 @@ import System.Posix.Process
 import System.Process 
 -- }}}
 
-setupSession :: WebView -> IO ()
-setupSession webView = do
+setupSession :: WebView -> String -> IO ()
+setupSession webView sessionDirectory = do
     pid             <- getProcessID
-    configHome      <- getEnv "XDG_CONFIG_HOME"
-    previousSession <- getDirectoryContents (configHome ++ "/hbro/") >>= return . (filter sessionFilesFilter)
+    previousSession <- getDirectoryContents sessionDirectory
 
-    let sessionFile = configHome ++ "/hbro/session." ++ show pid
+    let sessionFile = sessionDirectory ++ show pid
 
     _ <- on webView loadFinished $ \_ -> do        
         uri <- webViewGetUri webView
@@ -38,29 +37,24 @@ setupSession webView = do
     
     return ()
 
-sessionFilesFilter :: String -> Bool
-sessionFilesFilter ('s':'e':'s':'s':'i':'o':'n':'.':_) = True
-sessionFilesFilter _ = False
 
-
-loadFromSession :: [String] -> IO ()
-loadFromSession dmenuOptions = do
-    configHome      <- getEnv "XDG_CONFIG_HOME"
-    previousSession <- getDirectoryContents (configHome ++ "/hbro/sessions/") >>= return . (filter sessionFilesFilter)
-    sessionURIs     <- mapM getSessionURI previousSession 
-
-    selection <- dmenu dmenuOptions (T.unlines sessionURIs)
-    
-    case selection of
-        ""      -> return ()
-        u       -> do
-            _ <- spawn "hbro" ["-u", u]
-            return ()
-    
-getSessionURI :: String -> IO T.Text
-getSessionURI fileName = do
-    configHome  <- getEnv "XDG_CONFIG_HOME"
-    file        <- T.readFile $ configHome ++ "/hbro/sessions/" ++ fileName
-
-    return $ (head . T.lines) file
+--loadFromSession :: [String] -> String -> IO ()
+--loadFromSession dmenuOptions sessionDirectory = do
+--    previousSession <- getDirectoryContents sessionDirectory
+--    sessionURIs     <- mapM getSessionURI previousSession 
+-- 
+--    selection <- dmenu dmenuOptions (T.unlines sessionURIs)
+--    
+--    case selection of
+--        ""      -> return ()
+--        u       -> do
+--            _ <- spawn "hbro" ["-u", u]
+--            return ()
+--    
+--getSessionURI :: String -> IO T.Text
+--getSessionURI fileName = do
+--    configHome  <- getEnv "XDG_CONFIG_HOME"
+--    file        <- T.readFile $ configHome ++ "/hbro/sessions/" ++ fileName
+-- 
+--    return $ (head . T.lines) file
 
