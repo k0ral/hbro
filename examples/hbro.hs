@@ -11,6 +11,7 @@ import Hbro.Extra.Prompt
 import Hbro.Extra.Session
 import Hbro.Extra.StatusBar
 import Hbro.Gui
+import Hbro.Socket
 import Hbro.Types
 import Hbro.Util
 
@@ -69,7 +70,7 @@ myBookmarksFile home = home ++ "/.config/hbro/bookmarks"
 -- {{{ Keys
 -- Note that this example is suited for an azerty keyboard.
 myKeys :: FilePath -> Environment -> KeysList
-myKeys home environment@Environment {mGUI = gui, mConfig = config} = let
+myKeys home environment@Environment {mGUI = gui, mConfig = config, mContext = context} = let
     window         = mWindow       gui
     webView        = mWebView      gui
     scrolledWindow = mScrollWindow gui
@@ -78,6 +79,7 @@ myKeys home environment@Environment {mGUI = gui, mConfig = config} = let
     promptEntry    = mEntry promptBar
     bookmarksFile  = myBookmarksFile home
     historyFile    = myHistoryFile   home
+    socketDir      = mSocketDir config
   in  
     [
 --  ((modifiers,        key),           callback)
@@ -129,7 +131,7 @@ myKeys home environment@Environment {mGUI = gui, mConfig = config} = let
 
 -- Bookmarks
     (([Control],        "d"),           webViewGetUri webView >>= maybe (return ()) (\uri -> prompt "Bookmark with tags:" "" (\tags -> Bookmarks.add bookmarksFile uri (words tags)) promptBar)),
---    (([Control, Shift], "D"),           prompt "Bookmark all instances with tag:" "" (\tags -> mapM (sendCommandToAll "GET_URI") >>= map (flip Bookmarks.add tags)) . mGUI),
+    (([Control, Shift], "D"),           prompt "Bookmark all instances with tag:" "" (\tags -> sendCommandToAll context socketDir "GET_URI" >>= mapM (\uri -> Bookmarks.add bookmarksFile uri $ words tags) >> (webViewGetUri webView) >>= maybe (return ()) (\uri -> Bookmarks.add bookmarksFile uri $ words tags) >> return ()) promptBar),
     (([Alt],            "d"),           Bookmarks.deleteWithTag bookmarksFile ["-l", "10"]),
     (([Control],        "l"),           Bookmarks.select        bookmarksFile ["-l", "10"] >>= maybe (return ()) (loadURI webView)),
     (([Control, Shift], "L"),           Bookmarks.selectTag     bookmarksFile ["-l", "10"] >>= maybe (return ()) (\uris -> mapM (\uri -> spawn "hbro" ["-u", uri]) uris >> return ())),
