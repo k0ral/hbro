@@ -40,16 +40,17 @@ import System.Process
 -- | Main function, basically launches hbro.
 main :: IO ()
 main = do
-    home <- getHomeDirectory                  
-    launchHbro $ myConfig home
+    home <- getHomeDirectory
+    tmp  <- getTemporaryDirectory
+    launchHbro $ myConfig home tmp
 
 
 -- | Application parameters.
 -- See Hbro.Types.Parameters documentation for fields description.
 -- Commented out fields indicate default values.
-myConfig :: String -> Config
-myConfig home = defaultConfig {
-    --mSocketDir = "/tmp/",
+myConfig :: String -> String -> Config
+myConfig home tmp = (defaultConfig home tmp) {
+    --mSocketDir = tmp,
     mUIFile      = home ++ "/.config/hbro/ui.xml",
     mHomePage    = "https://duckduckgo.com",
     mKeys        = myKeys home,
@@ -123,7 +124,7 @@ myKeys home environment@Environment {mGUI = gui, mConfig = config} = let
 -- Others
     (([Control],        "i"),           showWebInspector webView),
     (([Alt],            "p"),           printPage        webView),
-    (([Control],        "t"),           newInstance),
+    (([Control],        "t"),           spawn "hbro" []),
     (([Control],        "w"),           mainQuit),
 
 -- Bookmarks
@@ -138,7 +139,7 @@ myKeys home environment@Environment {mGUI = gui, mConfig = config} = let
 --        loadURI uri b),
 
 -- History
-    (([Control],        "h"),           History.select historyFile ["-l", "10"] >>= maybe (return ()) (loadURI webView)),
+    (([Control],        "h"),           History.select historyFile ["-l", "10"] >>= maybe (return ()) (loadURI webView))
     
 -- Session
     --(([Alt],            "l"),           loadFromSession ["-l", "10"])

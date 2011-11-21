@@ -13,14 +13,9 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 import Graphics.UI.Gtk.Display.Label
-import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Gdk.Keys
 import Graphics.UI.Gtk.General.General
-import Graphics.UI.Gtk.Layout.HBox
-import Graphics.UI.Gtk.Scrolling.ScrolledWindow
-import Graphics.UI.Gtk.WebKit.WebView
-import Graphics.UI.Gtk.Windows.Window
 
 --import System.Console.CmdArgs (whenLoud, whenNormal)
 import qualified System.Info as Sys

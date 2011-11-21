@@ -24,7 +24,8 @@ import System.ZMQ
 data Environment = Environment {
     mOptions :: CliOptions,          -- ^ Commandline options
     mConfig  :: Config,              -- ^ Configuration parameters (constants) provided by user
-    mGUI     :: GUI                  -- ^ Graphical widgets
+    mGUI     :: GUI,                 -- ^ Graphical widgets
+    mContext :: Context              -- ^ 
 }
 
 data CliOptions = CliOptions {

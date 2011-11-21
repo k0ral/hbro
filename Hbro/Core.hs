@@ -15,7 +15,6 @@ import Control.Concurrent
 --import Control.Monad.Trans(liftIO)
 import Control.Monad.Reader
 
---import Data.ByteString.Char8 (pack)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
@@ -73,12 +72,12 @@ showError config message = config { mError = Just message }
 
 -- | Default configuration.
 -- Does quite nothing.
-defaultConfig :: Config 
-defaultConfig = Config {
+defaultConfig :: FilePath -> FilePath -> Config 
+defaultConfig home tmp = Config {
     mHomePage    = "https://www.google.com",
-    mSocketDir   = "/tmp/",
-    mUIFile      = "~/.config/hbro/ui.xml",
-    mKeys        = \_ -> [],
+    mSocketDir   = tmp,
+    mUIFile      = home ++ "/.config/hbro/ui.xml",
+    mKeys        = const [],
     mWebSettings = [],
     mSetup       = const (return () :: IO ()),
     mCommands    = [],
@@ -92,9 +91,9 @@ defaultConfig = Config {
 launchHbro :: Config -> IO ()
 launchHbro = D.wrapMain dyreParameters
 
--- | Virtual entry point for the application.
--- Parse commandline arguments, print configuration error if any,
--- and forward the parameters to realMain through a Reader monad.
+-- | Entry point for the application.
+-- Print configuration error if any, parse commandline arguments,
+-- initialize the GUI and forward the environment to realMain.
 realMain :: Config -> IO ()
 realMain config = do
 -- Print configuration error, if any
@@ -114,15 +113,16 @@ realMain config = do
         
 -- Initialize GUI
     gui <- initGUI (mUIFile config) (mWebSettings config)
-    
-    realMain' config options gui
+
+-- Initialize IPC socket
+    ZMQ.withContext 1 $ realMain' config options gui
 
 
 -- | Entry point for the application.
 -- Create browser and load homepage.
-realMain' :: Config -> CliOptions -> GUI -> IO ()
-realMain' config options gui@GUI {mWebView = webView, mWindow = window} = let
-    environment = Environment options config gui
+realMain' :: Config -> CliOptions -> GUI -> ZMQ.Context -> IO ()
+realMain' config options gui@GUI {mWebView = webView, mWindow = window} context = let
+    environment = Environment options config gui context
     keys        = importKeyBindings $ (mKeys config) environment
     setup       = mSetup config
     socketDir   = mSocketDir config 
@@ -132,7 +132,7 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} = let
     setup environment
 
 -- Manage keys
-    _ <- after webView keyPressEvent $ do
+    _ <- after window keyPressEvent $ do
         value      <- eventKeyVal
         modifiers  <- eventModifier
 
@@ -161,28 +161,24 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} = let
             whenLoud $ putStrLn ("Loading " ++ uri ++ "...")
         _ -> goHome webView config
 
--- Initialize IPC socket
+-- Open socket
     pid              <- getProcessID
     let commandsList =  Map.fromList $ defaultCommandsList ++ commands
     let socketURI    =  "ipc://" ++ socketDir ++ "/hbro." ++ show pid
+    void $ forkIO (openRepSocket context socketURI (listenToCommands environment commandsList))
+    
+-- Manage POSIX signals
+    void $ installHandler sigINT (Catch interruptHandler) Nothing
 
     --timeoutAdd (putStrLn "OK" >> return True) 2000
-    
-    ZMQ.withContext 1 (\context -> do
-        void $ forkIO (openRepSocket context socketURI (listenToCommands environment commandsList))
-    
-    -- Manage POSIX signals
-        void $ installHandler sigINT (Catch interruptHandler) Nothing
-    
-        mainGUI -- Main loop
+    mainGUI -- Main loop
 
-    -- Make sure response socket is closed at exit
-        whenLoud $ putStrLn "Closing socket..."
-        closeSocket context socketURI
-        whenNormal $ putStrLn "Exiting..."
-        )
+-- Make sure response socket is closed at exit
+    whenLoud $ putStrLn "Closing socket..."
+    closeSocket context socketURI
+    whenNormal $ putStrLn "Exiting..."
 
--- | POSIX signal SIGINT handler
+-- | POSIX signal SIGINT handler.
 interruptHandler :: IO ()
 interruptHandler = do
     whenLoud $ putStrLn "Received SIGINT."
@@ -198,7 +194,8 @@ goHome webView config = do
   where
     uri = mHomePage config
 
--- | Load given URL in the browser.
+-- | Wrapper around webViewLoadUri meant to transparently add the proper protocol prefix (http:// or file://).
+-- Most of the time, you want to use this function instead of webViewLoadUri.
 loadURI :: WebView -> String -> IO ()
 loadURI webView uri = do
     whenLoud $ putStrLn ("Loading URI: " ++ uri)
@@ -251,11 +248,6 @@ goRight window = do
     adjustmentSetValue adjustment upper 
 -- }}}
 
--- | Spawn a new instance of the browser.
-newInstance :: IO ()
-newInstance = do 
-    (binary, _, _, _, _) <- getPaths dyreParameters 
-    spawn binary []
 
 -- | Execute a javascript file on current webpage.
 executeJSFile :: String -> WebView -> IO ()

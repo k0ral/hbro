@@ -61,12 +61,8 @@ Executable hbro
     Build-depends: 
         hbro,
         base == 4.*,
-        glib,
-        gtk,
-        mtl,
-        process,
-        unix,
-        webkit
+        directory,
+        mtl
     Main-is: Main.hs
     Hs-Source-Dirs: Hbro  
     Ghc-options: -Wall -threaded 

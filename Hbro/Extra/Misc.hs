@@ -5,13 +5,10 @@ module Hbro.Extra.Misc where
 --import Hbro.Types
 import Hbro.Util
 
-import Control.Monad.Reader
-
 import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.WebKit.WebBackForwardList
 import Graphics.UI.Gtk.WebKit.WebHistoryItem
