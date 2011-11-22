@@ -7,7 +7,6 @@ import qualified Hbro.Extra.BookmarksQueue as Queue
 import Hbro.Extra.Clipboard
 import qualified Hbro.Extra.History as History
 import Hbro.Extra.Misc
-import Hbro.Extra.Prompt
 import Hbro.Extra.Session
 import Hbro.Extra.StatusBar
 import Hbro.Gui
