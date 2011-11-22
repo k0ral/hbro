@@ -137,7 +137,7 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
     setup environment
 
 -- Manage keys
-    _ <- after window keyPressEvent $ do
+    _ <- after webView keyPressEvent $ do
         value      <- eventKeyVal
         modifiers  <- eventModifier
 

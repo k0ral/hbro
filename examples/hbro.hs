@@ -95,7 +95,7 @@ myKeys home environment@Environment {mGUI = gui, mConfig = config, mContext = co
     (([Control],        "<Home>"),      goTop    scrolledWindow),
     (([Control],        "<End>"),       goBottom scrolledWindow),
     (([Alt],            "<Home>"),      goHome webView config),
-    (([Control],        "g"),           prompt "Google search" "" (\words -> loadURI webView ("https://www.google.com/search?q=" ++ words)) promptBar),
+    (([Control],        "g"),           prompt "Google search" "" (\words -> loadURI webView ("https://www.google.com/search?q=" ++ words)) gui),
 
 -- Display
     (([Control, Shift], "+"),           webViewZoomIn    webView),
@@ -106,13 +106,13 @@ myKeys home environment@Environment {mGUI = gui, mConfig = config, mContext = co
     (([Control],        "u"),           toggleSourceMode webView),
 
 -- Prompt
-    (([Control],        "o"),           prompt "Open URL " "" (loadURI webView) promptBar),
-    (([Control, Shift], "O"),           webViewGetUri webView >>= maybe (return ()) (\uri -> prompt "Open URL " uri (loadURI webView) promptBar)),
+    (([Control],        "o"),           prompt "Open URL " "" (loadURI webView) gui),
+    (([Control, Shift], "O"),           webViewGetUri webView >>= maybe (return ()) (\uri -> prompt "Open URL " uri (loadURI webView) gui)),
 
 -- Search
-    (([Shift],          "/"),           promptIncremental "Search " "" (\word -> webViewSearchText webView word False True True >> return ()) promptBar),
-    (([Control],        "f"),           promptIncremental "Search " "" (\word -> webViewSearchText webView word False True True >> return ()) promptBar),
-    (([Shift],          "?"),           promptIncremental "Search " "" (\word -> webViewSearchText webView word False False True >> return ()) promptBar),
+    (([Shift],          "/"),           promptIncremental "Search " "" (\word -> webViewSearchText webView word False True True >> return ()) gui),
+    (([Control],        "f"),           promptIncremental "Search " "" (\word -> webViewSearchText webView word False True True >> return ()) gui),
+    (([Shift],          "?"),           promptIncremental "Search " "" (\word -> webViewSearchText webView word False False True >> return ()) gui),
     (([Control],        "n"),           entryGetText promptEntry >>= \word -> webViewSearchText webView word False True True >> return ()),
     (([Control, Shift], "N"),           entryGetText promptEntry >>= \word -> webViewSearchText webView word False False True >> return ()),
 
@@ -129,8 +129,8 @@ myKeys home environment@Environment {mGUI = gui, mConfig = config, mContext = co
     (([Control],        "w"),           mainQuit),
 
 -- Bookmarks
-    (([Control],        "d"),           webViewGetUri webView >>= maybe (return ()) (\uri -> prompt "Bookmark with tags:" "" (\tags -> Bookmarks.add bookmarksFile uri (words tags)) promptBar)),
-    (([Control, Shift], "D"),           prompt "Bookmark all instances with tag:" "" (\tags -> sendCommandToAll context socketDir "GET_URI" >>= mapM (\uri -> Bookmarks.add bookmarksFile uri $ words tags) >> (webViewGetUri webView) >>= maybe (return ()) (\uri -> Bookmarks.add bookmarksFile uri $ words tags) >> return ()) promptBar),
+    (([Control],        "d"),           webViewGetUri webView >>= maybe (return ()) (\uri -> prompt "Bookmark with tags:" "" (\tags -> Bookmarks.add bookmarksFile uri (words tags)) gui)),
+    (([Control, Shift], "D"),           prompt "Bookmark all instances with tag:" "" (\tags -> sendCommandToAll context socketDir "GET_URI" >>= mapM (\uri -> Bookmarks.add bookmarksFile uri $ words tags) >> (webViewGetUri webView) >>= maybe (return ()) (\uri -> Bookmarks.add bookmarksFile uri $ words tags) >> return ()) gui),
     (([Alt],            "d"),           Bookmarks.deleteWithTag bookmarksFile ["-l", "10"]),
     (([Control],        "l"),           Bookmarks.select        bookmarksFile ["-l", "10"] >>= maybe (return ()) (loadURI webView)),
     (([Control, Shift], "L"),           Bookmarks.selectTag     bookmarksFile ["-l", "10"] >>= maybe (return ()) (\uris -> mapM (\uri -> spawn "hbro" ["-u", uri]) uris >> return ())),

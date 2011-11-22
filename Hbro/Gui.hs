@@ -186,15 +186,15 @@ openPrompt _promptBar@PromptBar {mBox = promptBox, mDescription = description, m
     
 -- | Open prompt bar with given description and default value,
 -- and register a callback to trigger at validation.
-prompt :: String -> String -> (String -> IO ()) -> PromptBar -> IO ()
+prompt :: String -> String -> (String -> IO ()) -> GUI -> IO ()
 prompt l d = prompt' l d False
 
 -- | Same as 'prompt', but callback is triggered for each change in prompt's entry.
-promptIncremental :: String -> String -> (String -> IO ()) -> PromptBar -> IO ()
+promptIncremental :: String -> String -> (String -> IO ()) -> GUI -> IO ()
 promptIncremental l d = prompt' l d True
 
-prompt' :: String -> String -> Bool -> (String -> IO ()) -> PromptBar -> IO ()
-prompt' description defaultText incremental callback promptBar = do
+prompt' :: String -> String -> Bool -> (String -> IO ()) -> GUI -> IO ()
+prompt' description defaultText incremental callback _gui@GUI {mPromptBar = promptBar, mWebView = webView} = do
     openPrompt promptBar description defaultText
 
 -- Register callback
@@ -209,12 +209,12 @@ prompt' description defaultText incremental callback promptBar = do
                         widgetHide promptBox
                         signalDisconnect id1
                         signalDisconnect id2
-                        --widgetGrabFocus webView
+                        widgetGrabFocus webView
                     "Escape" -> liftIO $ do
                         widgetHide promptBox
                         signalDisconnect id1
                         signalDisconnect id2
-                        --widgetGrabFocus webView
+                        widgetGrabFocus webView
                     _ -> return ()
                 return False
             return ()
@@ -228,11 +228,11 @@ prompt' description defaultText incremental callback promptBar = do
                         widgetHide promptBox
                         entryGetText entry >>= callback
                         signalDisconnect id
-                        --widgetGrabFocus webView
+                        widgetGrabFocus webView
                     "Escape" -> liftIO $ do
                         widgetHide promptBox
                         signalDisconnect id
-                        --widgetGrabFocus webView
+                        widgetGrabFocus webView
                     _        -> return ()
                 return False
 
@@ -240,7 +240,6 @@ prompt' description defaultText incremental callback promptBar = do
   where
     promptBox = mBox promptBar
     entry     = mEntry promptBar
-    --webView   = (mWebView . mGUI) environment
 -- }}}
 
 
