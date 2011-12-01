@@ -54,12 +54,17 @@ import qualified System.ZMQ as ZMQ
 -- {{{ Commandline options
 cliOptions :: CliOptions
 cliOptions = CliOptions {
-    mURI = def &= help "URI to open at start-up" &= explicit &= name "u" &= name "uri" &= typ "URI"
+    mURI          = def &= help "URI to open at start-up" &= explicit &= name "u" &= name "uri" &= typ "URI",
+    mVanilla      = def &= help "Do not read custom configuration file." &= explicit &= name "1" &= name "vanilla",
+    mDenyReconf   = def &= help "Deny recompilation even if the configuration file has changed." &= explicit &= name "deny-reconf",
+    mForceReconf  = def &= help "Force recompilation even if the configuration file hasn't changed." &= explicit &= name "force-reconf",
+    mDyreDebug    = def &= help "Force the application to use './cache/' as the cache directory, and ./ as the configuration directory. Useful to debug the program without installation." &= explicit &= name "dyre-debug",
+    mMasterBinary = def &= explicit &= name "dyre-master-binary"
 }
 
 getOptions :: IO CliOptions
 getOptions = cmdArgs $ cliOptions
-    &= verbosityArgs [explicit, name "Verbose", name "v"] []
+    &= verbosityArgs [explicit, name "verbose", name "v"] []
     &= versionArg [ignore]
     &= help "A minimal KISS-compliant browser."
     &= helpArg [explicit, name "help", name "h"]
@@ -67,7 +72,7 @@ getOptions = cmdArgs $ cliOptions
 -- }}}
 
 -- {{{ Configuration (Dyre)
-dyreParameters :: D.Params Config
+dyreParameters :: D.Params (Config, CliOptions)
 dyreParameters = D.defaultParams {
     D.projectName  = "hbro",
     D.showError    = showError,
@@ -76,8 +81,8 @@ dyreParameters = D.defaultParams {
     D.statusOut    = hPutStrLn stderr
 }
 
-showError :: Config -> String -> Config
-showError config message = config { mError = Just message }
+showError :: (Config, a) -> String -> (Config, a)
+showError (config, x) message = (config { mError = Just message }, x)
 
 -- | Default configuration.
 -- Homepage: Google, socket directory: /tmp,
@@ -100,15 +105,18 @@ defaultConfig home tmp = Config {
 -- To be called in main function with a proper configuration.
 -- See Hbro.Main for an example.
 launchHbro :: Config -> IO ()
-launchHbro = D.wrapMain dyreParameters
-
-realMain :: Config -> IO ()
-realMain config = do
--- Print configuration error, if any
-    maybe (return ()) putStrLn $ mError config
-
+launchHbro config = do
 -- Parse commandline arguments
     options <- getOptions
+    
+    case mVanilla options of
+        True -> D.wrapMain dyreParameters{ D.configCheck = False } (config, options)
+        _    -> D.wrapMain dyreParameters (config, options)
+
+realMain :: (Config, CliOptions) -> IO ()
+realMain (config, options) = do
+-- Print configuration error, if any
+    maybe (return ()) putStrLn $ mError config
 
 -- Print in-use paths
     getPaths dyreParameters >>= \(a,b,c,d,e) -> whenLoud $ do 

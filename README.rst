@@ -54,7 +54,7 @@ Configuration system : Dyre_
   Dynamic reconfiguration library for haskell programs.
 
 
-Apart from the programming language, if you happen to find a better alternative for one of the following points, please note that suggestions are more than welcome :) .
+Apart from the programming language, if you happen to find a better alternative for one of these points, please note that suggestions are more than welcome :) .
 
 
 .. How to install it ?

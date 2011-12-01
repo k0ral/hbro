@@ -29,7 +29,12 @@ data Environment = Environment {
 }
 
 data CliOptions = CliOptions {
-    mURI :: Maybe String                    -- ^ URI to load at start-up
+    mURI             :: Maybe String,                  -- ^ URI to load at start-up
+    mVanilla         :: Bool,
+    mDenyReconf      :: Bool,
+    mForceReconf     :: Bool,
+    mDyreDebug       :: Bool,
+    mMasterBinary    :: Maybe String
 } deriving (Data, Typeable, Show, Eq)
 
 
