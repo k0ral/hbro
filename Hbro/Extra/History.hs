@@ -12,19 +12,28 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Time
 
+--import System.IO.Error
 import System.Locale
 -- }}} 
 
 
--- |
-add :: FilePath -> String -> String -> IO ()
+-- | Add a single history entry to the history file
+add :: FilePath   -- ^ Path to history file
+    -> String     -- ^ URI for the new history entry
+    -> String     -- ^ Title for the new history entry
+    -> IO ()
 add historyFile uri title = do
     now        <- getCurrentTime
     let time    = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" now
-    appendFile historyFile $ time ++ " " ++ uri ++ " " ++ title ++ "\n"
+    let newLine = time ++ " " ++ uri ++ " " ++ title ++ "\n"
+    _ <- catch (appendFile historyFile newLine) (\_ -> putStrLn $ "[WARNING] You need to create history file" ++ historyFile)
+    return ()
+    
 
--- |
-select :: FilePath -> [String] -> IO (Maybe String)
+-- | Open a dmenu to select a history entry
+select :: FilePath           -- ^ Path to history file
+       -> [String]           -- ^ Options to pass to dmenu
+       -> IO (Maybe String)  -- ^ Selected history entry
 select historyFile dmenuOptions  = do
     file <- T.readFile historyFile
 

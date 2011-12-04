@@ -21,33 +21,43 @@ import System.ZMQ
 -- }}}
 
 
+-- | Various directories used to store some runtime and static files.
+data CommonDirectories = CommonDirectories {
+    mTemporary     :: FilePath,        -- ^ Temporary files directory
+    mConfiguration :: FilePath,        -- ^ Configuration directory
+    mData          :: FilePath         -- ^ Data directory
+}
+    
+-- | The whole set of parameters and elements of the browser.
 data Environment = Environment {
     mOptions :: CliOptions,          -- ^ Commandline options
     mConfig  :: Config,              -- ^ Configuration parameters (constants) provided by user
     mGUI     :: GUI,                 -- ^ Graphical widgets
-    mContext :: Context              -- ^ 
+    mContext :: Context              -- ^ ZMQ context
 }
 
+-- | Supported commandline options
 data CliOptions = CliOptions {
-    mURI             :: Maybe String,                  -- ^ URI to load at start-up
-    mVanilla         :: Bool,
-    mDenyReconf      :: Bool,
-    mForceReconf     :: Bool,
-    mDyreDebug       :: Bool,
-    mMasterBinary    :: Maybe String
+    mURI             :: Maybe String,     -- ^ URI to load at start-up
+    mVanilla         :: Bool,             -- ^ Bypass custom configuration file
+    mDenyReconf      :: Bool,             -- ^ Do not recompile browser even if configuration file has changed
+    mForceReconf     :: Bool,             -- ^ Force recompilation even if configuration file hasn't changed
+    mDyreDebug       :: Bool,             -- ^ Look for a custom configuration file in working directory
+    mMasterBinary    :: Maybe String      -- ^ 
 } deriving (Data, Typeable, Show, Eq)
 
 
 data Config = {-forall a.-} Config {
-    mHomePage    :: String,                    -- ^ Startup page 
-    mSocketDir   :: String,                    -- ^ Directory where 0MQ will be created ("/tmp" for example)
-    mUIFile      :: String,                    -- ^ Path to XML file describing UI (used by GtkBuilder)
-    mKeys        :: Environment -> KeysList,   -- ^ List of keybindings
-    mWebSettings :: [AttrOp WebSettings],      -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
-    mSetup       :: Environment -> IO (),      -- ^ Custom startup instructions
-    mCommands    :: CommandsList,              -- ^ Custom commands to use with IPC sockets
-    mError       :: Maybe String               -- ^ Error
-    --mCustom      :: a
+    mCommonDirectories :: CommonDirectories,         -- ^ Custom directories used to store various runtime and static files
+    mHomePage          :: String,                    -- ^ Startup page 
+    mSocketDir         :: FilePath,                  -- ^ Directory where 0MQ will be created ("/tmp" for example)
+    mUIFile            :: FilePath,                  -- ^ Path to XML file describing UI (used by GtkBuilder)
+    mKeys              :: Environment -> KeysList,   -- ^ List of keybindings
+    mWebSettings       :: [AttrOp WebSettings],      -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
+    mSetup             :: Environment -> IO (),      -- ^ Custom startup instructions
+    mCommands          :: CommandsList,              -- ^ Custom commands to use with IPC sockets
+    mError             :: Maybe String               -- ^ Error
+    --mCustom            :: a
 }
 
 data GUI = GUI {

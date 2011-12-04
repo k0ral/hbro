@@ -31,6 +31,7 @@ import Graphics.UI.Gtk.Windows.Window
 
 import System.Directory
 import System.Environment
+import System.Environment.XDG.BaseDir
 import System.Glib.Attributes
 import System.Glib.Signals
 -- import System.Posix.Process
@@ -40,44 +41,47 @@ import System.Process
 -- | Main function, basically launches hbro.
 main :: IO ()
 main = do
-    home <- getHomeDirectory
-    tmp  <- getTemporaryDirectory
-    launchHbro $ myConfig home tmp
+    tmpDir    <- getTemporaryDirectory
+    configDir <- getUserConfigDir "hbro"
+    dataDir   <- getUserDataDir "hbro"
+    
+    launchHbro $ myConfig (CommonDirectories tmpDir configDir dataDir)
 
 
 -- | Application parameters.
 -- See Hbro.Types.Parameters documentation for fields description.
 -- Commented out fields indicate default values.
-myConfig :: String -> String -> Config
-myConfig home tmp = (defaultConfig home tmp) {
-    --mSocketDir = tmp,
-    mUIFile      = home ++ "/.config/hbro/ui.xml",
-    mHomePage    = "https://duckduckgo.com",
-    mKeys        = myKeys home,
-    mWebSettings = myWebSettings,
-    mSetup       = mySetup
+myConfig :: CommonDirectories -> Config
+myConfig directories = (defaultConfig directories) {
+    mCommonDirectories = directories,
+    --mSocketDir       = tmp,
+    mUIFile            = (mConfiguration directories) ++ "/ui.xml",
+    mHomePage          = "https://duckduckgo.com",
+    mKeys              = myKeys,
+    mWebSettings       = myWebSettings,
+    mSetup             = mySetup
 }
 
 
-myHistoryFile :: FilePath -> FilePath
-myHistoryFile home = home ++ "/.config/hbro/history"
+myHistoryFile :: CommonDirectories -> FilePath
+myHistoryFile directories = (mData directories) ++ "/history"
 
-myBookmarksFile :: FilePath -> FilePath
-myBookmarksFile home = home ++ "/.config/hbro/bookmarks"
+myBookmarksFile :: CommonDirectories -> FilePath
+myBookmarksFile directories = (mData directories) ++ "/bookmarks"
 
 
 -- {{{ Keys
 -- Note that this example is suited for an azerty keyboard.
-myKeys :: FilePath -> Environment -> KeysList
-myKeys home environment@Environment {mGUI = gui, mConfig = config, mContext = context} = let
+myKeys :: Environment -> KeysList
+myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context } = let
     window         = mWindow       gui
     webView        = mWebView      gui
     scrolledWindow = mScrollWindow gui
     statusBox      = mStatusBox    gui
     promptBar      = mPromptBar    gui
     promptEntry    = mEntry promptBar
-    bookmarksFile  = myBookmarksFile home
-    historyFile    = myHistoryFile   home
+    bookmarksFile  = myBookmarksFile (mCommonDirectories config)
+    historyFile    = myHistoryFile   (mCommonDirectories config)
     socketDir      = mSocketDir config
   in  
     [
@@ -196,12 +200,13 @@ myWebSettings = [
 
 -- {{{ Setup
 mySetup :: Environment -> IO ()
-mySetup environment@Environment {mGUI = gui} = 
+mySetup environment@Environment {mGUI = gui, mConfig = config} = 
     let
         builder         = mBuilder      gui 
         webView         = mWebView      gui
         scrolledWindow  = mScrollWindow gui
         window          = mWindow       gui
+        historyFile     = myHistoryFile $ mCommonDirectories config
     in do        
     -- Scroll position in status bar
         scrollLabel <- builderGetObject builder castToLabel "scroll"
@@ -257,7 +262,7 @@ mySetup environment@Environment {mGUI = gui} =
             uri   <- webViewGetUri   webView
             title <- webViewGetTitle webView
             case (uri, title) of
-                (Just uri', Just title') -> History.add (myHistoryFile home) uri' title'
+                (Just uri', Just title') -> History.add historyFile uri' title'
                 _ -> return ()
 
     -- On navigating to a new URI

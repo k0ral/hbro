@@ -87,16 +87,17 @@ showError (config, x) message = (config { mError = Just message }, x)
 -- | Default configuration.
 -- Homepage: Google, socket directory: /tmp,
 -- UI file: ~/.config/hbro/, no key/command binding.
-defaultConfig :: FilePath -> FilePath -> Config 
-defaultConfig home tmp = Config {
-    mHomePage    = "https://encrypted.google.com/",
-    mSocketDir   = tmp,
-    mUIFile      = home ++ "/.config/hbro/ui.xml",
-    mKeys        = const [],
-    mWebSettings = [],
-    mSetup       = const (return () :: IO ()),
-    mCommands    = [],
-    mError       = Nothing
+defaultConfig :: CommonDirectories -> Config
+defaultConfig directories = Config {
+    mCommonDirectories = directories,
+    mHomePage          = "https://encrypted.google.com/",
+    mSocketDir         = mTemporary directories,
+    mUIFile            = (mConfiguration directories) ++ "/ui.xml",
+    mKeys              = const [],
+    mWebSettings       = [],
+    mSetup             = const (return () :: IO ()),
+    mCommands          = [],
+    mError             = Nothing
 }
 -- }}}
 
@@ -106,7 +107,6 @@ defaultConfig home tmp = Config {
 -- See Hbro.Main for an example.
 launchHbro :: Config -> IO ()
 launchHbro config = do
--- Parse commandline arguments
     options <- getOptions
     
     case mVanilla options of
@@ -176,8 +176,8 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
 
 -- Open socket
     pid              <- getProcessID
-    let commandsList =  Map.fromList $ defaultCommandsList ++ commands
-    let socketURI    =  "ipc://" ++ socketDir ++ "/hbro." ++ show pid
+    let commandsList = Map.fromList $ defaultCommandsList ++ commands
+    let socketURI    = "ipc://" ++ socketDir ++ "/hbro." ++ show pid
     void $ forkIO (openRepSocket context socketURI (listenToCommands environment commandsList))
     
 -- Manage POSIX signals

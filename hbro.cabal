@@ -69,7 +69,8 @@ Executable hbro
         hbro,
         base == 4.*,
         directory,
-        mtl
+        mtl,
+        xdg-basedir
     Main-is: Main.hs
     Hs-Source-Dirs: Hbro  
     Ghc-options: -Wall
