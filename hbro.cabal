@@ -60,6 +60,9 @@ Library
         Hbro.Util
     Ghc-options: -Wall
 
+Flag threaded
+    Description: Build with -threaded
+    Default: True
 
 Executable hbro
     Build-depends: 
@@ -69,5 +72,7 @@ Executable hbro
         mtl
     Main-is: Main.hs
     Hs-Source-Dirs: Hbro  
-    Ghc-options: -Wall -threaded 
+    Ghc-options: -Wall
+    if flag(threaded)
+        Ghc-options: -threaded
 
