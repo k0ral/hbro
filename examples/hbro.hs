@@ -60,10 +60,10 @@ myConfig home tmp = (defaultConfig home tmp) {
 
 
 myHistoryFile :: FilePath -> FilePath
-myHistoryFile home = home ++ "/.config/hbro/history"
+myHistoryFile home = home ++ "/.local/share/hbro/history"
 
 myBookmarksFile :: FilePath -> FilePath
-myBookmarksFile home = home ++ "/.config/hbro/bookmarks"
+myBookmarksFile home = home ++ "/.local/share/hbro/bookmarks"
 
 
 -- {{{ Keys
