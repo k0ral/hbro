@@ -116,4 +116,4 @@ I'm adding it to the known issues and limitations. Thank you for reporting :) .
 .. _GTK+: http://www.gtk.org/
 .. _ZeroMQ: http://www.zeromq.org/
 .. _Dyre: https://github.com/willdonnelly/dyre
-.. _webkit_get_default_sessio: http://webkitgtk.org/reference/webkitgtk/stable/webkitgtk-Global-functions.html
+.. _webkit_get_default_session: http://webkitgtk.org/reference/webkitgtk/stable/webkitgtk-Global-functions.html
