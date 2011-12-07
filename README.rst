@@ -105,7 +105,6 @@ No cookies management available
 
 Configuring a proxy is impossible
   This feature would make use of to the webkit_get_default_session_ function. Unfortunately, Webkit's Haskell binding doesn't provide such function for now.
-I'm adding it to the known issues and limitations. Thank you for reporting :) .
 
 
 .. _hackage: http://hackage.haskell.org/package/hbro
