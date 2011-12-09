@@ -4,6 +4,7 @@ module Hbro.Types where
 
 -- {{{ Imports
 import Data.Map
+import Data.Set
 
 import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
@@ -77,14 +78,17 @@ data PromptBar = PromptBar {
 }
 
 
--- | List of bound keys
--- All callbacks are fed with the Browser instance
+-- | List of bound keys.
+-- All callbacks are fed with the Browser instance.
+-- 
 -- Note 1 : for modifiers, lists are used for convenience purposes,
 --          but are transformed into sets in hbro's internal machinery,
---          so that order and repetition don't matter
+--          so that order and repetition don't matter.
+-- 
 -- Note 2 : for printable characters accessed via the shift modifier,
---          you do have to include Shift in modifiers list
+--          you do have to include Shift in modifiers list.
 type KeysList = [(([Modifier], String), IO ())]
+type KeysMap  = Map (Set Modifier, String) (IO ())
 
 type CommandsList = [(String, ([String] -> Socket Rep -> Environment -> IO ()))]
 type CommandsMap  = Map String ([String] -> Socket Rep -> Environment -> IO ())

@@ -1,8 +1,9 @@
 module Hbro.Extra.StatusBar where
 
 -- {{{ Imports
+import Hbro.Keys
 --import Hbro.Types
-import Hbro.Util 
+--import Hbro.Util 
 
 import Control.Monad.Trans(liftIO)
 

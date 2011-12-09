@@ -20,7 +20,7 @@ module Hbro.Core (
 import Hbro.Gui
 import Hbro.Socket
 import Hbro.Types
-import Hbro.Util
+--import Hbro.Util
 
 import qualified Config.Dyre as D
 import Config.Dyre.Paths
@@ -28,12 +28,9 @@ import Config.Dyre.Paths
 import Control.Concurrent
 import Control.Monad.Reader
 
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+import qualified Data.Map as M
 
-import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General hiding(initGUI)
-import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebDataSource
@@ -44,7 +41,6 @@ import Network.URL
 
 import System.Console.CmdArgs
 import System.Directory
-import System.Glib.Signals
 import System.IO
 import System.Posix.Process
 import System.Posix.Signals
@@ -136,32 +132,12 @@ realMain (config, options) = do
 realMain' :: Config -> CliOptions -> GUI -> ZMQ.Context -> IO ()
 realMain' config options gui@GUI {mWebView = webView, mWindow = window} context = let
     environment = Environment options config gui context
-    keys        = importKeyBindings $ (mKeys config) environment
     setup       = mSetup config
     socketDir   = mSocketDir config 
     commands    = mCommands config
   in do
 -- Apply custom setup
     setup environment
-
--- Manage keys
-    _ <- after webView keyPressEvent $ do
-        value      <- eventKeyVal
-        modifiers  <- eventModifier
-
-        let keyString = keyToString value
-
-        case keyString of 
-            Just "<Escape>" -> liftIO $ widgetHide ((mBox . mPromptBar) gui)
-            Just string -> do 
-                case Map.lookup (Set.fromList modifiers, string) keys of
-                    Just callback -> do
-                        liftIO $ callback
-                        liftIO $ whenLoud (putStrLn $ "Key pressed: " ++ show modifiers ++ string ++ " (mapped)")
-                    _ -> liftIO $ whenLoud (putStrLn $ "Key pressed: " ++ show modifiers ++ string ++ " (unmapped)")
-            _ -> return ()
-
-        return False
 
 -- Load homepage
     case (mURI options) of
@@ -176,7 +152,7 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
 
 -- Open socket
     pid              <- getProcessID
-    let commandsList = Map.fromList $ defaultCommandsList ++ commands
+    let commandsList = M.fromList $ defaultCommandsList ++ commands
     let socketURI    = "ipc://" ++ socketDir ++ "/hbro." ++ show pid
     void $ forkIO (openRepSocket context socketURI (listenToCommands environment commandsList))
     
@@ -251,7 +227,7 @@ goRight window = do
 
     adjustmentSetValue adjustment upper 
 -- }}}
-
+    
 -- {{{ Misc
 -- | Wrapper around webFramePrint function, provided for convenience.
 printPage :: WebView -> IO ()

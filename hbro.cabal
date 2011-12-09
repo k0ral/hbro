@@ -55,6 +55,7 @@ Library
         Hbro.Extra.Session,
         Hbro.Extra.StatusBar,
         Hbro.Gui,
+        Hbro.Keys,
         Hbro.Socket,
         Hbro.Types,
         Hbro.Util

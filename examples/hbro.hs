@@ -10,6 +10,7 @@ import Hbro.Extra.Misc
 import Hbro.Extra.Session
 import Hbro.Extra.StatusBar
 import Hbro.Gui
+import Hbro.Keys
 import Hbro.Socket
 import Hbro.Types
 import Hbro.Util
@@ -126,7 +127,8 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
     (([Control],        "p"),           withClipboard $ maybe (return ()) (loadURI webView)),
     (([Control, Shift], "P"),           withClipboard $ maybe (return ()) (\uri -> spawn "hbro" ["-u", uri])),
 
--- Others
+-- Misc
+    (([],               "<Escape>"),    widgetHide $ mBox promptBar),
     (([Control],        "i"),           showWebInspector webView),
     (([Alt],            "p"),           printPage        webView),
     (([Control],        "t"),           spawn "hbro" []),
@@ -207,7 +209,11 @@ mySetup environment@Environment {mGUI = gui, mConfig = config} =
         scrolledWindow  = mScrollWindow gui
         window          = mWindow       gui
         historyFile     = myHistoryFile $ mCommonDirectories config
-    in do        
+        bindings        = keysListToMap $ (mKeys config) environment
+    in do
+    -- Handle keys events
+        setupSimpleKeyHandler webView bindings
+      
     -- Scroll position in status bar
         scrollLabel <- builderGetObject builder castToLabel "scroll"
         setupScrollWidget scrollLabel scrolledWindow

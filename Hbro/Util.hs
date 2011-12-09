@@ -1,23 +1,26 @@
-module Hbro.Util where
+module Hbro.Util (
+-- * Process management
+    runCommand',
+    spawn,
+    getAllProcessIDs,
+-- * Misc
+    labelSetMarkupTemporary,
+    dmenu
+) where
 
 -- {{{ Imports
-import Hbro.Types
+--import Hbro.Types
 
 --import Control.Monad.Reader
 import Control.Monad
 
 import Data.List
-import qualified Data.Map as Map
-import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 import Graphics.UI.Gtk.Display.Label
-import Graphics.UI.Gtk.Gdk.EventM
-import Graphics.UI.Gtk.Gdk.Keys
 import Graphics.UI.Gtk.General.General
 
---import System.Console.CmdArgs (whenLoud, whenNormal)
 import qualified System.Info as Sys
 import System.IO
 import System.Posix.Process
@@ -25,50 +28,7 @@ import System.Process
 -- }}}
 
 
-instance Ord Modifier where
-    m <= m' =  fromEnum m <= fromEnum m'
-
-
--- {{{ Keys-related functions
--- | Converts a keyVal to a String.
--- For printable characters, the corresponding String is returned, except for the space character for which "<Space>" is returned.
--- For non-printable characters, the corresponding keyName between <> is returned.
--- For modifiers, Nothing is returned.
-keyToString :: KeyVal -> Maybe String
-keyToString keyVal = case keyToChar keyVal of
-    Just ' '    -> Just "<Space>"
-    Just char   -> Just [char]
-    _           -> case keyName keyVal of
-        "Caps_Lock"         -> Nothing
-        "Shift_L"           -> Nothing
-        "Shift_R"           -> Nothing
-        "Control_L"         -> Nothing
-        "Control_R"         -> Nothing
-        "Alt_L"             -> Nothing
-        "Alt_R"             -> Nothing
-        "Super_L"           -> Nothing
-        "Super_R"           -> Nothing
-        "Menu"              -> Nothing
-        "ISO_Level3_Shift"  -> Nothing
-        "dead_circumflex"   -> Just "^"
-        "dead_diaeresis"    -> Just "¨"
-        x                   -> Just ('<':x ++ ">")
-
--- | Convert key bindings list to a map.
--- Calls importKeyBindings'.
-importKeyBindings :: KeysList -> Map.Map (Set.Set Modifier, String) (IO ())
-importKeyBindings list = Map.fromList $ importKeyBindings' list
-
--- | Convert modifiers list to modifiers sets.
--- The order of modifiers in key bindings don't matter.
--- Called by importKeyBindings.
-importKeyBindings' :: KeysList -> [((Set.Set Modifier, String), IO ())]
-importKeyBindings' (((a, b), c):t) = ((Set.fromList a, b), c):(importKeyBindings' t)
-importKeyBindings' _ = []
--- }}}
-
-
--- {{{ Run commands
+-- {{{ Process management
 -- | Like run `runCommand`, but return IO ()
 runCommand' :: String -> IO ()
 runCommand' command = runCommand command >> return ()
@@ -82,6 +42,14 @@ spawn command options = spawn' (proc command options)
 spawn' :: CreateProcess -> IO ()
 --spawn' command = runCommand' $ "nohup " ++ command ++ " > /dev/null 2>&1"
 spawn' command = createProcess command { std_in = CreatePipe,  std_out = CreatePipe, std_err = CreatePipe, close_fds = True } >> return ()
+
+getAllProcessIDs :: IO [FilePath]
+getAllProcessIDs = do 
+    (_, pids, _)  <- readProcessWithExitCode "pidof" ["hbro"] []
+    (_, pids', _) <- readProcessWithExitCode "pidof" ["hbro-" ++ Sys.os ++ "-" ++ Sys.arch] []
+    myPid         <- getProcessID
+
+    return $ delete (show myPid) . nub . words $ pids ++ " " ++ pids'
 -- }}}
 
 -- | Set a temporary markup text to a label that disappears after some delay.
@@ -91,17 +59,6 @@ labelSetMarkupTemporary label text delay = do
     timeoutAdd clear delay
   where
     clear = labelSetMarkup label "" >> return False
-
-
-getAllProcessIDs :: IO [FilePath]
-getAllProcessIDs = do 
-    (_, pids, _)  <- readProcessWithExitCode "pidof" ["hbro"] []
-    (_, pids', _) <- readProcessWithExitCode "pidof" ["hbro-" ++ Sys.os ++ "-" ++ Sys.arch] []
-    myPid         <- getProcessID
-
-    return $ delete (show myPid) . nub . words $ pids ++ " " ++ pids'
-    
-    
 
 
 (>>?) :: (a -> IO ()) -> Maybe a -> IO ()
