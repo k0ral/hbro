@@ -1,8 +1,10 @@
+{-# LANGUAGE DoRec #-}
 module Hbro.Keys where
 
 -- {{{ Imports
 import Hbro.Types
 
+--import Control.Monad
 import Control.Monad.Trans
 
 import qualified Data.Map as M
@@ -20,30 +22,51 @@ import System.Glib.Signals
 instance Ord Modifier where
     m <= m' =  fromEnum m <= fromEnum m'
 
--- | Basic key handler which doesn't support sequential keystrokes either modes.
-setupSimpleKeyHandler :: WebView -> KeysMap -> IO ()
-setupSimpleKeyHandler webView bindings = do
-    _ <- after webView keyPressEvent $ do
-        value      <- eventKeyVal
-        modifiers  <- eventModifier
+-- | Retrieve modifiers and pressed keys, and forward them to a handler.
+withKeys :: ([Modifier] -> String -> IO ()) -> EventM EKey Bool
+withKeys handler = do
+    value      <- eventKeyVal
+    modifiers  <- eventModifier
 
-        let keyString = keyToString value
+    liftIO $ maybe (return ()) (\string -> handler modifiers string) (keyToString value)
 
-        liftIO $ case keyString of 
-            Just string -> do 
-                whenLoud $ putStr ("Key pressed: " ++ show modifiers ++ string ++ " ")
-                case M.lookup (S.fromList modifiers, string) bindings of
-                    Just callback -> callback >> (whenLoud $ putStr "(mapped)")
-                    _ -> whenLoud $ putStr "(unmapped)"
-            _ -> return ()
+    return False
 
-        return False
-    return ()
+-- | Look for a callback associated to the given modifiers and pressed keys and trigger it, if any.
+simpleKeyEventCallback :: KeysMap -> KeyEventCallback
+simpleKeyEventCallback keysMap modifiers keys = do
+    whenLoud $ putStr ("Key pressed: " ++ show modifiers ++ keys ++ " ")
+        
+    case M.lookup (S.fromList modifiers, keys) keysMap of
+        Just callback -> callback >> (whenLoud $ putStrLn "(mapped)") >> return True
+        _ -> (whenLoud $ putStrLn "(unmapped)") >> return False
 
+-- | Basic key handler which doesn't support sequential keystrokes.
+simpleKeyEventHandler :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool
+simpleKeyEventHandler callback _ _ = withKeys (\x y -> callback x y >> return ())
+
+-- | Key handler with sequential keystrokes support.
+advancedKeyEventHandler :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool
+advancedKeyEventHandler = advancedKeyEventHandler' []
+  
+advancedKeyEventHandler' :: String -> KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool
+advancedKeyEventHandler' previousKeys callback oldID webView = withKeys $ \modifiers newKey -> do
+    let keys       = previousKeys ++ newKey
+    let newHandler = \x -> do
+        rec newID <- after webView keyPressEvent $ advancedKeyEventHandler' x callback newID webView
+        return ()
+            
+    signalDisconnect oldID
+    result <- callback modifiers keys
+    case result of
+        True -> newHandler []
+        _    -> case newKey of
+            "<Escape>" -> newHandler []
+            _          -> newHandler keys
 
 -- | Convert a keyVal to a String.
 -- For printable characters, the corresponding String is returned, except for the space character for which "<Space>" is returned.
--- For non-printable characters, the corresponding keyName between <> is returned.
+-- For non-printable characters, the corresponding keyName wrapped into "< >" is returned.
 -- For modifiers, Nothing is returned.
 keyToString :: KeyVal -> Maybe String
 keyToString keyVal = case keyToChar keyVal of
@@ -66,14 +89,5 @@ keyToString keyVal = case keyToChar keyVal of
         x                   -> Just ('<':x ++ ">")
 
 -- | Convert key bindings list to a map.
--- Calls importKeyBindings'.
 keysListToMap :: KeysList -> KeysMap
-keysListToMap list = M.fromList $ importKeyBindings' list
-
--- | Convert modifiers list to modifiers sets.
--- The order of modifiers in key bindings don't matter.
--- Called by importKeyBindings.
-importKeyBindings' :: KeysList -> [((S.Set Modifier, String), IO ())]
-importKeyBindings' (((a, b), c):t) = ((S.fromList a, b), c):(importKeyBindings' t)
-importKeyBindings' _ = []
-
+keysListToMap = M.fromList . (map (\((a,b),c) -> ((S.fromList a, b), c)))

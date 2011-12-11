@@ -18,12 +18,14 @@ import Graphics.UI.Gtk.Windows.Window
 
 import System.Console.CmdArgs
 import System.Glib.Attributes
+--import System.Glib.Signals
 import System.ZMQ 
 -- }}}
 
 
 -- | Various directories used to store some runtime and static files.
 data CommonDirectories = CommonDirectories {
+    mHome          :: FilePath,        -- ^ Home directory
     mTemporary     :: FilePath,        -- ^ Temporary files directory
     mConfiguration :: FilePath,        -- ^ Configuration directory
     mData          :: FilePath         -- ^ Data directory
@@ -53,7 +55,8 @@ data Config = {-forall a.-} Config {
     mHomePage          :: String,                    -- ^ Startup page 
     mSocketDir         :: FilePath,                  -- ^ Directory where 0MQ will be created ("/tmp" for example)
     mUIFile            :: FilePath,                  -- ^ Path to XML file describing UI (used by GtkBuilder)
-    mKeys              :: Environment -> KeysList,   -- ^ List of keybindings
+--    mKeyEventHandler   :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool,  -- ^ Key event handler, which forwards keystrokes to mKeyEventCallback
+--    mKeyEventCallback  :: Environment -> KeyEventCallback, -- ^ Main key event callback, assumed to deal with each keystroke separately
     mWebSettings       :: [AttrOp WebSettings],      -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
     mSetup             :: Environment -> IO (),      -- ^ Custom startup instructions
     mCommands          :: CommandsList,              -- ^ Custom commands to use with IPC sockets
@@ -87,8 +90,10 @@ data PromptBar = PromptBar {
 -- 
 -- Note 2 : for printable characters accessed via the shift modifier,
 --          you do have to include Shift in modifiers list.
-type KeysList = [(([Modifier], String), IO ())]
-type KeysMap  = Map (Set Modifier, String) (IO ())
+type KeysList         = [(([Modifier], String), IO ())]
+type KeysMap          = Map (Set Modifier, String) (IO ())
+type KeyEventCallback = [Modifier] -> String -> IO Bool
+--data KeyMode          = CommandMode | InsertMode
 
 type CommandsList = [(String, ([String] -> Socket Rep -> Environment -> IO ()))]
 type CommandsMap  = Map String ([String] -> Socket Rep -> Environment -> IO ())

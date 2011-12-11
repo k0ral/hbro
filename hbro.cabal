@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             0.7.0.1
+Version:             0.7.1.0
 Synopsis:            A minimal KISS compliant browser
 -- Description:         
 Homepage:            http://projects.haskell.org/hbro/
@@ -41,9 +41,10 @@ Library
         process,
         text,
         time,
+        unix,
         url,
         webkit,
-        unix,
+        xdg-basedir,
         zeromq-haskell
     Exposed-modules:
         Hbro.Core,
@@ -70,8 +71,7 @@ Executable hbro
         hbro,
         base == 4.*,
         directory,
-        mtl,
-        xdg-basedir
+        mtl
     Main-is: Main.hs
     Hs-Source-Dirs: Hbro  
     Ghc-options: -Wall

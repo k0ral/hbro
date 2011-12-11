@@ -1,20 +1,19 @@
 module Hbro.Extra.StatusBar where
 
 -- {{{ Imports
-import Hbro.Keys
---import Hbro.Types
+--import Hbro.Keys
+import Hbro.Types
 --import Hbro.Util 
 
-import Control.Monad.Trans(liftIO)
+--import Control.Monad.Trans(liftIO)
 
 import Data.List
 
 import Graphics.Rendering.Pango.Enums
 import Graphics.Rendering.Pango.Layout
 
-import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Display.Label
-import Graphics.UI.Gtk.Gdk.EventM
+--import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebView
@@ -54,29 +53,31 @@ statusBarZoomLevel widget webView = do
     zoomLevel <- webViewGetZoomLevel webView
             
     labelSetMarkup widget $ "<span foreground=\"white\">x" ++ escapeMarkup (show zoomLevel) ++ "</span>"
+    
 
-
--- | Display pressed keys in status bar.
--- Needs a Label entitled "keys" from the builder.
-statusBarPressedKeys :: Label -> WebView -> IO ()
-statusBarPressedKeys widget webView = do
+-- | 
+withFeedback :: Label -> WebView -> KeyEventCallback -> KeyEventCallback
+withFeedback widget webView callback modifiers keys = do  
+-- Trigger callback
+    result <- callback modifiers keys
+    
+-- Set color depending on result
+    let color = case result of
+            True -> Color 0 65535 0
+            _    -> Color 65535 0 0
+        
     labelSetAttributes widget [
-        AttrForeground {paStart = 0, paEnd = -1, paColor = Color 0 65535 0}
+        AttrForeground {paStart = 0, paEnd = -1, paColor = color}
         ]
     
-    _ <- after webView keyPressEvent $ do
-        value      <- eventKeyVal
-        modifiers  <- eventModifier
-
-        let keyString = keyToString value
-        case (keyString, modifiers) of 
-            (Just k, [])    -> liftIO $ labelSetText widget k
-            (Just k, m)     -> liftIO $ labelSetText widget (show m ++ k)
-            _               -> return ()
-
-        return False
-    return ()
-
+-- Write keystrokes state to label
+    case (modifiers, isSuffixOf "<Escape>" keys) of
+        (_ , True) -> labelSetText widget []
+        ([], _)    -> labelSetText widget keys
+        (_, _)     -> labelSetText widget (show modifiers ++ keys)
+          
+    return result
+  
 
 -- | Write current load progress in the given Label.
 statusBarLoadProgress :: Label -> WebView -> IO ()

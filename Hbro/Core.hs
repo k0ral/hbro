@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DoRec #-}
 module Hbro.Core (
 -- * Main
     defaultConfig,
@@ -18,6 +19,7 @@ module Hbro.Core (
 
 -- {{{ Imports
 import Hbro.Gui
+--import Hbro.Keys
 import Hbro.Socket
 import Hbro.Types
 --import Hbro.Util
@@ -30,6 +32,7 @@ import Control.Monad.Reader
 
 import qualified Data.Map as M
 
+--import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General hiding(initGUI)
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
@@ -41,6 +44,8 @@ import Network.URL
 
 import System.Console.CmdArgs
 import System.Directory
+import System.Environment.XDG.BaseDir
+--import System.Glib.Signals
 import System.IO
 import System.Posix.Process
 import System.Posix.Signals
@@ -89,7 +94,6 @@ defaultConfig directories = Config {
     mHomePage          = "https://encrypted.google.com/",
     mSocketDir         = mTemporary directories,
     mUIFile            = (mConfiguration directories) ++ "/ui.xml",
-    mKeys              = const [],
     mWebSettings       = [],
     mSetup             = const (return () :: IO ()),
     mCommands          = [],
@@ -101,9 +105,15 @@ defaultConfig directories = Config {
 -- | Browser's main function.
 -- To be called in main function with a proper configuration.
 -- See Hbro.Main for an example.
-launchHbro :: Config -> IO ()
-launchHbro config = do
-    options <- getOptions
+launchHbro :: (CommonDirectories -> Config) -> IO ()
+launchHbro configGenerator = do
+    homeDir   <- getHomeDirectory
+    tmpDir    <- getTemporaryDirectory
+    configDir <- getUserConfigDir "hbro"
+    dataDir   <- getUserDataDir   "hbro"
+    options   <- getOptions
+        
+    let config = configGenerator (CommonDirectories homeDir tmpDir configDir dataDir)
     
     case mVanilla options of
         True -> D.wrapMain dyreParameters{ D.configCheck = False } (config, options)
@@ -115,7 +125,7 @@ realMain (config, options) = do
     maybe (return ()) putStrLn $ mError config
 
 -- Print in-use paths
-    getPaths dyreParameters >>= \(a,b,c,d,e) -> whenLoud $ do 
+    whenLoud $ getPaths dyreParameters >>= \(a,b,c,d,e) -> do 
         putStrLn ("Current binary:  " ++ a)
         putStrLn ("Custom binary:   " ++ b)
         putStrLn ("Config file:     " ++ c)
@@ -131,13 +141,18 @@ realMain (config, options) = do
 
 realMain' :: Config -> CliOptions -> GUI -> ZMQ.Context -> IO ()
 realMain' config options gui@GUI {mWebView = webView, mWindow = window} context = let
-    environment = Environment options config gui context
-    setup       = mSetup config
-    socketDir   = mSocketDir config 
-    commands    = mCommands config
+    environment      = Environment options config gui context
+    setup            = mSetup config
+    socketDir        = mSocketDir config 
+    commands         = mCommands config
+    --keyEventHandler  = mKeyEventHandler config
+    --keyEventCallback = (mKeyEventCallback config) environment
   in do
 -- Apply custom setup
     setup environment
+    
+-- Setup key handler
+    --rec i <- after webView keyPressEvent $ keyEventHandler keyEventCallback i webView
 
 -- Load homepage
     case (mURI options) of

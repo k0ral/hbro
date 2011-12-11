@@ -1,3 +1,4 @@
+{-# LANGUAGE DoRec #-}
 module Main where
 
 -- {{{ Imports
@@ -39,30 +40,31 @@ import System.Glib.Signals
 import System.Process 
 -- }}}
 
--- | Main function, basically launches hbro.
+-- Main function, expected to call launchHbro.
+-- You can add custom tasks before & after calling it.
 main :: IO ()
-main = do
-    tmpDir    <- getTemporaryDirectory
-    configDir <- getUserConfigDir "hbro"
-    dataDir   <- getUserDataDir "hbro"
-    
-    launchHbro $ myConfig (CommonDirectories tmpDir configDir dataDir)
+main = launchHbro myConfig
 
-
--- | Application parameters.
--- See Hbro.Types.Parameters documentation for fields description.
--- Commented out fields indicate default values.
+-- A structure containing your configuration settings, overriding
+-- fields in the default config. Any you don't override, will     
+-- use the defaults defined in Hbro.Types.Parameters.
 myConfig :: CommonDirectories -> Config
 myConfig directories = (defaultConfig directories) {
-    mCommonDirectories = directories,
-    --mSocketDir       = tmp,
-    mUIFile            = (mConfiguration directories) ++ "/ui.xml",
-    mHomePage          = "https://duckduckgo.com",
-    mKeys              = myKeys,
-    mWebSettings       = myWebSettings,
-    mSetup             = mySetup
+    mSocketDir   = mySocketDirectory,
+    mUIFile      = myUIFile directories,
+    mHomePage    = myHomePage,
+    mWebSettings = myWebSettings,
+    mSetup       = mySetup
 }
 
+-- Various constant parameters
+myHomePage = "https://duckduckgo.com"
+
+mySocketDirectory :: CommonDirectories -> FilePath
+mySocketDirectory directories = mTemporary directories
+
+myUIFile :: CommonDirectories -> FilePath
+myUIFile directories = (mConfiguration directories) ++ "/ui.xml"
 
 myHistoryFile :: CommonDirectories -> FilePath
 myHistoryFile directories = (mData directories) ++ "/history"
@@ -70,6 +72,12 @@ myHistoryFile directories = (mData directories) ++ "/history"
 myBookmarksFile :: CommonDirectories -> FilePath
 myBookmarksFile directories = (mData directories) ++ "/bookmarks"
 
+-- How to download files
+myDownload :: CommonDirectories -> String -> String -> IO ()
+myDownload directories uri name = spawn "aria2c" [uri, "-d", (mHome directories) ++ "/", "-o", name]
+--myDownload directories uri name = spawn "wget" [uri, "-O", (mHome directories) ++ "/" ++ name]
+--myDownload directories uri name = spawn "axel" [uri, "-o", (mHome directories) ++ "/" ++ name]
+    
 
 -- {{{ Keys
 -- Note that this example is suited for an azerty keyboard.
@@ -154,10 +162,10 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
 -- }}}
 
 -- {{{ Web settings
--- Commented lines correspond to default values
+-- Commented out lines correspond to default values.
 myWebSettings :: [AttrOp WebSettings]
 myWebSettings = [
-    --SETTING                                      DEFAULT VALUE 
+--  SETTING                                        VALUE 
     --webSettingsCursiveFontFamily              := "serif",
     --webSettingsDefaultFontFamily              := "sans-serif",
     --webSettingsFantasyFontFamily              := ,
@@ -202,54 +210,53 @@ myWebSettings = [
 
 -- {{{ Setup
 mySetup :: Environment -> IO ()
-mySetup environment@Environment {mGUI = gui, mConfig = config} = 
+mySetup environment@Environment{ mGUI = gui, mConfig = config } = 
     let
         builder         = mBuilder      gui 
         webView         = mWebView      gui
         scrolledWindow  = mScrollWindow gui
         window          = mWindow       gui
-        historyFile     = myHistoryFile $ mCommonDirectories config
-        bindings        = keysListToMap $ (mKeys config) environment
+        directories     = mCommonDirectories config
+        historyFile     = myHistoryFile directories
+        getLabel        = builderGetObject builder castToLabel
     in do
-    -- Handle keys events
-        setupSimpleKeyHandler webView bindings
-      
     -- Scroll position in status bar
-        scrollLabel <- builderGetObject builder castToLabel "scroll"
+        scrollLabel <- getLabel "scroll"
         setupScrollWidget scrollLabel scrolledWindow
     
     -- Zoom level in status bar
-        zoomLabel <- builderGetObject builder castToLabel "zoom"
+        zoomLabel <- getLabel "zoom"
         statusBarZoomLevel zoomLabel webView
-        
-    -- Pressed keys in status bar
-        keysLabel <- builderGetObject builder castToLabel "keys"
-        statusBarPressedKeys keysLabel webView
-        
+                
     -- Load progress in status bar
-        progressLabel <- builderGetObject builder castToLabel "progress"
+        progressLabel <- getLabel "progress"
         statusBarLoadProgress progressLabel webView
         
     -- Current URI in status bar
-        uriLabel <- builderGetObject builder castToLabel "uri"
+        uriLabel <- getLabel "uri"
         statusBarURI uriLabel webView
+        
+    -- Manage keystrokes
+        keysLabel <- getLabel "keys"
+        rec i <- after webView keyPressEvent $ advancedKeyEventHandler (withFeedback keysLabel webView (simpleKeyEventCallback $ keysListToMap (myKeys environment))) i webView
 
     -- Session manager
         --setupSession browser
 
+    -- 
         _ <- on webView titleChanged $ \_ title ->
             set window [ windowTitle := ("hbro | " ++ title)]
 
     -- Download requests
+        feedbackLabel <- getLabel "feedback"
         _ <- on webView downloadRequested $ \download -> do
             uri  <- downloadGetUri download
             name <- downloadGetSuggestedFilename download
             size <- downloadGetTotalSize download
-            feedbackLabel <- builderGetObject builder castToLabel "feedback"
 
             case (uri, name) of
                 (Just uri', Just name') -> do
-                    myDownload uri' name' 
+                    myDownload directories uri' name' 
                     labelSetMarkupTemporary feedbackLabel "<span foreground=\"green\">Download started</span>" 5000
                 _ -> labelSetMarkupTemporary feedbackLabel "<span foreground=\"red\">Unable to download</span>" 5000
             return False
@@ -263,7 +270,6 @@ mySetup environment@Environment {mGUI = gui, mConfig = config} =
                 _         -> webPolicyDecisionDownload policyDecision >> return True
 
     -- History handler
-        home <- getHomeDirectory
         _ <- on webView loadFinished $ \_ -> do
             uri   <- webViewGetUri   webView
             title <- webViewGetTitle webView
@@ -304,11 +310,3 @@ mySetup environment@Environment {mGUI = gui, mConfig = config} =
 
         return ()
 -- }}}
-
-    
-myDownload :: String -> String -> IO ()
-myDownload uri name = do
-    home <- getHomeDirectory
-    --spawn "wget [uri, "-O", home ++ "/" ++ name]
-    --spawn "axel [uri, "-o", home ++ "/" ++ name]
-    spawn "aria2c" [uri, "-d", home ++ "/", "-o", name]
