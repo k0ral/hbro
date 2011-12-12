@@ -19,7 +19,7 @@ module Hbro.Core (
 
 -- {{{ Imports
 import Hbro.Gui
---import Hbro.Keys
+import Hbro.Keys
 import Hbro.Socket
 import Hbro.Types
 --import Hbro.Util
@@ -32,7 +32,7 @@ import Control.Monad.Reader
 
 import qualified Data.Map as M
 
---import Graphics.UI.Gtk.Abstract.Widget
+import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General hiding(initGUI)
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
@@ -45,7 +45,7 @@ import Network.URL
 import System.Console.CmdArgs
 import System.Directory
 import System.Environment.XDG.BaseDir
---import System.Glib.Signals
+import System.Glib.Signals
 import System.IO
 import System.Posix.Process
 import System.Posix.Signals
@@ -94,6 +94,8 @@ defaultConfig directories = Config {
     mHomePage          = "https://encrypted.google.com/",
     mSocketDir         = mTemporary directories,
     mUIFile            = (mConfiguration directories) ++ "/ui.xml",
+    mKeyEventHandler   = simpleKeyEventHandler,
+    mKeyEventCallback  = \_ -> simpleKeyEventCallback (keysListToMap []),
     mWebSettings       = [],
     mSetup             = const (return () :: IO ()),
     mCommands          = [],
@@ -145,14 +147,14 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
     setup            = mSetup config
     socketDir        = mSocketDir config 
     commands         = mCommands config
-    --keyEventHandler  = mKeyEventHandler config
-    --keyEventCallback = (mKeyEventCallback config) environment
+    keyEventHandler  = mKeyEventHandler config
+    keyEventCallback = (mKeyEventCallback config) environment
   in do
 -- Apply custom setup
     setup environment
     
 -- Setup key handler
-    --rec i <- after webView keyPressEvent $ keyEventHandler keyEventCallback i webView
+    rec i <- after webView keyPressEvent $ keyEventHandler keyEventCallback i webView
 
 -- Load homepage
     case (mURI options) of

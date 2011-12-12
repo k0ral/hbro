@@ -13,7 +13,7 @@ import Graphics.Rendering.Pango.Enums
 import Graphics.Rendering.Pango.Layout
 
 import Graphics.UI.Gtk.Display.Label
---import Graphics.UI.Gtk.Gdk.EventM
+import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebView
@@ -56,8 +56,8 @@ statusBarZoomLevel widget webView = do
     
 
 -- | 
-withFeedback :: Label -> WebView -> KeyEventCallback -> KeyEventCallback
-withFeedback widget webView callback modifiers keys = do  
+withFeedback :: Label -> KeyEventCallback -> [Modifier] -> String -> IO Bool
+withFeedback widget callback modifiers keys = do  
 -- Trigger callback
     result <- callback modifiers keys
     

@@ -1,5 +1,15 @@
 {-# LANGUAGE DoRec #-}
-module Hbro.Keys where
+module Hbro.Keys (
+-- * Key event callbacks  
+    withKeys,
+    simpleKeyEventCallback,
+-- * Key event handlers    
+    simpleKeyEventHandler,
+    advancedKeyEventHandler,
+-- * Util
+    keyToString,
+    keysListToMap  
+) where
 
 -- {{{ Imports
 import Hbro.Types

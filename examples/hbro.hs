@@ -50,11 +50,13 @@ main = launchHbro myConfig
 -- use the defaults defined in Hbro.Types.Parameters.
 myConfig :: CommonDirectories -> Config
 myConfig directories = (defaultConfig directories) {
-    mSocketDir   = mySocketDirectory,
-    mUIFile      = myUIFile directories,
-    mHomePage    = myHomePage,
-    mWebSettings = myWebSettings,
-    mSetup       = mySetup
+    mSocketDir        = mySocketDirectory directories,
+    mUIFile           = myUIFile directories,
+    mKeyEventHandler  = myKeyEventHandler,
+    mKeyEventCallback = myKeyEventCallback,
+    mHomePage         = myHomePage,
+    mWebSettings      = myWebSettings,
+    mSetup            = mySetup
 }
 
 -- Various constant parameters
@@ -78,6 +80,16 @@ myDownload directories uri name = spawn "aria2c" [uri, "-d", (mHome directories)
 --myDownload directories uri name = spawn "wget" [uri, "-O", (mHome directories) ++ "/" ++ name]
 --myDownload directories uri name = spawn "axel" [uri, "-o", (mHome directories) ++ "/" ++ name]
     
+myKeyEventHandler :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool
+myKeyEventHandler = advancedKeyEventHandler
+
+myKeyEventCallback :: Environment -> KeyEventCallback
+myKeyEventCallback environment@Environment{ mGUI = gui } modifiers keys = do
+    keysLabel <- builderGetObject builder castToLabel "keys"
+    withFeedback keysLabel (simpleKeyEventCallback $ keysListToMap (myKeys environment)) modifiers keys
+  where
+    builder = mBuilder gui
+
 
 -- {{{ Keys
 -- Note that this example is suited for an azerty keyboard.
@@ -236,10 +248,6 @@ mySetup environment@Environment{ mGUI = gui, mConfig = config } =
         uriLabel <- getLabel "uri"
         statusBarURI uriLabel webView
         
-    -- Manage keystrokes
-        keysLabel <- getLabel "keys"
-        rec i <- after webView keyPressEvent $ advancedKeyEventHandler (withFeedback keysLabel webView (simpleKeyEventCallback $ keysListToMap (myKeys environment))) i webView
-
     -- Session manager
         --setupSession browser
 

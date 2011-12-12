@@ -60,13 +60,14 @@ labelSetMarkupTemporary label text delay = do
   where
     clear = labelSetMarkup label "" >> return False
 
+-- | Similar to forM_ (from Control.Monad) but for Maybe instead of List.
+forMaybeM_ :: Maybe a -> (a -> IO ()) -> IO ()
+forMaybeM_ = flip $ maybe (return ())
 
-(>>?) :: (a -> IO ()) -> Maybe a -> IO ()
-(>>?) = maybe (return ())
-
-    
-    
-dmenu :: [String] -> T.Text -> IO String
+-- | Open dmenu with given input and return selected entry.
+dmenu :: [String]    -- ^ dmenu's commandline options
+      -> T.Text      -- ^ dmenu's input
+      -> IO String   -- ^ Selected entry
 dmenu options input = do
     (in_, out, err, pid) <- runInteractiveProcess "dmenu" options Nothing Nothing
     T.hPutStr in_ input

@@ -18,7 +18,7 @@ import Graphics.UI.Gtk.Windows.Window
 
 import System.Console.CmdArgs
 import System.Glib.Attributes
---import System.Glib.Signals
+import System.Glib.Signals
 import System.ZMQ 
 -- }}}
 
@@ -55,8 +55,8 @@ data Config = {-forall a.-} Config {
     mHomePage          :: String,                    -- ^ Startup page 
     mSocketDir         :: FilePath,                  -- ^ Directory where 0MQ will be created ("/tmp" for example)
     mUIFile            :: FilePath,                  -- ^ Path to XML file describing UI (used by GtkBuilder)
---    mKeyEventHandler   :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool,  -- ^ Key event handler, which forwards keystrokes to mKeyEventCallback
---    mKeyEventCallback  :: Environment -> KeyEventCallback, -- ^ Main key event callback, assumed to deal with each keystroke separately
+    mKeyEventHandler   :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool,  -- ^ Key event handler, which forwards keystrokes to mKeyEventCallback
+    mKeyEventCallback  :: Environment -> KeyEventCallback,          -- ^ Main key event callback, assumed to deal with each keystroke separately
     mWebSettings       :: [AttrOp WebSettings],      -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
     mSetup             :: Environment -> IO (),      -- ^ Custom startup instructions
     mCommands          :: CommandsList,              -- ^ Custom commands to use with IPC sockets
