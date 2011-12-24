@@ -45,6 +45,7 @@ import Network.URI
 import System.Console.CmdArgs
 import System.Directory
 import System.Environment.XDG.BaseDir
+import System.FilePath
 import System.Glib.Signals
 import System.IO
 import System.Posix.Process
@@ -93,7 +94,7 @@ defaultConfig directories = Config {
     mCommonDirectories = directories,
     mHomePage          = "https://encrypted.google.com/",
     mSocketDir         = mTemporary directories,
-    mUIFile            = (mConfiguration directories) ++ "/ui.xml",
+    mUIFile            = (mConfiguration directories) ++ pathSeparator:"ui.xml",
     mKeyEventHandler   = simpleKeyEventHandler,
     mKeyEventCallback  = \_ -> simpleKeyEventCallback (keysListToMap []),
     mWebSettings       = [],
@@ -161,7 +162,7 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
         Just uri -> do 
             fileURI <- doesFileExist uri
             case fileURI of
-                True -> getCurrentDirectory >>= \dir -> webViewLoadUri webView $ "file://" ++ dir ++ "/" ++ uri
+                True -> getCurrentDirectory >>= \dir -> webViewLoadUri webView $ "file://" ++ dir ++ pathSeparator:uri
                 _    -> webViewLoadUri webView uri
             
             whenLoud $ putStrLn ("Loading " ++ uri ++ "...")
@@ -170,7 +171,7 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
 -- Open socket
     pid              <- getProcessID
     let commandsList = M.fromList $ defaultCommandsList ++ commands
-    let socketURI    = "ipc://" ++ socketDir ++ "/hbro." ++ show pid
+    let socketURI    = "ipc://" ++ socketDir ++ pathSeparator:"hbro." ++ show pid
     void $ forkIO (openRepSocket context socketURI (listenToCommands environment commandsList))
     
 -- Manage POSIX signals

@@ -14,6 +14,7 @@ import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.WebKit.WebView
 
 import System.Console.CmdArgs (whenNormal, whenLoud)
+import System.FilePath
 import System.ZMQ 
 -- }}}
     
@@ -57,7 +58,7 @@ closeSocket context socketURI = void $ sendCommand context socketURI "QUIT"
         
 -- | Return the socket path to use for the given browser's process ID.
 processIDToSocket :: String -> String -> String
-processIDToSocket pid socketDir = "ipc://" ++ socketDir ++ "/hbro." ++ pid
+processIDToSocket pid socketDir = "ipc://" ++ socketDir ++ pathSeparator:"hbro." ++ pid
   
 -- | Send a single command (through a Request socket) to the given Response socket,
 -- and return the answer.
