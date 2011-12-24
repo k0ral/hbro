@@ -246,7 +246,7 @@ mySetup environment@Environment{ mGUI = gui, mConfig = config } =
         
     -- Current URI in status bar
         uriLabel <- getLabel "uri"
-        statusBarURI uriLabel webView
+        setupURIWidget defaultURIColors defaultSecureURIColors uriLabel webView
         
     -- Session manager
         --setupSession browser

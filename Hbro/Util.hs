@@ -5,6 +5,7 @@ module Hbro.Util (
     getAllProcessIDs,
 -- * Misc
     labelSetMarkupTemporary,
+    forMaybeM_,
     dmenu
 ) where
 

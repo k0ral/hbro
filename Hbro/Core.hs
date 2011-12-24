@@ -40,7 +40,7 @@ import Graphics.UI.Gtk.WebKit.WebDataSource
 import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebView
 
-import Network.URL
+import Network.URI
 
 import System.Console.CmdArgs
 import System.Directory
@@ -204,11 +204,12 @@ goHome webView config = do
 loadURI :: WebView -> String -> IO ()
 loadURI webView uri = do
     whenLoud $ putStrLn ("Loading URI: " ++ uri)
-    case importURL uri of
-        Just uri'@URL {url_type = Absolute _}   -> webViewLoadUri webView (exportURL uri')
-        Just uri'@URL {url_type = HostRelative} -> webViewLoadUri webView ("file://" ++ exportURL uri')
-        Just uri'@URL {url_type = _}            -> webViewLoadUri webView ("http://" ++ exportURL uri')
-        _ -> whenNormal $ putStrLn ("WARNING: not a valid URI: " ++ uri)
+    
+    let uri' = parseURIReference uri
+    case (uri', uriScheme `fmap` uri') of
+        (Just _, Just []) -> webViewLoadUri webView $ "http://" ++ uri
+        (Just _, Just _)  -> webViewLoadUri webView uri
+        _            -> whenNormal $ putStrLn ("WARNING: not a valid URI: " ++ uri)
 -- }}}
 
 -- {{{ Scrolling
