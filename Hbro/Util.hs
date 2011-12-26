@@ -5,7 +5,6 @@ module Hbro.Util (
     getAllProcessIDs,
 -- * Misc
     labelSetMarkupTemporary,
-    forMaybeM_,
     dmenu
 ) where
 
@@ -60,10 +59,6 @@ labelSetMarkupTemporary label text delay = do
     timeoutAdd clear delay
   where
     clear = labelSetMarkup label "" >> return False
-
--- | Similar to forM_ (from Control.Monad) but for Maybe instead of List.
-forMaybeM_ :: Maybe a -> (a -> IO ()) -> IO ()
-forMaybeM_ = flip $ maybe (return ())
 
 -- | Open dmenu with given input and return selected entry.
 dmenu :: [String]    -- ^ dmenu's commandline options

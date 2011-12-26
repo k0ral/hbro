@@ -210,7 +210,7 @@ loadURI webView uri = do
     case (uri', uriScheme `fmap` uri') of
         (Just _, Just []) -> webViewLoadUri webView $ "http://" ++ uri
         (Just _, Just _)  -> webViewLoadUri webView uri
-        _            -> whenNormal $ putStrLn ("WARNING: not a valid URI: " ++ uri)
+        _                 -> whenNormal $ putStrLn ("WARNING: not a valid URI: " ++ uri)
 -- }}}
 
 -- {{{ Scrolling

@@ -8,10 +8,13 @@ module Hbro.Gui (
 ) where
 
 -- {{{ Imports
+--import Hbro.Util
 import Hbro.Types
 
-import Control.Monad
+import Control.Monad hiding(forM_, mapM_)
 import Control.Monad.Trans
+
+import Data.Foldable
 
 import Graphics.Rendering.Pango.Enums
 import Graphics.UI.Gtk.Abstract.Container
@@ -31,6 +34,8 @@ import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
+
+import Prelude hiding(mapM_)
 
 import System.Console.CmdArgs (whenNormal, whenLoud)
 import System.Glib.Attributes
@@ -74,12 +79,9 @@ initWebView builder settings = do
         
 -- On new window request
     _ <- on webView createWebView $ \frame -> do
-        newUri <- webFrameGetUri frame
-        case newUri of
-            Just uri -> do
-                whenLoud $ putStrLn ("Requesting new window: " ++ uri ++ "...")
-                webViewLoadUri webView uri
-            Nothing  -> return ()
+        webFrameGetUri frame >>= (mapM_ (\uri -> do
+            whenLoud $ putStrLn ("Requesting new window: " ++ uri ++ "...")
+            webViewLoadUri webView uri))
         return webView
     
     window <- builderGetObject builder castToScrolledWindow "webViewParent"

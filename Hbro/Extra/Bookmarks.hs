@@ -1,8 +1,8 @@
 module Hbro.Extra.Bookmarks (
+    add,
     select,
     selectTag,
-    deleteWithTag,
-    add,
+    deleteWithTag
 ) where
 
 -- {{{ Imports
@@ -18,9 +18,11 @@ import qualified Data.Text.IO as T
 -- }}}
 
 
-
 -- | The elementary bookmark action
-add :: FilePath -> String -> [String] -> IO ()
+add :: FilePath    -- ^ BookmarksFile
+    -> String      -- ^ URI to bookmark
+    -> [String]    -- ^ Tags to associate to this URI
+    -> IO ()
 add bookmarksFile uri tags = appendFile bookmarksFile $ uri ++ " " ++ (unwords tags) ++ "\n"
 
 

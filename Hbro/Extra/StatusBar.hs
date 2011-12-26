@@ -3,10 +3,11 @@ module Hbro.Extra.StatusBar where
 -- {{{ Imports
 --import Hbro.Keys
 import Hbro.Types
-import Hbro.Util 
+--import Hbro.Util 
 
-import Control.Monad
+import Control.Monad hiding(forM_, mapM_)
 
+import Data.Foldable
 import Data.List
 import Data.Maybe
 
@@ -20,6 +21,8 @@ import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebView
 
 import Network.URI
+
+import Prelude hiding(mapM_)
 
 import System.Glib.Signals
 -- }}}
@@ -117,14 +120,14 @@ setupURIWidget :: URIColors -> URIColors -> Label -> WebView -> IO ()
 setupURIWidget normalColors secureColors widget webView = do
 -- URI changed
     _ <- on webView loadCommitted $ \_ ->
-        (flip forMaybeM_ (labelSetURI normalColors secureColors widget)) =<< ((>>= parseURIReference) `fmap` (webViewGetUri webView))
+        (mapM_ (labelSetURI normalColors secureColors widget)) =<< ((>>= parseURIReference) `fmap` (webViewGetUri webView))
                                           
 -- Link (un)hovered
     _ <- on webView hoveringOverLink $ \_title hoveredURI -> do
         uri <- webViewGetUri webView
         
-        forMaybeM_ (hoveredURI >>= parseURIReference) $ labelSetURI normalColors secureColors widget
-        unless (isJust hoveredURI) $ forMaybeM_ (uri >>= parseURIReference) (labelSetURI normalColors secureColors widget)
+        forM_ (hoveredURI >>= parseURIReference) $ labelSetURI normalColors secureColors widget
+        unless (isJust hoveredURI) $ forM_ (uri >>= parseURIReference) (labelSetURI normalColors secureColors widget)
                 
     return ()
 
