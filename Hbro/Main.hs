@@ -1,7 +1,7 @@
 module Main where
 
 -- {{{ Imports
-import Hbro.Core
+import Hbro.Hbro
 import Hbro.Types
 
 import Paths_hbro

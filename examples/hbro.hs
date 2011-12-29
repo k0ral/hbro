@@ -10,6 +10,7 @@ import qualified Hbro.Extra.History as History
 import Hbro.Extra.Misc
 import Hbro.Extra.Session
 import Hbro.Extra.StatusBar
+import Hbro.Hbro
 import Hbro.Gui
 import Hbro.Keys
 import Hbro.Socket
