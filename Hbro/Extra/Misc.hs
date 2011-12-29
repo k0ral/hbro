@@ -6,8 +6,6 @@ module Hbro.Extra.Misc where
 import Hbro.Util
 
 import Data.Maybe
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
 
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.WebKit.WebBackForwardList
@@ -56,11 +54,8 @@ goBackList webView dmenuOptions = do
     n              <- webBackForwardListGetBackLength list
     backList       <- webBackForwardListGetBackListWithLimit list n
     dmenuList      <- mapM itemToEntry backList
-    selection      <- dmenu dmenuOptions $ (T.pack . unlines) (catMaybes dmenuList)
-
-    case words selection of
-        uri:_ -> return $ Just uri
-        _     -> return Nothing
+    
+    (>>= (return . head . words)) `fmap` (dmenu dmenuOptions $ (unlines . catMaybes) dmenuList)
     
 
 -- | List succeeding URIs in dmenu and let the user select which one to load.
@@ -70,11 +65,8 @@ goForwardList webView dmenuOptions = do
     n           <- webBackForwardListGetForwardLength list
     forwardList <- webBackForwardListGetForwardListWithLimit list n
     dmenuList   <- mapM itemToEntry forwardList
-    selection   <- dmenu dmenuOptions $ (T.pack . unlines) (catMaybes dmenuList)
     
-    case words selection of
-        uri:_       -> return $ Just uri
-        _           -> return Nothing
+    (>>= (return . head . words)) `fmap` (dmenu dmenuOptions $ (unlines . catMaybes) dmenuList)
 
 
 itemToEntry :: WebHistoryItem -> IO (Maybe String)

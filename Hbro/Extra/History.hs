@@ -8,8 +8,6 @@ import Hbro.Util
 --import Control.Monad.Reader
 
 import Data.List
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
 import Data.Time
 
 --import System.IO.Error
@@ -35,19 +33,16 @@ select :: FilePath           -- ^ Path to history file
        -> [String]           -- ^ Options to pass to dmenu
        -> IO (Maybe String)  -- ^ Selected history entry
 select historyFile dmenuOptions  = do
-    file <- T.readFile historyFile
+    file <- readFile historyFile
 
-    let file' = T.unlines . nub $ map reformat (sort . T.lines $ file)
+    let file' = unlines . nub $ map reformat (sort . lines $ file)
 
-    selection <- dmenu dmenuOptions file'
-    case selection of
-        ""    -> return Nothing
-        entry -> return $ Just ((head . words) entry)
+    (>>= (return . head . words)) `fmap` (dmenu dmenuOptions file')
 
-reformat :: T.Text -> T.Text
+reformat :: String -> String
 reformat line = 
   let
-        _date:_time:uri:title = T.words line 
+        _date:_time:uri:title = words line 
   in 
-        T.unwords $ [uri] ++ title
+        unwords $ [uri] ++ title
     

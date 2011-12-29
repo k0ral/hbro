@@ -16,6 +16,10 @@ import Hbro.Socket
 import Hbro.Types
 import Hbro.Util
 
+import Control.Monad hiding(forM_, mapM_)
+
+import Data.Foldable
+
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
@@ -28,8 +32,12 @@ import Graphics.UI.Gtk.WebKit.NetworkRequest
 import Graphics.UI.Gtk.WebKit.WebNavigationAction
 import Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import Graphics.UI.Gtk.WebKit.WebSettings
-import Graphics.UI.Gtk.WebKit.WebView
+import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri)
 import Graphics.UI.Gtk.Windows.Window
+
+import Network.URI
+
+import Prelude hiding(mapM_)
 
 import System.Directory
 import System.Environment
@@ -132,18 +140,18 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
 
 -- Prompt
     (([Control],        "o"),           prompt "Open URL " "" (loadURI webView) gui),
-    (([Control, Shift], "O"),           webViewGetUri webView >>= maybe (return ()) (\uri -> prompt "Open URL " uri (loadURI webView) gui)),
+    (([Control, Shift], "O"),           webViewGetUri webView >>= mapM_ (\uri -> prompt "Open URL " (show uri) (loadURI webView) gui)),
 
 -- Search
-    (([Shift],          "/"),           promptIncremental "Search " "" (\word -> webViewSearchText webView word False True True >> return ()) gui),
-    (([Control],        "f"),           promptIncremental "Search " "" (\word -> webViewSearchText webView word False True True >> return ()) gui),
-    (([Shift],          "?"),           promptIncremental "Search " "" (\word -> webViewSearchText webView word False False True >> return ()) gui),
+    (([Shift],          "/"),           promptIncremental "Search " [] (\word -> webViewSearchText webView word False True True >> return ()) gui),
+    (([Control],        "f"),           promptIncremental "Search " [] (\word -> webViewSearchText webView word False True True >> return ()) gui),
+    (([Shift],          "?"),           promptIncremental "Search " [] (\word -> webViewSearchText webView word False False True >> return ()) gui),
     (([Control],        "n"),           entryGetText promptEntry >>= \word -> webViewSearchText webView word False True True >> return ()),
     (([Control, Shift], "N"),           entryGetText promptEntry >>= \word -> webViewSearchText webView word False False True >> return ()),
 
 -- Copy/paste
-    (([Control],        "y"),           webViewGetUri   webView >>= maybe (return ()) toClipboard),
-    (([Control, Shift], "Y"),           webViewGetTitle webView >>= maybe (return ()) toClipboard),
+    (([Control],        "y"),           webViewGetUri   webView >>= mapM_ (toClipboard . show)),
+    (([Control, Shift], "Y"),           webViewGetTitle webView >>= mapM_ toClipboard),
     (([Control],        "p"),           withClipboard $ maybe (return ()) (loadURI webView)),
     (([Control, Shift], "P"),           withClipboard $ maybe (return ()) (\uri -> spawn "hbro" ["-u", uri])),
 
@@ -155,11 +163,18 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
     (([Control],        "w"),           mainQuit),
 
 -- Bookmarks
-    (([Control],        "d"),           webViewGetUri webView >>= maybe (return ()) (\uri -> prompt "Bookmark with tags:" "" (\tags -> Bookmarks.add bookmarksFile uri (words tags)) gui)),
-    (([Control, Shift], "D"),           prompt "Bookmark all instances with tag:" "" (\tags -> sendCommandToAll context socketDir "GET_URI" >>= mapM (\uri -> Bookmarks.add bookmarksFile uri $ words tags) >> (webViewGetUri webView) >>= maybe (return ()) (\uri -> Bookmarks.add bookmarksFile uri $ words tags) >> return ()) gui),
+    (([Control],        "d"),           webViewGetUri webView >>= mapM_ (\uri -> 
+        prompt "Bookmark with tags:" "" (\tags -> void $
+            Bookmarks.add bookmarksFile (Bookmarks.Entry uri (words tags))) 
+        gui)),
+    (([Control, Shift], "D"),           prompt "Bookmark all instances with tag:" "" (\tags -> 
+        ((map parseURI) `fmap` (sendCommandToAll context socketDir "GET_URI"))
+        >>= mapM (mapM_ $ \uri -> Bookmarks.add bookmarksFile $ Bookmarks.Entry uri (words tags)) 
+        >> (webViewGetUri webView) >>= mapM_ (\uri -> Bookmarks.add bookmarksFile $ Bookmarks.Entry uri (words tags))) 
+    gui),
     (([Alt],            "d"),           Bookmarks.deleteWithTag bookmarksFile ["-l", "10"]),
-    (([Control],        "l"),           Bookmarks.select        bookmarksFile ["-l", "10"] >>= maybe (return ()) (loadURI webView)),
-    (([Control, Shift], "L"),           Bookmarks.selectTag     bookmarksFile ["-l", "10"] >>= maybe (return ()) (\uris -> mapM (\uri -> spawn "hbro" ["-u", uri]) uris >> return ())),
+    (([Control],        "l"),           Bookmarks.select        bookmarksFile ["-l", "10"] >>= mapM_ (loadURI webView)),
+    (([Control, Shift], "L"),           Bookmarks.selectTag     bookmarksFile ["-l", "10"] >>= mapM_ (\uris -> mapM (\uri -> spawn "hbro" ["-u", (show uri)]) uris >> return ())),
 --    (([Control],        "q"),           webViewGetUri webView >>= maybe (return ()) (Queue.append),
 --    (([Alt],            "q"),           \b -> do
 --        uri <- Queue.popFront
@@ -282,7 +297,7 @@ mySetup environment@Environment{ mGUI = gui, mConfig = config } =
             uri   <- webViewGetUri   webView
             title <- webViewGetTitle webView
             case (uri, title) of
-                (Just uri', Just title') -> History.add historyFile uri' title'
+                (Just uri', Just title') -> History.add historyFile (show uri') title'
                 _ -> return ()
 
     -- On navigating to a new URI

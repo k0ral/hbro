@@ -14,7 +14,8 @@ module Hbro.Core (
     goRight,
 -- * Misc
     printPage,
-    executeJSFile
+    executeJSFile,
+    webViewGetUri
 ) where
 
 -- {{{ Imports
@@ -38,7 +39,8 @@ import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebDataSource
 import Graphics.UI.Gtk.WebKit.WebFrame
-import Graphics.UI.Gtk.WebKit.WebView
+import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri)
+import qualified Graphics.UI.Gtk.WebKit.WebView as Webkit (webViewGetUri)
 
 import Network.URI
 
@@ -276,3 +278,6 @@ _savePage _path webView = do
     _mainResource <- webDataSourceGetMainResource dataSource
     _subResources <- webDataSourceGetSubresources dataSource
     return ()
+
+webViewGetUri :: WebView -> IO (Maybe URI)
+webViewGetUri webView = (>>= parseURI) `fmap` Webkit.webViewGetUri webView

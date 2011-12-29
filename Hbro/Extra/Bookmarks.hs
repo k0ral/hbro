@@ -1,4 +1,5 @@
 module Hbro.Extra.Bookmarks (
+    Entry(..),
     add,
     select,
     selectTag,
@@ -11,90 +12,101 @@ module Hbro.Extra.Bookmarks (
 --import Hbro.Types
 import Hbro.Util
 
+import Control.Exception
+import Control.Monad hiding(forM_, mapM_)
+
 --import qualified Data.ByteString.Char8 as B
+import Data.Foldable hiding(find, foldr)
 import Data.List
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Maybe
+
+import Network.URI
+
+import Prelude hiding(catch, mapM_)
+
+import System.IO
 -- }}}
 
+-- {{{ Type definitions
+data Entry = Entry {
+    mURI  :: URI,
+    mTags :: [String]
+}
+ 
+instance Show Entry where
+    show (Entry uri tags) = unwords $ (show uri):tags
+-- }}}
 
--- | The elementary bookmark action
-add :: FilePath    -- ^ BookmarksFile
-    -> String      -- ^ URI to bookmark
-    -> [String]    -- ^ Tags to associate to this URI
-    -> IO ()
-add bookmarksFile uri tags = appendFile bookmarksFile $ uri ++ " " ++ (unwords tags) ++ "\n"
+-- | Try to parse a String into a bookmark Entry.
+parseEntry :: String -> Maybe Entry
+parseEntry [] = Nothing
+parseEntry line = return (words line) 
+    >>= (\(h:t) -> parseURI h
+    >>= (\uri -> listToMaybe t 
+    >> (return $ Entry uri t)))
 
+-- | Check if the given bookmark Entry is tagged with the given tag.
+hasTag :: String -> Entry -> Bool
+hasTag tag = isJust . (find $ (==) tag) . mTags
 
--- |
-select :: FilePath -> [String] -> IO (Maybe String)
+-- | Add a new entry to the bookmarks' database (which is a file).
+add :: FilePath    -- ^ Bookmarks' database file
+    -> Entry       -- ^ New bookmarks entry
+    -> IO Bool
+add bookmarksFile newEntry = do
+    result <- try $ withFile bookmarksFile AppendMode (flip hPutStrLn (show newEntry))
+    either (\e -> errorHandler bookmarksFile e >> return False) (const $ return True) result
+          
+-- | Open a dmenu with all (sorted alphabetically) bookmarks entries, and return the user's selection, if any.
+select :: FilePath   -- ^ Bookmarks' database file
+       -> [String]   -- ^ dmenu's commandline options
+       -> IO (Maybe String)
 select bookmarksFile dmenuOptions = do
--- Load bookmarks file
-    file <- T.readFile bookmarksFile
-    let file' = T.unlines . sort . nub $ map reformat (T.lines file)
-
--- Let user select a URI
-    selection <- dmenu dmenuOptions file'
-
-    case reverse . words $ selection of
-        []          -> return Nothing
-        uri:_       -> return $ Just uri
+    result <- try $ readFile bookmarksFile 
+    
+    either (\e -> errorHandler bookmarksFile e >> return Nothing) (\x -> return $ Just x) result
+    >>= (return . ((return . unlines . sort . nub . (map reformat) . lines) =<<))
+    >>= (maybe (return Nothing) (dmenu dmenuOptions))
+    >>= (return . ((return . last. words) =<<))
 
   
-reformat :: T.Text -> T.Text
-reformat line = T.unwords $ tags' ++ [uri]
+reformat :: String -> String
+reformat line = unwords $ tags' ++ [uri]
   where
-    uri:tags = T.words line 
-    tags'    = sort $ map (\tag -> T.snoc (T.cons '[' tag) ']') tags
+    uri:tags = words line 
+    tags'    = sort $ map (\tag -> '[':(tag ++ "]")) tags
 
--- | 
-selectTag :: FilePath -> [String] -> IO (Maybe [String])
+-- | Open a dmenu with all (sorted alphabetically) bookmarks tags, and return the user's selection, if any.
+selectTag :: FilePath          -- ^ Bookmarks' database file
+          -> [String]          -- ^ dmenu's commandline options
+          -> IO (Maybe [URI])
 selectTag bookmarksFile dmenuOptions = do
     -- Read bookmarks file
-    file <- T.readFile bookmarksFile
-
-    -- Filter tags list
-    let list = T.unlines . sort . nub . T.words . T.unwords $ map getTags (T.lines file)
+    result <- try $ readFile bookmarksFile
+    file   <- either (\e -> errorHandler bookmarksFile e >> return Nothing) (\x -> return $ Just x) result
+    
+    let entries = (return . catMaybes . (map parseEntry) . lines) =<< file
+    let tags    = (return . unlines . sort . nub . words . unwords . (foldr (union . mTags) [])) =<< entries
 
     -- Let user select a tag
-    selection <- dmenu dmenuOptions list
-
-    case selection of
-        ""  -> return Nothing
-        tag -> return $ Just uris
---mapM (\uri -> spawn "hbro" ["-u", (T.unpack uri)]) uris >> return ()
-          where
-            file' = filter (tagFilter $ T.pack tag) (T.lines file)
-            uris  = map (T.unpack . getUri) file'
-
--- 
-tagFilter :: T.Text -> T.Text -> Bool
-tagFilter tag line = let _uri:tags = T.words line in case (intersect [tag] tags) of
-    [_tag] -> True
-    _      -> False
+    tag <- (maybe (return Nothing) (dmenu dmenuOptions) tags)
+    return $ (return . (map mURI) . (\t -> filter (hasTag t) (maybe [] id entries))) =<< tag
 
 
--- |
-deleteWithTag :: FilePath -> [String] -> IO ()
+-- | Remove all bookmarks entries matching the given tag.
+deleteWithTag :: FilePath   -- ^ Bookmarks' database file
+              -> [String]   -- ^ dmenu's commandline options
+              -> IO ()
 deleteWithTag bookmarksFile dmenuOptions = do
-    file <- T.readFile bookmarksFile
+    result <- try $ readFile bookmarksFile
+    file   <- either (\e -> errorHandler bookmarksFile e >> return Nothing) (\x -> return $ Just x) result
+    
+    forM_ file $ \f -> do
+        let entries = (catMaybes . (map parseEntry) . lines) f    
+        let tags = (unlines . sort . nub . words . unwords . (foldr (union . mTags) [])) entries
 
-    let tagsList = T.unlines . sort . nub . T.words . T.unwords $ map getTags (T.lines file)
-
-    selection <- dmenu dmenuOptions tagsList
-    case selection of
-        ""      -> return ()
-        _       -> do
-            T.writeFile (bookmarksFile ++ ".old") file
-            T.writeFile bookmarksFile file'
-            return ()
-          where
-            file' = T.unlines $ filter (not . (tagFilter $ T.pack selection)) (T.lines file)
-
--- |
-getTags :: T.Text -> T.Text
-getTags line = let _:tags = T.words line in T.unwords tags
-
--- |
-getUri :: T.Text -> T.Text
-getUri line = let uri:_ = T.words line in uri
+        tag <- (dmenu dmenuOptions tags) 
+        forM_ tag (\t -> do
+            writeFile (bookmarksFile ++ ".old") $ unlines (map show entries)
+            writeFile bookmarksFile $ (unlines . (map show) . (filter (not . (hasTag t)))) entries
+            return ())
