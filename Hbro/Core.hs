@@ -3,7 +3,7 @@
 module Hbro.Core (
 -- * Browsing
     goHome,
-    loadURI,
+    webViewLoadUri,
 -- * Scrolling    
     goTop,
     goBottom,
@@ -19,12 +19,14 @@ module Hbro.Core (
 import Hbro.Types
 --import Hbro.Util
 
+import Data.Foldable
+
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebDataSource
 import Graphics.UI.Gtk.WebKit.WebFrame
-import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri)
-import qualified Graphics.UI.Gtk.WebKit.WebView as Webkit (webViewGetUri)
+import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri, webViewLoadUri)
+import qualified Graphics.UI.Gtk.WebKit.WebView as WebKit (webViewGetUri, webViewLoadUri)
 
 import Network.URI
 
@@ -34,47 +36,39 @@ import System.Console.CmdArgs
 -- {{{ Browsing
 -- | Load homepage (set from configuration file).
 goHome :: WebView -> Config -> IO ()
-goHome webView config = do
-    whenLoud $ putStrLn ("Loading homepage: " ++ uri)
-    loadURI webView uri
-  where
-    uri = mHomePage config
+goHome webView config@Config{ mHomePage = homeURI } = forM_ (parseURIReference homeURI) $ webViewLoadUri webView
 
--- | Wrapper around webViewLoadUri meant to transparently add the proper protocol prefix (http:// or file://).
--- Most of the time, you want to use this function instead of webViewLoadUri.
-loadURI :: WebView -> String -> IO ()
-loadURI webView uri = do
-    whenLoud $ putStrLn ("Loading URI: " ++ uri)
-    
-    let uri' = parseURIReference uri
-    case (uri', uriScheme `fmap` uri') of
-        (Just _, Just []) -> webViewLoadUri webView $ "http://" ++ uri
-        (Just _, Just _)  -> webViewLoadUri webView uri
-        _                 -> whenNormal $ putStrLn ("WARNING: not a valid URI: " ++ uri)
+-- | Wrapper around webViewLoadUri using Network.URI instead of a bare String.
+webViewLoadUri :: WebView -> URI -> IO ()
+webViewLoadUri webView uri = do
+    whenLoud $ putStrLn ("Loading URI: " ++ show uri)
+    case uriScheme uri of
+        [] -> WebKit.webViewLoadUri webView ("http://" ++ show uri)
+        _  -> WebKit.webViewLoadUri webView (show uri)
 -- }}}
 
 -- {{{ Scrolling
 -- | Scroll up to top of web page. Provided for convenience.
 goTop :: ScrolledWindow -> IO ()
 goTop window = do
-    adjustment  <- scrolledWindowGetVAdjustment window
-    lower       <- adjustmentGetLower adjustment
+    adjustment <- scrolledWindowGetVAdjustment window
+    lower      <- adjustmentGetLower adjustment
 
     adjustmentSetValue adjustment lower
 
 -- | Scroll down to bottom of web page. Provided for convenience.
 goBottom :: ScrolledWindow -> IO ()
 goBottom window = do
-    adjustment  <- scrolledWindowGetVAdjustment window
-    upper       <- adjustmentGetUpper adjustment
+    adjustment <- scrolledWindowGetVAdjustment window
+    upper      <- adjustmentGetUpper adjustment
 
     adjustmentSetValue adjustment upper
 
 -- | Scroll to the left edge of web page. Provided for convenience.
 goLeft :: ScrolledWindow -> IO ()
 goLeft window = do
-    adjustment  <- scrolledWindowGetHAdjustment window
-    lower       <- adjustmentGetLower adjustment
+    adjustment <- scrolledWindowGetHAdjustment window
+    lower      <- adjustmentGetLower adjustment
 
     adjustmentSetValue adjustment lower
 
@@ -119,4 +113,4 @@ _savePage _path webView = do
 
 -- | Replacement for Graphics.UI.Gtk.WebKit.WebView(webViewGetUri), using the Network.URI type.
 webViewGetUri :: WebView -> IO (Maybe URI)
-webViewGetUri webView = (>>= parseURI) `fmap` Webkit.webViewGetUri webView
+webViewGetUri webView = (>>= parseURI) `fmap` WebKit.webViewGetUri webView

@@ -24,7 +24,9 @@ import qualified Data.Map as M
 
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General hiding(initGUI)
-import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri)
+--import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri, webViewLoadUri)
+
+import Network.URI
 
 import System.Console.CmdArgs
 import System.Directory
@@ -98,10 +100,10 @@ launchHbro configGenerator = do
     tmpDir    <- getTemporaryDirectory
     configDir <- getUserConfigDir "hbro"
     dataDir   <- getUserDataDir   "hbro"
-    options   <- getOptions
-        
-    let config = configGenerator (CommonDirectories homeDir tmpDir configDir dataDir)
     
+    let config = configGenerator (CommonDirectories homeDir tmpDir configDir dataDir)
+
+    options <- getOptions
     case mVanilla options of
         True -> D.wrapMain dyreParameters{ D.configCheck = False } (config, options)
         _    -> D.wrapMain dyreParameters (config, options)
@@ -112,13 +114,13 @@ realMain (config, options) = do
     maybe (return ()) putStrLn $ mError config
 
 -- Print in-use paths
-    whenLoud $ getPaths dyreParameters >>= \(a,b,c,d,e) -> do 
-        putStrLn ("Current binary:  " ++ a)
-        putStrLn ("Custom binary:   " ++ b)
-        putStrLn ("Config file:     " ++ c)
-        putStrLn ("Cache directory: " ++ d)
-        putStrLn ("Lib directory:   " ++ e)
-        putStrLn ""
+    whenLoud $ getPaths dyreParameters >>= \(a,b,c,d,e) -> (putStrLn . unlines) [
+        "Current binary:  " ++ a,
+        "Custom binary:   " ++ b,
+        "Config file:     " ++ c,
+        "Cache directory: " ++ d,
+        "Lib directory:   " ++ e,
+        []]
         
 -- Initialize GUI
     gui <- initGUI (mUIFile config) (mWebSettings config)
@@ -142,15 +144,15 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
     rec i <- after webView keyPressEvent $ keyEventHandler keyEventCallback i webView
 
 -- Load homepage
-    case (mURI options) of
+    startURI <- case (mURI options) of
         Just uri -> do 
             fileURI <- doesFileExist uri
             case fileURI of
-                True -> getCurrentDirectory >>= \dir -> webViewLoadUri webView $ "file://" ++ dir ++ pathSeparator:uri
-                _    -> webViewLoadUri webView uri
-            
-            whenLoud $ putStrLn ("Loading " ++ uri ++ "...")
-        _ -> goHome webView config
+                True -> getCurrentDirectory >>= \dir -> return $ Just ("file://" ++ dir </> uri)
+                _    -> return $ Just uri
+        _ -> return Nothing
+    
+    maybe (goHome webView config) (webViewLoadUri webView) (startURI >>= parseURIReference)
 
 -- Open socket
     pid              <- getProcessID
@@ -170,7 +172,5 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
     whenNormal $ putStrLn "Exiting..."
 
 interruptHandler :: IO ()
-interruptHandler = do
-    whenLoud $ putStrLn "Received SIGINT."
-    mainQuit
+interruptHandler = whenLoud (putStrLn "Received SIGINT.") >> mainQuit
 -- }}}

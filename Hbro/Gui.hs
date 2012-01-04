@@ -64,7 +64,15 @@ initGUI xmlPath settings = do
     widgetHide (mBox promptBar)
     
     whenNormal $ putStrLn "Done."
-    return $ GUI window inspectorWindow sWindow webView promptBar statusBar builder
+    return $ GUI { 
+        mWindow          = window, 
+        mInspectorWindow = inspectorWindow, 
+        mScrollWindow    = sWindow, 
+        mWebView         = webView, 
+        mPromptBar       = promptBar, 
+        mStatusBar       = statusBar, 
+        mBuilder         = builder
+    }
 
 initWebView :: Builder -> [AttrOp WebSettings] -> IO (WebView, ScrolledWindow)
 initWebView builder settings = do

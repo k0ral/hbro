@@ -12,6 +12,8 @@ import Graphics.UI.Gtk.WebKit.WebBackForwardList
 import Graphics.UI.Gtk.WebKit.WebHistoryItem
 import Graphics.UI.Gtk.WebKit.WebView
 
+import Network.URI
+
 import System.IO
 -- }}}
 
@@ -48,25 +50,25 @@ import System.IO
 
 
 -- | List preceding URIs in dmenu and let the user select which one to load.
-goBackList :: WebView -> [String] -> IO (Maybe String)
+goBackList :: WebView -> [String] -> IO (Maybe URI)
 goBackList webView dmenuOptions = do
     list           <- webViewGetBackForwardList webView
     n              <- webBackForwardListGetBackLength list
     backList       <- webBackForwardListGetBackListWithLimit list n
     dmenuList      <- mapM itemToEntry backList
     
-    (>>= (return . head . words)) `fmap` (dmenu dmenuOptions $ (unlines . catMaybes) dmenuList)
+    (>>= (parseURIReference . head . words)) `fmap` (dmenu dmenuOptions $ (unlines . catMaybes) dmenuList)
     
 
 -- | List succeeding URIs in dmenu and let the user select which one to load.
-goForwardList :: WebView -> [String] -> IO (Maybe String)
+goForwardList :: WebView -> [String] -> IO (Maybe URI)
 goForwardList webView dmenuOptions = do
     list        <- webViewGetBackForwardList webView
     n           <- webBackForwardListGetForwardLength list
     forwardList <- webBackForwardListGetForwardListWithLimit list n
     dmenuList   <- mapM itemToEntry forwardList
     
-    (>>= (return . head . words)) `fmap` (dmenu dmenuOptions $ (unlines . catMaybes) dmenuList)
+    (>>= (parseURIReference . head . words)) `fmap` (dmenu dmenuOptions $ (unlines . catMaybes) dmenuList)
 
 
 itemToEntry :: WebHistoryItem -> IO (Maybe String)

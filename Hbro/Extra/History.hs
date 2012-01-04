@@ -10,10 +10,22 @@ import Hbro.Util
 import Data.List
 import Data.Time
 
+import Network.URI
+
 --import System.IO.Error
 import System.Locale
 -- }}} 
 
+-- {{{ Type definitions
+data Entry = Entry {
+    mTime  :: LocalTime,
+    mURI   :: URI, 
+    mTitle :: String
+}
+
+instance Show Entry where
+    show (Entry time uri title) = unwords [(formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" time), show uri, title]
+-- }}}
 
 -- | Add a single history entry to the history file
 add :: FilePath   -- ^ Path to history file

@@ -33,7 +33,7 @@ import Graphics.UI.Gtk.WebKit.NetworkRequest
 import Graphics.UI.Gtk.WebKit.WebNavigationAction
 import Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import Graphics.UI.Gtk.WebKit.WebSettings
-import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri)
+import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri, webViewLoadUri)
 import Graphics.UI.Gtk.Windows.Window
 
 import Network.URI
@@ -43,6 +43,7 @@ import Prelude hiding(mapM_)
 import System.Directory
 import System.Environment
 import System.Environment.XDG.BaseDir
+import System.FilePath
 import System.Glib.Attributes
 import System.Glib.Signals
 -- import System.Posix.Process
@@ -71,17 +72,11 @@ myConfig directories = (defaultConfig directories) {
 -- Various constant parameters
 myHomePage = "https://duckduckgo.com"
 
-mySocketDirectory :: CommonDirectories -> FilePath
-mySocketDirectory directories = mTemporary directories
-
-myUIFile :: CommonDirectories -> FilePath
-myUIFile directories = (mConfiguration directories) ++ "/ui.xml"
-
-myHistoryFile :: CommonDirectories -> FilePath
-myHistoryFile directories = (mData directories) ++ "/history"
-
-myBookmarksFile :: CommonDirectories -> FilePath
-myBookmarksFile directories = (mData directories) ++ "/bookmarks"
+mySocketDirectory, myUIFile, myHistoryFile, myBookmarksFile :: CommonDirectories -> FilePath
+mySocketDirectory             = mTemporary
+myUIFile          directories = (mConfiguration directories) </> "ui.xml"
+myHistoryFile     directories = (mData directories) </> "history"
+myBookmarksFile   directories = (mData directories) </> "bookmarks"
 
 -- How to download files
 myDownload :: CommonDirectories -> String -> String -> IO ()
@@ -94,10 +89,8 @@ myKeyEventHandler = advancedKeyEventHandler
 
 myKeyEventCallback :: Environment -> KeyEventCallback
 myKeyEventCallback environment@Environment{ mGUI = gui } modifiers keys = do
-    keysLabel <- builderGetObject builder castToLabel "keys"
+    keysLabel <- builderGetObject (mBuilder gui) castToLabel "keys"
     withFeedback keysLabel (simpleKeyEventCallback $ keysListToMap (myKeys environment)) modifiers keys
-  where
-    builder = mBuilder gui
 
 
 -- {{{ Keys
@@ -107,7 +100,7 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
     window         = mWindow       gui
     webView        = mWebView      gui
     scrolledWindow = mScrollWindow gui
-    statusBox      = mStatusBox    gui
+    statusBox      = mStatusBar    gui
     promptBar      = mPromptBar    gui
     promptEntry    = mEntry promptBar
     bookmarksFile  = myBookmarksFile (mCommonDirectories config)
@@ -119,8 +112,8 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
 -- Browse
     (([Control],        "<Left>"),      webViewGoBack    webView),
     (([Control],        "<Right>"),     webViewGoForward webView),
-    (([Alt],            "<Left>"),      (goBackList    webView ["-l", "10"]) >>= maybe (return ()) (loadURI webView)),
-    (([Alt],            "<Right>"),     (goForwardList webView ["-l", "10"]) >>= maybe (return ()) (loadURI webView)),
+    (([Alt],            "<Left>"),      (goBackList    webView ["-l", "10"]) >>= mapM_ (webViewLoadUri webView)),
+    (([Alt],            "<Right>"),     (goForwardList webView ["-l", "10"]) >>= mapM_ (webViewLoadUri webView)),
     (([Control],        "s"),           webViewStopLoading       webView),
     (([],               "<F5>"),        webViewReload            webView),
     (([Control],        "<F5>"),        webViewReloadBypassCache webView),
@@ -129,7 +122,7 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
     (([Control],        "<Home>"),      goTop    scrolledWindow),
     (([Control],        "<End>"),       goBottom scrolledWindow),
     (([Alt],            "<Home>"),      goHome webView config),
-    (([Control],        "g"),           prompt "Google search" "" (\words -> loadURI webView ("https://www.google.com/search?q=" ++ words)) gui),
+    (([Control],        "g"),           prompt "Google search" [] (\words -> forM_ (parseURIReference ("https://www.google.com/search?q=" ++ words)) (webViewLoadUri webView)) gui),
 
 -- Display
     (([Control, Shift], "+"),           webViewZoomIn    webView),
@@ -140,8 +133,8 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
     (([Control],        "u"),           toggleSourceMode webView),
 
 -- Prompt
-    (([Control],        "o"),           prompt "Open URL " "" (loadURI webView) gui),
-    (([Control, Shift], "O"),           webViewGetUri webView >>= mapM_ (\uri -> prompt "Open URL " (show uri) (loadURI webView) gui)),
+    (([Control],        "o"),           prompt "Open URL " [] ((mapM_ (webViewLoadUri webView)) . parseURIReference) gui),
+    (([Control, Shift], "O"),           webViewGetUri webView >>= mapM_ (\uri -> prompt "Open URL " (show uri) ((mapM_ (webViewLoadUri webView)) . parseURIReference) gui)),
 
 -- Search
     (([Shift],          "/"),           promptIncremental "Search " [] (\word -> webViewSearchText webView word False True True >> return ()) gui),
@@ -153,7 +146,7 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
 -- Copy/paste
     (([Control],        "y"),           webViewGetUri   webView >>= mapM_ (toClipboard . show)),
     (([Control, Shift], "Y"),           webViewGetTitle webView >>= mapM_ toClipboard),
-    (([Control],        "p"),           withClipboard $ maybe (return ()) (loadURI webView)),
+    (([Control],        "p"),           withClipboard $ maybe (return ()) ((mapM_ (webViewLoadUri webView)) . parseURIReference)),
     (([Control, Shift], "P"),           withClipboard $ maybe (return ()) (\uri -> spawn "hbro" ["-u", uri])),
 
 -- Misc
@@ -174,7 +167,7 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
         >> (webViewGetUri webView) >>= mapM_ (\uri -> Bookmarks.add bookmarksFile $ Bookmarks.Entry uri (words tags))) 
     gui),
     (([Alt],            "d"),           Bookmarks.deleteWithTag bookmarksFile ["-l", "10"]),
-    (([Control],        "l"),           Bookmarks.select        bookmarksFile ["-l", "10"] >>= mapM_ (loadURI webView)),
+    (([Control],        "l"),           Bookmarks.select        bookmarksFile ["-l", "10"] >>= mapM_ ((mapM_ (webViewLoadUri webView)) . parseURIReference)),
     (([Control, Shift], "L"),           Bookmarks.selectTag     bookmarksFile ["-l", "10"] >>= mapM_ (\uris -> mapM (\uri -> spawn "hbro" ["-u", (show uri)]) uris >> return ())),
 --    (([Control],        "q"),           webViewGetUri webView >>= maybe (return ()) (Queue.append),
 --    (([Alt],            "q"),           \b -> do
@@ -182,7 +175,7 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
 --        loadURI uri b),
 
 -- History
-    (([Control],        "h"),           History.select historyFile ["-l", "10"] >>= maybe (return ()) (loadURI webView))
+    (([Control],        "h"),           History.select historyFile ["-l", "10"] >>= mapM_ ((mapM_ (webViewLoadUri webView)) . parseURIReference))
     
 -- Session
     --(([Alt],            "l"),           loadFromSession ["-l", "10"])

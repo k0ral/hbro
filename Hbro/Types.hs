@@ -69,8 +69,8 @@ data GUI = GUI {
     mInspectorWindow    :: Window,          -- ^ WebInspector window
     mScrollWindow       :: ScrolledWindow,  -- ^ ScrolledWindow containing the webview
     mWebView            :: WebView,         -- ^ Browser's webview
-    mPromptBar          :: PromptBar, 
-    mStatusBox          :: HBox,            -- ^ Status bar's horizontal box
+    mPromptBar          :: PromptBar,       -- ^ Prompt bar
+    mStatusBar          :: HBox,            -- ^ Status bar's horizontal box
     mBuilder            :: Builder          -- ^ Builder object created from XML file
 }
 
