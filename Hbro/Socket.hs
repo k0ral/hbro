@@ -4,14 +4,19 @@ module Hbro.Socket where
 import Hbro.Util
 import Hbro.Types
 
-import Control.Monad
-import Control.Monad.Reader
+import Control.Monad hiding(mapM_)
+import Control.Monad.Reader hiding(mapM_)
 
 import Data.ByteString.Char8 (pack, unpack)
+import Data.Foldable
 import qualified Data.Map as Map
 
 import Graphics.UI.Gtk.General.General
-import Graphics.UI.Gtk.WebKit.WebView
+import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri, webViewLoadUri)
+
+import Network.URI
+
+import Prelude hiding(mapM_)
 
 import System.Console.CmdArgs (whenNormal, whenLoud)
 import System.FilePath
@@ -78,7 +83,7 @@ defaultCommandsList = [
     ("GET_URI", \_arguments repSocket browser -> liftIO $ do
         getUri <- postGUISync $ webViewGetUri (mWebView $ mGUI browser)
         case getUri of
-            Just uri -> send repSocket (pack uri) []
+            Just uri -> send repSocket ((pack . show) uri) []
             _        -> send repSocket (pack "ERROR No URL opened") [] ),
 
     ("GET_TITLE", \_arguments repSocket browser -> liftIO $ do
@@ -101,7 +106,7 @@ defaultCommandsList = [
     -- Trigger actions
     ("LOAD_URI", \arguments repSocket browser -> liftIO $ case arguments of 
         uri:_ -> do
-            postGUIAsync $ webViewLoadUri (mWebView $ mGUI browser) uri
+            postGUIAsync $ mapM_ (webViewLoadUri (mWebView (mGUI browser))) (parseURIReference uri)
             send repSocket (pack "OK") []
         _     -> send repSocket (pack "ERROR: argument needed.") [] ),
 

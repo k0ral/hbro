@@ -3,7 +3,6 @@
 module Hbro.Core (
 -- * Browsing
     goHome,
-    webViewLoadUri,
 -- * Scrolling    
     goTop,
     goBottom,
@@ -11,13 +10,12 @@ module Hbro.Core (
     goRight,
 -- * Misc
     printPage,
-    executeJSFile,
-    webViewGetUri
+    executeJSFile
 ) where
 
 -- {{{ Imports
 import Hbro.Types
---import Hbro.Util
+import Hbro.Util
 
 import Data.Foldable
 
@@ -26,7 +24,6 @@ import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebDataSource
 import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri, webViewLoadUri)
-import qualified Graphics.UI.Gtk.WebKit.WebView as WebKit (webViewGetUri, webViewLoadUri)
 
 import Network.URI
 
@@ -37,14 +34,6 @@ import System.Console.CmdArgs
 -- | Load homepage (set from configuration file).
 goHome :: WebView -> Config -> IO ()
 goHome webView config@Config{ mHomePage = homeURI } = forM_ (parseURIReference homeURI) $ webViewLoadUri webView
-
--- | Wrapper around webViewLoadUri using Network.URI instead of a bare String.
-webViewLoadUri :: WebView -> URI -> IO ()
-webViewLoadUri webView uri = do
-    whenLoud $ putStrLn ("Loading URI: " ++ show uri)
-    case uriScheme uri of
-        [] -> WebKit.webViewLoadUri webView ("http://" ++ show uri)
-        _  -> WebKit.webViewLoadUri webView (show uri)
 -- }}}
 
 -- {{{ Scrolling
@@ -84,13 +73,11 @@ goRight window = do
 -- {{{ Misc
 -- | Wrapper around webFramePrint function, provided for convenience.
 printPage :: WebView -> IO ()
-printPage webView = do
-    frame <- webViewGetMainFrame webView
-    webFramePrint frame
+printPage webView = webViewGetMainFrame webView >>= webFramePrint
 
 
 -- | Execute a javascript file on current webpage.
-executeJSFile :: String -> WebView -> IO ()
+executeJSFile :: FilePath -> WebView -> IO ()
 executeJSFile filePath webView = do
     whenNormal $ putStrLn ("Executing Javascript file: " ++ filePath)
     script <- readFile filePath
@@ -110,7 +97,3 @@ _savePage _path webView = do
     _mainResource <- webDataSourceGetMainResource dataSource
     _subResources <- webDataSourceGetSubresources dataSource
     return ()
-
--- | Replacement for Graphics.UI.Gtk.WebKit.WebView(webViewGetUri), using the Network.URI type.
-webViewGetUri :: WebView -> IO (Maybe URI)
-webViewGetUri webView = (>>= parseURI) `fmap` WebKit.webViewGetUri webView

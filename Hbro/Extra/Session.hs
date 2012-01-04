@@ -4,11 +4,14 @@ module Hbro.Extra.Session where
 --import Hbro.Types
 import Hbro.Util
 
+import Data.Foldable
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 import Graphics.UI.Gtk.General.General
-import Graphics.UI.Gtk.WebKit.WebView
+import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri)
+
+import Prelude hiding(mapM_)
 
 import System.Directory
 import System.Environment
@@ -25,12 +28,9 @@ setupSession webView sessionDirectory = do
 
     let sessionFile = sessionDirectory ++ show pid
 
-    _ <- on webView loadFinished $ \_ -> do        
-        uri <- webViewGetUri webView
-        case uri of
-            Just u -> writeFile sessionFile u
-            _      -> return ()
-
+    _ <- on webView loadFinished $ \_ -> do
+        webViewGetUri webView >>= mapM_ ((writeFile sessionFile) . show)
+        
     _ <- quitAdd 0 $ do
         removeFile sessionFile
         return False

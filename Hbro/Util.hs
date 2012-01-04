@@ -3,6 +3,10 @@ module Hbro.Util (
     runCommand',
     spawn,
     getAllProcessIDs,
+-- * WebKit functions redefinition
+    webFrameGetUri,
+    webViewGetUri,
+    webViewLoadUri,
 -- * Misc
     labelSetMarkupTemporary,
     dmenu,
@@ -19,6 +23,10 @@ import Data.List
 
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.General.General
+import qualified Graphics.UI.Gtk.WebKit.WebFrame as WebKit
+import qualified Graphics.UI.Gtk.WebKit.WebView as WebKit
+
+import Network.URI
 
 import System.Console.CmdArgs
 import qualified System.Info as Sys
@@ -52,6 +60,24 @@ getAllProcessIDs = do
     myPid         <- getProcessID
 
     return $ delete (show myPid) . nub . words $ pids ++ " " ++ pids'
+-- }}}
+
+-- {{{ Webkit functions redefinition
+-- | Replacement for Graphics.UI.Gtk.WebKit.WebFrame(webFrameGetUri), using the Network.URI type.
+webFrameGetUri :: WebKit.WebFrame -> IO (Maybe URI)
+webFrameGetUri frame = (>>= parseURI) `fmap` WebKit.webFrameGetUri frame
+
+-- | Replacement for Graphics.UI.Gtk.WebKit.WebView(webViewGetUri), using the Network.URI type.
+webViewGetUri :: WebKit.WebView -> IO (Maybe URI)
+webViewGetUri webView = (>>= parseURI) `fmap` WebKit.webViewGetUri webView
+
+-- | Replacement for Graphics.UI.Gtk.WebKit.WebView(webViewLoadUri), using the Network.URI type.
+webViewLoadUri :: WebKit.WebView -> URI -> IO ()
+webViewLoadUri webView uri = do
+    whenLoud $ putStrLn ("Loading URI: " ++ show uri)
+    case uriScheme uri of
+        [] -> WebKit.webViewLoadUri webView ("http://" ++ show uri)
+        _  -> WebKit.webViewLoadUri webView (show uri)
 -- }}}
 
 -- | Set a temporary markup text to a label that disappears after some delay.

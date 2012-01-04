@@ -12,7 +12,7 @@ import Hbro.Gui
 import Hbro.Keys
 import Hbro.Socket
 import Hbro.Types
---import Hbro.Util
+import Hbro.Util
 
 import qualified Config.Dyre as D
 import Config.Dyre.Paths

@@ -8,7 +8,7 @@ module Hbro.Gui (
 ) where
 
 -- {{{ Imports
---import Hbro.Util
+import Hbro.Util
 import Hbro.Types
 
 import Control.Monad hiding(forM_, mapM_)
@@ -30,9 +30,8 @@ import Graphics.UI.Gtk.Layout.HBox
 import Graphics.UI.Gtk.Layout.VBox
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebInspector
-import Graphics.UI.Gtk.WebKit.WebFrame
 import Graphics.UI.Gtk.WebKit.WebSettings
-import Graphics.UI.Gtk.WebKit.WebView
+import Graphics.UI.Gtk.WebKit.WebView hiding(webViewLoadUri)
 import Graphics.UI.Gtk.Windows.Window
 
 import Prelude hiding(mapM_)
@@ -41,7 +40,6 @@ import System.Console.CmdArgs (whenNormal, whenLoud)
 import System.Glib.Attributes
 import System.Glib.Signals
 -- }}}
-
 
 initGUI :: FilePath -> [AttrOp WebSettings] -> IO GUI
 initGUI xmlPath settings = do
@@ -52,7 +50,7 @@ initGUI xmlPath settings = do
     builder <- builderNew
     builderAddFromFile builder xmlPath
  
--- Init components
+-- Initialize components
     (webView, sWindow) <- initWebView        builder settings
     (window, wBox)     <- initWindow         builder webView
     promptBar          <- initPromptBar      builder
@@ -76,25 +74,29 @@ initGUI xmlPath settings = do
 
 initWebView :: Builder -> [AttrOp WebSettings] -> IO (WebView, ScrolledWindow)
 initWebView builder settings = do
-    webView     <- webViewNew
+-- Initialize ScrolledWindows
+    window <- builderGetObject builder castToScrolledWindow "webViewParent"
+    scrolledWindowSetPolicy window PolicyNever PolicyNever
+    
+-- Initialize WebSettings
     webSettings <- webSettingsNew
-           
     set webSettings settings
     
+-- Initialize WebView
+    webView     <- webViewNew
     set webView [ widgetCanDefault := True ]
-    _ <- on webView closeWebView $ GTK.mainQuit >> return False
     webViewSetWebSettings webView webSettings
-        
+    containerAdd window webView
+    
+-- 
+    _ <- on webView closeWebView $ GTK.mainQuit >> return False
+    
 -- On new window request
     _ <- on webView createWebView $ \frame -> do
         webFrameGetUri frame >>= (mapM_ (\uri -> do
-            whenLoud $ putStrLn ("Requesting new window: " ++ uri ++ "...")
+            whenLoud $ putStrLn ("Requesting new window: " ++ show uri ++ "...")
             webViewLoadUri webView uri))
         return webView
-    
-    window <- builderGetObject builder castToScrolledWindow "webViewParent"
-    containerAdd window webView 
-    scrolledWindowSetPolicy window PolicyNever PolicyNever
     
     return (webView, window)
 
