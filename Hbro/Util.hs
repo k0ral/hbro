@@ -1,6 +1,5 @@
 module Hbro.Util (
 -- * Process management
-    runCommand',
     spawn,
     getAllProcessIDs,
 -- * WebKit functions redefinition
@@ -38,18 +37,11 @@ import System.Process
 
 
 -- {{{ Process management
--- | Like run `runCommand`, but return IO ()
-runCommand' :: String -> IO ()
-runCommand' command = runCommand command >> return ()
-
 -- | Run external command and won't kill when parent process exit.
--- nohup for ignore all hup signal. 
--- `> /dev/null 2>&1` redirect all stdout (1) and stderr (2) to `/dev/null`
 spawn :: String -> [String] -> IO ()
 spawn command options = spawn' (proc command options)
 
 spawn' :: CreateProcess -> IO ()
---spawn' command = runCommand' $ "nohup " ++ command ++ " > /dev/null 2>&1"
 spawn' command = createProcess command { std_in = CreatePipe,  std_out = CreatePipe, std_err = CreatePipe, close_fds = True } >> return ()
 
 -- | Return the list of process IDs corresponding to all running instances of the browser.

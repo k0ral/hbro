@@ -44,8 +44,7 @@ add :: FilePath   -- ^ Path to history file
     -> IO Bool
 add historyFile newEntry = do
     result <- try $ withFile historyFile AppendMode (`hPutStrLn` show newEntry)
-    either (\e -> errorHandler historyFile e >> return False) (const $ return True) result
-    
+    either (\e -> errorHandler historyFile e >> return False) (const $ return True) result    
 
 -- | Try to parse a String into a history Entry.
 parseEntry :: String -> Maybe Entry
