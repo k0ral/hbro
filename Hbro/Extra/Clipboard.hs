@@ -11,11 +11,7 @@ import Graphics.UI.Gtk.General.Clipboard
 
 -- | Copy current URI in clipboard.
 toClipboard :: String -> IO ()
-toClipboard text = do
-    primaryClip <- clipboardGet selectionPrimary
-    clipboardSetText primaryClip text
+toClipboard text = clipboardGet selectionPrimary >>= (`clipboardSetText` text)
     
 withClipboard :: (Maybe String -> IO ()) -> IO ()
-withClipboard callback = do
-    primaryClip <- clipboardGet selectionPrimary
-    clipboardRequestText primaryClip callback
+withClipboard callback = clipboardGet selectionPrimary >>= (`clipboardRequestText` callback)

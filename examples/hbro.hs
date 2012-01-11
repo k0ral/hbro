@@ -20,6 +20,7 @@ import Hbro.Util
 import Control.Monad hiding(forM_, mapM_)
 
 import Data.Foldable
+import Data.Time
 
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Builder
@@ -175,7 +176,7 @@ myKeys environment@Environment{ mGUI = gui, mConfig = config, mContext = context
 --        loadURI uri b),
 
 -- History
-    (([Control],        "h"),           History.select historyFile ["-l", "10"] >>= mapM_ ((mapM_ (webViewLoadUri webView)) . parseURIReference))
+    (([Control],        "h"),           History.select historyFile ["-l", "10"] >>= mapM_ ((webViewLoadUri webView) . History.mURI))
     
 -- Session
     --(([Alt],            "l"),           loadFromSession ["-l", "10"])
@@ -288,10 +289,13 @@ mySetup environment@Environment{ mGUI = gui, mConfig = config } =
 
     -- History handler
         _ <- on webView loadFinished $ \_ -> do
-            uri   <- webViewGetUri   webView
-            title <- webViewGetTitle webView
+            uri      <- webViewGetUri   webView
+            title    <- webViewGetTitle webView
+            timeZone <- getCurrentTimeZone
+            now      <- (utcToLocalTime timeZone) `fmap` getCurrentTime
+            
             case (uri, title) of
-                (Just uri', Just title') -> History.add historyFile (show uri') title'
+                (Just u, Just t) -> History.add historyFile (History.Entry now u t) >> return ()
                 _ -> return ()
 
     -- On navigating to a new URI
