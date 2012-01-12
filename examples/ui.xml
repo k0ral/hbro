@@ -39,59 +39,14 @@
                 <object class="GtkHBox" id="statusBox">
                     <property name="homogeneous">False</property>
                     <property name="spacing">5</property>
-                    
+
                     <child>
-                        <object class="GtkLabel" id="progress"></object>
+                        <object class="GtkLabel" id="void"></object>
                         <packing>
                             <property name="fill">False</property>
                             <property name="expand">False</property>
                         </packing>
                     </child>
-
-                    <child>
-                        <object class="GtkLabel" id="uri">
-                            <property name="ellipsize">PANGO_ELLIPSIZE_END</property>
-                            <property name="xalign">0</property>
-                            <property name="yalign">0</property>
-                        </object>
-                    </child>
-
-                    <child>
-                        <object class="GtkLabel" id="scroll"></object>
-                        <packing>
-                            <property name="pack-type">GTK_PACK_END</property>
-                            <property name="fill">False</property>
-                            <property name="expand">False</property>
-                        </packing>
-                    </child>
-
-                    <child>
-                        <object class="GtkLabel" id="zoom"></object>
-                        <packing>
-                            <property name="pack-type">GTK_PACK_END</property>
-                            <property name="fill">False</property>
-                            <property name="expand">False</property>
-                        </packing>
-                    </child>
-
-                    <child>
-                        <object class="GtkLabel" id="keys"></object>
-                        <packing>
-                            <property name="pack-type">GTK_PACK_END</property>
-                            <property name="fill">False</property>
-                            <property name="expand">False</property>
-                        </packing>
-                    </child>
-
-                    <child>
-                        <object class="GtkLabel" id="feedback"></object>
-                        <packing>
-                            <property name="pack-type">GTK_PACK_END</property>
-                            <property name="fill">False</property>
-                            <property name="expand">False</property>
-                        </packing>
-                    </child>
-                    
                 </object>
 
                 <packing>
@@ -99,7 +54,6 @@
                     <property name="expand">False</property>
                 </packing>
             </child>
-
         </object></child>
     </object>
 </interface>

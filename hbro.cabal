@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             0.7.1.1
+Version:             0.8.0.0
 Synopsis:            A minimal KISS compliant browser
 -- Description:         
 Homepage:            http://projects.haskell.org/hbro/
@@ -13,7 +13,7 @@ Maintainer:          koral at mailoo dot org
 
 Cabal-version:       >=1.8
 Build-type:          Simple
-Extra-source-files:  README.rst examples/hbro.hs
+Extra-source-files:  README.rst
 Data-files:          examples/ui.xml
 
 Source-repository head
@@ -36,25 +36,14 @@ Library
         gtk,
         mtl,
         network,
-        old-locale,
         pango,
         process,
-        text,
-        time,
         unix,
         webkit,
         xdg-basedir,
         zeromq-haskell
     Exposed-modules:
         Hbro.Core,
-        Hbro.Extra.Bookmarks,
-        Hbro.Extra.BookmarksQueue,
-        Hbro.Extra.Clipboard,
-        Hbro.Extra.Download,
-        Hbro.Extra.History,
-        Hbro.Extra.Misc,
-        Hbro.Extra.Session,
-        Hbro.Extra.StatusBar,
         Hbro.Gui,
         Hbro.Hbro,
         Hbro.Keys,

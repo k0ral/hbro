@@ -83,7 +83,7 @@ Apart from the programming language, if you happen to find a better alternative 
 Configuration
 -------------
 
-By default, a pretty limited configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. A featured and self-explanatory example of configuration file is provided at ``example/hbro.hs``.
+By default, a pretty limited configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. Several extensions are provided with the *hbro-contrib_* package, including a featured and self-explanatory example of configuration file.
 
 
 Known bugs and limitations
@@ -116,3 +116,4 @@ Configuring a proxy is impossible
 .. _ZeroMQ: http://www.zeromq.org/
 .. _Dyre: https://github.com/willdonnelly/dyre
 .. _webkit_get_default_session: http://webkitgtk.org/reference/webkitgtk/stable/webkitgtk-Global-functions.html
+.. _hbro-contrib: http://hackage.haskell.org/package/hbro-contrib
