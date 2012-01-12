@@ -3,11 +3,10 @@
 module Hbro.Core (
 -- * Browsing
     goHome,
--- * Scrolling    
-    goTop,
-    goBottom,
-    goLeft,
-    goRight,
+-- * Scrolling
+    Axis(..),
+    Position(..),
+    scroll,
 -- * Misc
     printPage,
     executeJSFile
@@ -37,39 +36,29 @@ goHome webView config@Config{ mHomePage = homeURI } = forM_ (parseURIReference h
 -- }}}
 
 -- {{{ Scrolling
--- | Scroll up to top of web page. Provided for convenience.
-goTop :: ScrolledWindow -> IO ()
-goTop window = do
-    adjustment <- scrolledWindowGetVAdjustment window
-    lower      <- adjustmentGetLower adjustment
+data Axis     = Horizontal | Vertical
+data Position = Absolute Double | Relative Double
 
-    adjustmentSetValue adjustment lower
+getAdjustment :: Axis -> (ScrolledWindow -> IO Adjustment)
+getAdjustment Horizontal = scrolledWindowGetHAdjustment
+getAdjustment Vertical   = scrolledWindowGetVAdjustment
 
--- | Scroll down to bottom of web page. Provided for convenience.
-goBottom :: ScrolledWindow -> IO ()
-goBottom window = do
-    adjustment <- scrolledWindowGetVAdjustment window
-    upper      <- adjustmentGetUpper adjustment
-
-    adjustmentSetValue adjustment upper
-
--- | Scroll to the left edge of web page. Provided for convenience.
-goLeft :: ScrolledWindow -> IO ()
-goLeft window = do
-    adjustment <- scrolledWindowGetHAdjustment window
-    lower      <- adjustmentGetLower adjustment
-
-    adjustmentSetValue adjustment lower
-
--- | Scroll to the right edge of web page. Provided for convenience.
-goRight :: ScrolledWindow -> IO ()
-goRight window = do
-    adjustment  <- scrolledWindowGetHAdjustment window
-    upper       <- adjustmentGetUpper adjustment
-
-    adjustmentSetValue adjustment upper 
+-- | General scrolling command.                                                                                                                                                               
+scroll :: ScrolledWindow -> Axis -> Position -> IO ()
+scroll window axis percentage = do
+     adj     <- getAdjustment axis window
+     page    <- adjustmentGetPageSize adj
+     current <- adjustmentGetValue adj
+     lower   <- adjustmentGetLower adj
+     upper   <- adjustmentGetUpper adj
+     
+     let shift (Absolute x) = lower   + x/100 * (upper - page - lower)
+         shift (Relative x) = current + x/100 * page
+         limit x            = (x `max` lower) `min` (upper - page)
+     
+     adjustmentSetValue adj $ limit (shift percentage) 
 -- }}}
-    
+
 -- {{{ Misc
 -- | Wrapper around webFramePrint function, provided for convenience.
 printPage :: WebView -> IO ()
