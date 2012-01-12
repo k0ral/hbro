@@ -16,6 +16,8 @@ import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
 
+import Network.URI
+
 import System.Console.CmdArgs
 import System.Glib.Attributes
 import System.Glib.Signals
@@ -51,16 +53,17 @@ data CliOptions = CliOptions {
 
 
 data Config = {-forall a.-} Config {
-    mCommonDirectories :: CommonDirectories,         -- ^ Custom directories used to store various runtime and static files
-    mHomePage          :: String,                    -- ^ Startup page 
-    mSocketDir         :: FilePath,                  -- ^ Directory where 0MQ will be created ("/tmp" for example)
-    mUIFile            :: FilePath,                  -- ^ Path to XML file describing UI (used by GtkBuilder)
+    mCommonDirectories :: CommonDirectories,               -- ^ Custom directories used to store various runtime and static files
+    mHomePage          :: String,                          -- ^ Startup page 
+    mSocketDir         :: FilePath,                        -- ^ Directory where 0MQ will be created ("/tmp" for example)
+    mUIFile            :: FilePath,                        -- ^ Path to XML file describing UI (used by GtkBuilder)
     mKeyEventHandler   :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool,  -- ^ Key event handler, which forwards keystrokes to mKeyEventCallback
-    mKeyEventCallback  :: Environment -> KeyEventCallback,          -- ^ Main key event callback, assumed to deal with each keystroke separately
-    mWebSettings       :: [AttrOp WebSettings],      -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
-    mSetup             :: Environment -> IO (),      -- ^ Custom startup instructions
-    mCommands          :: CommandsList,              -- ^ Custom commands to use with IPC sockets
-    mError             :: Maybe String               -- ^ Error
+    mKeyEventCallback  :: Environment -> KeyEventCallback, -- ^ Main key event callback, assumed to deal with each keystroke separately
+    mWebSettings       :: [AttrOp WebSettings],            -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
+    mSetup             :: Environment -> IO (),            -- ^ Custom startup instructions
+    mCommands          :: CommandsList,                    -- ^ Custom commands to use with IPC sockets
+    mDownloadHook      :: Environment -> URI -> String -> Int -> IO (), -- ^ Function triggered on a download request
+    mError             :: Maybe String                     -- ^ Error
     --mCustom            :: a
 }
 
@@ -82,7 +85,7 @@ data PromptBar = PromptBar {
 
 
 -- | List of bound keys.
--- All callbacks are fed with the Browser instance.
+-- All callbacks are fed with the Environment instance.
 -- 
 -- Note 1 : for modifiers, lists are used for convenience purposes,
 --          but are transformed into sets in hbro's internal machinery,

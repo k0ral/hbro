@@ -50,6 +50,7 @@ Library
         Hbro.Extra.Bookmarks,
         Hbro.Extra.BookmarksQueue,
         Hbro.Extra.Clipboard,
+        Hbro.Extra.Download,
         Hbro.Extra.History,
         Hbro.Extra.Misc,
         Hbro.Extra.Session,

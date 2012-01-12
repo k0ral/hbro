@@ -19,6 +19,7 @@ module Hbro.Util (
 import Control.Monad
 
 import Data.List
+import Data.IORef
 
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.General.General
@@ -73,12 +74,15 @@ webViewLoadUri webView uri = do
 -- }}}
 
 -- | Set a temporary markup text to a label that disappears after some delay.
-labelSetMarkupTemporary :: Label -> String -> Int -> IO HandlerId
-labelSetMarkupTemporary label text delay = do
+labelSetMarkupTemporary :: {-IORef HandlerId ->-} Label -> String -> Int -> IO ()
+labelSetMarkupTemporary {-x-} label text delay = do
+    --handler <- readIORef x
+    --timeoutRemove handler
+
     labelSetMarkup label text
-    timeoutAdd clear delay
+    timeoutAdd (clear >> return False) delay >> return () -- >>= writeIORef x
   where
-    clear = labelSetMarkup label "" >> return False
+    clear = labelSetMarkup label ""
 
 -- | Open dmenu with given input and return selected entry.
 dmenu :: [String]            -- ^ dmenu's commandline options

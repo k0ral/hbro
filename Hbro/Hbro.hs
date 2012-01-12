@@ -24,7 +24,8 @@ import qualified Data.Map as M
 
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General hiding(initGUI)
---import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri, webViewLoadUri)
+import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri, webViewLoadUri)
+import Graphics.UI.Gtk.WebKit.Download
 
 import Network.URI
 
@@ -86,6 +87,7 @@ defaultConfig directories = Config {
     mWebSettings       = [],
     mSetup             = const (return () :: IO ()),
     mCommands          = [],
+    mDownloadHook      = \_ _ _ _ -> return (),
     mError             = Nothing
 }
 -- }}}
@@ -140,6 +142,19 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
 -- Apply custom setup
     setup environment
     
+-- Bind download hook
+    void $ on webView downloadRequested $ \download -> do
+        uri      <- (>>= parseURI) `fmap` downloadGetUri download
+        filename <- downloadGetSuggestedFilename download
+        size     <- downloadGetTotalSize download
+        
+        case (uri, filename) of
+            (Just uri', Just filename') -> do
+                whenNormal $ putStrLn ("Requested download: " ++ show uri')
+                (mDownloadHook config) environment uri' filename' size
+            _                           -> return ()
+        return False
+        
 -- Setup key handler
     rec i <- after webView keyPressEvent $ keyEventHandler keyEventCallback i webView
 

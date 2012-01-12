@@ -6,6 +6,7 @@ import Hbro.Core
 import qualified Hbro.Extra.Bookmarks as Bookmarks
 import qualified Hbro.Extra.BookmarksQueue as Queue
 import Hbro.Extra.Clipboard
+import qualified Hbro.Extra.Download as Download
 import qualified Hbro.Extra.History as History
 import Hbro.Extra.Misc
 import Hbro.Extra.Session
@@ -67,7 +68,8 @@ myConfig directories = (defaultConfig directories) {
     mKeyEventCallback = myKeyEventCallback,
     mHomePage         = myHomePage,
     mWebSettings      = myWebSettings,
-    mSetup            = mySetup
+    mSetup            = mySetup,
+    mDownloadHook     = myDownloadHook
 }
 
 -- Various constant parameters
@@ -80,11 +82,12 @@ myHistoryFile     directories = (mData directories) </> "history"
 myBookmarksFile   directories = (mData directories) </> "bookmarks"
 
 -- How to download files
-myDownload :: CommonDirectories -> String -> String -> IO ()
-myDownload directories uri name = spawn "aria2c" [uri, "-d", (mHome directories) ++ "/", "-o", name]
---myDownload directories uri name = spawn "wget" [uri, "-O", (mHome directories) ++ "/" ++ name]
---myDownload directories uri name = spawn "axel" [uri, "-o", (mHome directories) ++ "/" ++ name]
-    
+myDownloadHook :: Environment -> URI -> String -> Int -> IO ()
+myDownloadHook env uri filename _size = do
+    Download.labelNotify env
+    home <- getHomeDirectory 
+    Download.aria uri home filename
+
 myKeyEventHandler :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool
 myKeyEventHandler = advancedKeyEventHandler
 
@@ -264,20 +267,6 @@ mySetup environment@Environment{ mGUI = gui, mConfig = config } =
     -- 
         _ <- on webView titleChanged $ \_ title ->
             set window [ windowTitle := ("hbro | " ++ title)]
-
-    -- Download requests
-        feedbackLabel <- getLabel "feedback"
-        _ <- on webView downloadRequested $ \download -> do
-            uri  <- downloadGetUri download
-            name <- downloadGetSuggestedFilename download
-            size <- downloadGetTotalSize download
-
-            case (uri, name) of
-                (Just uri', Just name') -> do
-                    myDownload directories uri' name' 
-                    labelSetMarkupTemporary feedbackLabel "<span foreground=\"green\">Download started</span>" 5000
-                _ -> labelSetMarkupTemporary feedbackLabel "<span foreground=\"red\">Unable to download</span>" 5000
-            return False
 
     -- Per MIME actions
         _ <- on webView mimeTypePolicyDecisionRequested $ \_ request mimetype policyDecision -> do
