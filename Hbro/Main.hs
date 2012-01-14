@@ -1,6 +1,7 @@
 module Main where
 
 -- {{{ Imports
+import Hbro.Config
 import Hbro.Hbro
 import Hbro.Types
 

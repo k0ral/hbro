@@ -2,14 +2,14 @@
 {-# LANGUAGE DoRec #-}
 module Hbro.Hbro (
 -- * Main
-    defaultConfig,
     launchHbro
 ) where
 
 -- {{{ Imports
+import Hbro.Config
 import Hbro.Core
 import Hbro.Gui
-import Hbro.Keys
+--import Hbro.Keys
 import Hbro.Socket
 import Hbro.Types
 import Hbro.Util
@@ -66,37 +66,8 @@ getOptions = cmdArgs $ cliOptions
     &= program "hbro"
 -- }}}
 
--- {{{ Configuration (Dyre)
-dyreParameters :: D.Params (Config, CliOptions)
-dyreParameters = D.defaultParams {
-    D.projectName  = "hbro",
-    D.showError    = showError,
-    D.realMain     = realMain,
-    D.ghcOpts      = ["-threaded"],
-    D.statusOut    = hPutStrLn stderr
-}
-
-showError :: (Config, a) -> String -> (Config, a)
-showError (config, x) message = (config { mError = Just message }, x)
-
--- | Default configuration.
--- Homepage: Google, socket directory: /tmp,
--- UI file: ~/.config/hbro/, no key/command binding.
-defaultConfig :: CommonDirectories -> Config
-defaultConfig directories = Config {
-    mCommonDirectories = directories,
-    mHomePage          = "https://encrypted.google.com/",
-    mSocketDir         = mTemporary directories,
-    mUIFile            = (mConfiguration directories) </> "ui.xml",
-    mKeyEventHandler   = simpleKeyEventHandler,
-    mKeyEventCallback  = \_ -> simpleKeyEventCallback (keysListToMap []),
-    mWebSettings       = [],
-    mSetup             = const (return () :: IO ()),
-    mCommands          = defaultCommandsList,
-    mDownloadHook      = \_ _ _ _ -> return (),
-    mError             = Nothing
-}
-
+-- {{{ Util
+-- | 
 printDyrePaths :: IO ()
 printDyrePaths = getPaths dyreParameters >>= \(a,b,c,d,e) -> (putStrLn . unlines) [
     "Current binary:  " ++ a,
@@ -104,6 +75,16 @@ printDyrePaths = getPaths dyreParameters >>= \(a,b,c,d,e) -> (putStrLn . unlines
     "Config file:     " ++ c,
     "Cache directory: " ++ d,
     "Lib directory:   " ++ e, []]
+
+-- | Launch a recompilation of the configuration file
+recompile :: IO ()
+recompile = do
+    customCompile dyreParameters 
+    getErrorString dyreParameters >>= mapM_ putStrLn
+    
+
+showError :: (Config, a) -> String -> (Config, a)
+showError (config, x) message = (config { mError = Just message }, x)
 -- }}}
 
 -- {{{ Entry point
@@ -120,10 +101,19 @@ launchHbro configGenerator = do
     let config = configGenerator (CommonDirectories homeDir tmpDir configDir dataDir)
 
     options <- getOptions
-    when (mRecompileOnly options) $ customCompile dyreParameters >> getErrorString dyreParameters >>= mapM_ putStrLn >> exitSuccess
+    when (mRecompileOnly options) $ recompile  >> exitSuccess
     case mVanilla options of
         True -> D.wrapMain dyreParameters{ D.configCheck = False } (config, options)
         _    -> D.wrapMain dyreParameters (config, options)
+        
+dyreParameters :: D.Params (Config, CliOptions)
+dyreParameters = D.defaultParams {
+    D.projectName  = "hbro",
+    D.showError    = showError,
+    D.realMain     = realMain,
+    D.ghcOpts      = ["-threaded"],
+    D.statusOut    = hPutStrLn stderr
+}
 
 realMain :: (Config, CliOptions) -> IO ()
 realMain (config, options) = do
@@ -151,6 +141,12 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
 -- Apply custom setup
     setup environment
     
+-- Bind new window hook
+    _ <- on webView createWebView $ \frame -> do
+        webFrameGetUri frame >>= maybe (return webView) (\uri -> do
+            whenLoud $ putStrLn ("Requesting new window: " ++ show uri ++ "...")
+            (mNewWindowHook config) environment uri)
+
 -- Bind download hook
     void $ on webView downloadRequested $ \download -> do
         uri      <- (>>= parseURI) `fmap` downloadGetUri download
@@ -181,7 +177,7 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
 -- Open socket
     pid              <- getProcessID
     let commandsList = M.fromList $ defaultCommandsList ++ commands
-    let socketURI    = "ipc://" ++ socketDir ++ pathSeparator:"hbro." ++ show pid
+    let socketURI    = "ipc://" ++ socketDir </> "hbro." ++ show pid
     void $ forkIO (openRepSocket context socketURI (listenToCommands environment commandsList))
     
 -- Manage POSIX signals

@@ -8,13 +8,13 @@ module Hbro.Gui (
 ) where
 
 -- {{{ Imports
-import Hbro.Util
+--import Hbro.Util
 import Hbro.Types
 
 import Control.Monad hiding(forM_, mapM_)
 import Control.Monad.Trans
 
-import Data.Foldable
+--import Data.Foldable
 
 import Graphics.Rendering.Pango.Enums
 import Graphics.UI.Gtk.Abstract.Container
@@ -90,13 +90,6 @@ initWebView builder settings = do
     
 -- 
     _ <- on webView closeWebView $ GTK.mainQuit >> return False
-    
--- On new window request
-    _ <- on webView createWebView $ \frame -> do
-        webFrameGetUri frame >>= (mapM_ (\uri -> do
-            whenLoud $ putStrLn ("Requesting new window: " ++ show uri ++ "...")
-            webViewLoadUri webView uri))
-        return webView
     
     return (webView, window)
 

@@ -43,6 +43,7 @@ Library
         xdg-basedir,
         zeromq-haskell
     Exposed-modules:
+        Hbro.Config,
         Hbro.Core,
         Hbro.Gui,
         Hbro.Hbro,
