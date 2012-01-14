@@ -101,7 +101,7 @@ launchHbro configGenerator = do
     let config = configGenerator (CommonDirectories homeDir tmpDir configDir dataDir)
 
     options <- getOptions
-    when (mRecompileOnly options) $ recompile  >> exitSuccess
+    when (mRecompileOnly options) $ recompile >> exitSuccess
     case mVanilla options of
         True -> D.wrapMain dyreParameters{ D.configCheck = False } (config, options)
         _    -> D.wrapMain dyreParameters (config, options)
@@ -176,7 +176,7 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
 
 -- Open socket
     pid              <- getProcessID
-    let commandsList = M.fromList $ defaultCommandsList ++ commands
+    let commandsList = M.fromList commands
     let socketURI    = "ipc://" ++ socketDir </> "hbro." ++ show pid
     void $ forkIO (openRepSocket context socketURI (listenToCommands environment commandsList))
     
@@ -187,7 +187,6 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
     mainGUI -- Main loop
 
 -- Make sure response socket is closed at exit
-    whenLoud $ putStrLn "Closing socket..."
     closeSocket context socketURI
     whenNormal $ putStrLn "Exiting..."
 

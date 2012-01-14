@@ -52,7 +52,9 @@ listenToCommands environment commands repSocket = do
 -- | Close the response socket by sending it the command "QUIT".
 -- Typically called when exiting application.            
 closeSocket :: Context -> String -> IO ()
-closeSocket context socketURI = void $ sendCommand context socketURI "QUIT"
+closeSocket context socketURI = do
+    whenLoud $ putStrLn "Closing socket " ++ socketURI ++ " ..."
+    void $ sendCommand context socketURI "QUIT"
         
 -- | Return the socket path to use for the given browser's process ID.
 socketFile :: String -> String -> String

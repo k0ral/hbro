@@ -83,7 +83,7 @@ Apart from the programming language, if you happen to find a better alternative 
 Configuration
 -------------
 
-By default, a pretty limited configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. Several extensions are provided with the *hbro-contrib_* package, including a featured and self-explanatory example of configuration file.
+By default, a pretty limited configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. Several extensions are provided with the * hbro-contrib_ * package, including a featured and self-explanatory example of configuration file.
 
 
 Known bugs and limitations
