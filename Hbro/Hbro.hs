@@ -15,11 +15,13 @@ import Hbro.Types
 import Hbro.Util
 
 import qualified Config.Dyre as D
+import Config.Dyre.Compile
 import Config.Dyre.Paths
 
 import Control.Concurrent
-import Control.Monad.Reader
+import Control.Monad.Reader hiding(mapM_)
 
+import Data.Foldable
 import qualified Data.Map as M
 
 import Graphics.UI.Gtk.Abstract.Widget
@@ -29,9 +31,12 @@ import Graphics.UI.Gtk.WebKit.Download
 
 import Network.URI
 
+import Prelude hiding(mapM_)
+
 import System.Console.CmdArgs
 import System.Directory
 import System.Environment.XDG.BaseDir
+import System.Exit
 import System.FilePath
 import System.Glib.Signals
 import System.IO
@@ -43,12 +48,13 @@ import qualified System.ZMQ as ZMQ
 -- {{{ Commandline options
 cliOptions :: CliOptions
 cliOptions = CliOptions {
-    mURI          = def &= help "URI to open at start-up" &= explicit &= name "u" &= name "uri" &= typ "URI",
-    mVanilla      = def &= help "Do not read custom configuration file." &= explicit &= name "1" &= name "vanilla",
-    mDenyReconf   = def &= help "Deny recompilation even if the configuration file has changed." &= explicit &= name "deny-reconf",
-    mForceReconf  = def &= help "Force recompilation even if the configuration file hasn't changed." &= explicit &= name "force-reconf",
-    mDyreDebug    = def &= help "Force the application to use './cache/' as the cache directory, and ./ as the configuration directory. Useful to debug the program without installation." &= explicit &= name "dyre-debug",
-    mMasterBinary = def &= explicit &= name "dyre-master-binary"
+    mURI           = def &= help "URI to open at start-up" &= explicit &= name "u" &= name "uri" &= typ "URI",
+    mVanilla       = def &= help "Do not read custom configuration file." &= explicit &= name "1" &= name "vanilla",
+    mRecompileOnly = def &= help "Do not launch browser after recompilation." &= explicit &= name "r" &= name "recompile-only",
+    mDenyReconf    = def &= help "Deny recompilation even if the configuration file has changed." &= explicit &= name "deny-reconf",
+    mForceReconf   = def &= help "Force recompilation even if the configuration file hasn't changed." &= explicit &= name "force-reconf",
+    mDyreDebug     = def &= help "Force the application to use './cache/' as the cache directory, and ./ as the configuration directory. Useful to debug the program without installation." &= explicit &= name "dyre-debug",
+    mMasterBinary  = def &= explicit &= name "dyre-master-binary"
 }
 
 getOptions :: IO CliOptions
@@ -86,10 +92,18 @@ defaultConfig directories = Config {
     mKeyEventCallback  = \_ -> simpleKeyEventCallback (keysListToMap []),
     mWebSettings       = [],
     mSetup             = const (return () :: IO ()),
-    mCommands          = [],
+    mCommands          = defaultCommandsList,
     mDownloadHook      = \_ _ _ _ -> return (),
     mError             = Nothing
 }
+
+printDyrePaths :: IO ()
+printDyrePaths = getPaths dyreParameters >>= \(a,b,c,d,e) -> (putStrLn . unlines) [
+    "Current binary:  " ++ a,
+    "Custom binary:   " ++ b,
+    "Config file:     " ++ c,
+    "Cache directory: " ++ d,
+    "Lib directory:   " ++ e, []]
 -- }}}
 
 -- {{{ Entry point
@@ -106,6 +120,7 @@ launchHbro configGenerator = do
     let config = configGenerator (CommonDirectories homeDir tmpDir configDir dataDir)
 
     options <- getOptions
+    when (mRecompileOnly options) $ customCompile dyreParameters >> getErrorString dyreParameters >>= mapM_ putStrLn >> exitSuccess
     case mVanilla options of
         True -> D.wrapMain dyreParameters{ D.configCheck = False } (config, options)
         _    -> D.wrapMain dyreParameters (config, options)
@@ -113,16 +128,10 @@ launchHbro configGenerator = do
 realMain :: (Config, CliOptions) -> IO ()
 realMain (config, options) = do
 -- Print configuration error, if any
-    maybe (return ()) putStrLn $ mError config
+    mapM_ putStrLn (mError config)
 
 -- Print in-use paths
-    whenLoud $ getPaths dyreParameters >>= \(a,b,c,d,e) -> (putStrLn . unlines) [
-        "Current binary:  " ++ a,
-        "Custom binary:   " ++ b,
-        "Config file:     " ++ c,
-        "Cache directory: " ++ d,
-        "Lib directory:   " ++ e,
-        []]
+    whenLoud printDyrePaths
         
 -- Initialize GUI
     gui <- initGUI (mUIFile config) (mWebSettings config)

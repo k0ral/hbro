@@ -24,30 +24,23 @@ import System.Glib.Signals
 import System.ZMQ 
 -- }}}
 
-
--- | Various directories used to store some runtime and static files.
-data CommonDirectories = CommonDirectories {
-    mHome          :: FilePath,        -- ^ Home directory
-    mTemporary     :: FilePath,        -- ^ Temporary files directory
-    mConfiguration :: FilePath,        -- ^ Configuration directory
-    mData          :: FilePath         -- ^ Data directory
-}
     
 -- | The whole set of parameters and elements of the browser.
 data Environment = Environment {
-    mOptions :: CliOptions,          -- ^ Commandline options
-    mConfig  :: Config,              -- ^ Configuration parameters (constants) provided by user
-    mGUI     :: GUI,                 -- ^ Graphical widgets
-    mContext :: Context              -- ^ ZMQ context
+    mOptions :: CliOptions,               -- ^ Commandline options
+    mConfig  :: Config,                   -- ^ Configuration parameters (constants) provided by user
+    mGUI     :: GUI,                      -- ^ Graphical widgets
+    mContext :: Context                   -- ^ ZMQ context
 }
 
 -- | Supported commandline options
 data CliOptions = CliOptions {
     mURI             :: Maybe String,     -- ^ URI to load at start-up
     mVanilla         :: Bool,             -- ^ Bypass custom configuration file
+    mRecompileOnly   :: Bool,             -- ^ Do not launch browser after recompilation
     mDenyReconf      :: Bool,             -- ^ Do not recompile browser even if configuration file has changed
     mForceReconf     :: Bool,             -- ^ Force recompilation even if configuration file hasn't changed
-    mDyreDebug       :: Bool,             -- ^ Look for a custom configuration file in working directory
+    mDyreDebug       :: Bool,             -- ^ Look for a custom configuration file in current working directory
     mMasterBinary    :: Maybe String      -- ^ 
 } deriving (Data, Typeable, Show, Eq)
 
@@ -67,6 +60,15 @@ data Config = {-forall a.-} Config {
     --mCustom            :: a
 }
 
+-- | Various directories used to store some runtime and static files.
+data CommonDirectories = CommonDirectories {
+    mHome          :: FilePath,        -- ^ Home directory
+    mTemporary     :: FilePath,        -- ^ Temporary files directory
+    mConfiguration :: FilePath,        -- ^ Configuration directory
+    mData          :: FilePath         -- ^ Data directory
+}
+
+-- | Graphical elements
 data GUI = GUI {
     mWindow             :: Window,          -- ^ Main window
     mInspectorWindow    :: Window,          -- ^ WebInspector window

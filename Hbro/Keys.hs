@@ -17,6 +17,7 @@ import Hbro.Types
 --import Control.Monad
 import Control.Monad.Trans
 
+import Data.Foldable
 import qualified Data.Map as M
 import qualified Data.Set as S
 
@@ -24,6 +25,8 @@ import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Gdk.Keys
 import Graphics.UI.Gtk.WebKit.WebView
+
+import Prelude hiding(mapM_)
 
 import System.Console.CmdArgs (whenLoud, whenNormal)
 import System.Glib.Signals
@@ -38,7 +41,7 @@ withKeys handler = do
     value      <- eventKeyVal
     modifiers  <- eventModifier
 
-    liftIO $ maybe (return ()) (\string -> handler modifiers string) (keyToString value)
+    liftIO $ mapM_ (handler modifiers) (keyToString value)
 
     return False
 
