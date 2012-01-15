@@ -2,17 +2,15 @@
 module Hbro.Gui (
     initGUI,
     showWebInspector,
-    prompt,
-    promptIncremental,
     toggleVisibility
 ) where
 
 -- {{{ Imports
 --import Hbro.Util
+import qualified Hbro.Prompt as Prompt
 import Hbro.Types
 
 import Control.Monad hiding(forM_, mapM_)
-import Control.Monad.Trans
 
 --import Data.Foldable
 
@@ -21,11 +19,7 @@ import Graphics.UI.Gtk.Abstract.Container
 import Graphics.UI.Gtk.Abstract.Box
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Builder
-import Graphics.UI.Gtk.Display.Label
-import Graphics.UI.Gtk.Entry.Editable
-import Graphics.UI.Gtk.Entry.Entry
 import qualified Graphics.UI.Gtk.General.General as GTK
-import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Layout.HBox
 import Graphics.UI.Gtk.Layout.VBox
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
@@ -36,7 +30,7 @@ import Graphics.UI.Gtk.Windows.Window
 
 import Prelude hiding(mapM_)
 
-import System.Console.CmdArgs (whenNormal, whenLoud)
+import System.Console.CmdArgs (whenNormal)
 import System.Glib.Attributes
 import System.Glib.Signals
 -- }}}
@@ -51,11 +45,11 @@ initGUI xmlPath settings = do
     builderAddFromFile builder xmlPath
  
 -- Initialize components
-    (webView, sWindow) <- initWebView        builder settings
-    (window, wBox)     <- initWindow         builder webView
-    promptBar          <- initPromptBar      builder
-    statusBar          <- initStatusBar      builder
-    inspectorWindow    <- initWebInspector   webView wBox
+    (webView, sWindow) <- initWebView      builder settings
+    (window, wBox)     <- initWindow       builder webView
+    promptBar          <- Prompt.init      builder webView
+    statusBar          <- initStatusBar    builder
+    inspectorWindow    <- initWebInspector webView wBox
     
 -- Show window
     widgetShowAll window
@@ -104,19 +98,6 @@ initWindow builder webView = do
     box <- builderGetObject builder castToVBox "windowBox"
     
     return (window, box)
-
-initPromptBar :: Builder -> IO PromptBar
-initPromptBar builder = do
-    label  <- builderGetObject builder castToLabel "promptDescription"
-    labelSetAttributes label [
-      AttrStyle  {paStart = 0, paEnd = -1, paStyle = StyleItalic},
-      AttrWeight {paStart = 0, paEnd = -1, paWeight = WeightBold}
-      ]
-    
-    entry <- builderGetObject builder castToEntry "promptEntry"
-    box   <- builderGetObject builder castToHBox  "promptBox"
-    
-    return $ PromptBar box label entry
     
 initStatusBar :: Builder -> IO HBox
 initStatusBar builder = builderGetObject builder castToHBox "statusBox"
@@ -178,74 +159,6 @@ showWebInspector webView = do
     webInspectorInspectCoordinates inspector 0 0
 -- }}}
 
-
--- {{{ Prompt
-openPrompt :: PromptBar -> String -> String -> IO ()
-openPrompt _promptBar@PromptBar {mBox = promptBox, mDescription = description, mEntry = entry} newDescription defaultText = do
-    labelSetText description newDescription
-    entrySetText entry defaultText
-    
-    widgetShow promptBox
-    widgetGrabFocus entry
-    editableSetPosition entry (-1)
-    
--- | Open prompt bar with given description and default value,
--- and register a callback to trigger at validation.
-prompt :: String -> String -> (String -> IO ()) -> GUI -> IO ()
-prompt l d = prompt' l d False
-
--- | Same as 'prompt', but callback is triggered for each change in prompt's entry.
-promptIncremental :: String -> String -> (String -> IO ()) -> GUI -> IO ()
-promptIncremental l d = prompt' l d True
-
-prompt' :: String -> String -> Bool -> (String -> IO ()) -> GUI -> IO ()
-prompt' description defaultText incremental callback _gui@GUI {mPromptBar = promptBar, mWebView = webView} = do
-    openPrompt promptBar description defaultText
-
--- Register callback
-    case incremental of
-        True -> do 
-            id1 <- on entry editableChanged $ entryGetText entry >>= callback
-            rec id2 <- on entry keyPressEvent $ do
-                key <- eventKeyName
-                
-                case key of
-                    "Return" -> liftIO $ do
-                        widgetHide promptBox
-                        signalDisconnect id1
-                        signalDisconnect id2
-                        widgetGrabFocus webView
-                    "Escape" -> liftIO $ do
-                        widgetHide promptBox
-                        signalDisconnect id1
-                        signalDisconnect id2
-                        widgetGrabFocus webView
-                    _ -> return ()
-                return False
-            return ()
-
-        _ -> do
-            rec id <- on entry keyPressEvent $ do
-                key  <- eventKeyName
-
-                case key of
-                    "Return" -> liftIO $ do
-                        widgetHide promptBox
-                        entryGetText entry >>= callback
-                        signalDisconnect id
-                        widgetGrabFocus webView
-                    "Escape" -> liftIO $ do
-                        widgetHide promptBox
-                        signalDisconnect id
-                        widgetGrabFocus webView
-                    _        -> return ()
-                return False
-
-            return ()
-  where
-    promptBox = mBox promptBar
-    entry     = mEntry promptBar
--- }}}
 
 
 -- {{{ Util

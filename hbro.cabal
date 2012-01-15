@@ -48,6 +48,7 @@ Library
         Hbro.Gui,
         Hbro.Hbro,
         Hbro.Keys,
+        Hbro.Prompt,
         Hbro.Socket,
         Hbro.Types,
         Hbro.Util

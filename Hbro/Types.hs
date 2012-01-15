@@ -3,6 +3,7 @@
 module Hbro.Types where
 
 -- {{{ Imports
+import Data.IORef
 import Data.Map
 import Data.Set
 
@@ -86,9 +87,11 @@ data GUI = GUI {
 }
 
 data PromptBar = PromptBar {
-    mBox         :: HBox,
-    mDescription :: Label, -- ^ Description of current prompt
-    mEntry       :: Entry -- ^ Prompt entry
+    mBox                    :: HBox,
+    mDescription            :: Label,                   -- ^ Description of current prompt
+    mEntry                  :: Entry,                   -- ^ Prompt entry
+    mCallbackRef            :: IORef (String -> IO ()), -- ^
+    mIncrementalCallbackRef :: IORef (String -> IO ())  -- ^
 }
 
 

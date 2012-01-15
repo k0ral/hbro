@@ -57,29 +57,6 @@ Configuration system : Dyre_
 Apart from the programming language, if you happen to find a better alternative for one of these points, please note that suggestions are more than welcome :) .
 
 
-.. How to install it ?
-   -------------------
-    
-   Please note that despite being written in a multiplatform language, *hbro* will only run under a linux environment.
-    
-   The simplest way is using the haskell packaging system::
-    
-     cabal install hbro
-    
-   Alternatively, you can download the hbro package from hackage, and install it with cabal-install.
-
-
-.. Where to get the source ?
-   -------------------------
-    
-   The latest source is hosted:
-    
-   * on github: ``git@github.com:k0ral/hbro.git``
-   * on a personal server, which is unfortunately shutdown every european night: ``git://twyk.org/haskell-browser.git``
-    
-   You can still retrieve the source from hackage at any time, however the very last commits may not be included.
-
-
 Configuration
 -------------
 
@@ -94,8 +71,8 @@ Patches or suggestions are welcome to deal with the following issues. See packag
 Flash videos make hbro freeze
   The demo webkit browser for haskell's binding has the same problem, so it doesn't seem to come from hbro itself.
 
-Javascript's window.open requests open in the same window instead of spawning a new one.
-  This is due to this webkit's bug.
+.. Javascript's window.open requests open in the same window instead of spawning a new one.
+   This is due to this webkit's bug.
 
 When toggling to source mode, current webpage is reloaded
   This is an undesired behavior since the webpage may have changed after reloading; webkit's API allows to get the content of the DOM but only inside the body tag; it is also possible to store the HTML source as it is downloaded, but then any further change in the DOM (for example triggered by javascript functions) wouldn't be visible.
