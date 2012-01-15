@@ -1,6 +1,7 @@
 module Hbro.Config (
 -- * Default configuration
     defaultConfig,
+    defaultHooks,
     defaultNewWindowHook,
     defaultCommandsList
 ) where
@@ -12,7 +13,7 @@ import Hbro.Util
 
 import Control.Monad.Reader hiding(mapM_)
 
-import Data.ByteString.Char8 (pack, unpack)
+import Data.ByteString.Char8 (pack)
 import Data.Foldable
 
 import Graphics.UI.Gtk.General.General
@@ -41,17 +42,19 @@ defaultConfig directories = Config {
     mWebSettings       = [],
     mSetup             = const (return () :: IO ()),
     mCommands          = defaultCommandsList,
-    mNewWindowHook     = defaultNewWindowHook,
-    mDownloadHook      = \_ _ _ _ -> return (),
+    mHooks             = defaultHooks,
     mError             = Nothing
 }
-                    
+
+-- | Pack of default hooks
+defaultHooks :: Hooks
+defaultHooks = Hooks defaultNewWindowHook (\_ _ _ _ -> return ())
+
 -- | Default behavior when a new window is requested: load URI in current window.
 defaultNewWindowHook :: Environment -> URI -> IO WebView
 defaultNewWindowHook env uri = webViewLoadUri webView uri >> return webView
   where
     webView = (mWebView . mGUI) env
-
 
 -- | List of default supported requests.
 defaultCommandsList :: CommandsList

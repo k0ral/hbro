@@ -55,8 +55,7 @@ data Config = {-forall a.-} Config {
     mWebSettings       :: [AttrOp WebSettings],            -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
     mSetup             :: Environment -> IO (),            -- ^ Custom startup instructions
     mCommands          :: CommandsList,                    -- ^ Custom commands to use with IPC sockets
-    mNewWindowHook     :: Environment -> URI -> IO WebView, -- ^ Function triggered on a new window request
-    mDownloadHook      :: Environment -> URI -> String -> Int -> IO (), -- ^ Function triggered on a download request
+    mHooks             :: Hooks,
     mError             :: Maybe String                     -- ^ Error
     --mCustom            :: a
 }
@@ -67,6 +66,12 @@ data CommonDirectories = CommonDirectories {
     mTemporary     :: FilePath,        -- ^ Temporary files directory
     mConfiguration :: FilePath,        -- ^ Configuration directory
     mData          :: FilePath         -- ^ Data directory
+}
+
+-- | Set of functions to be triggered when some events occur
+data Hooks = Hooks {
+    mNewWindow  :: Environment -> URI -> IO WebView,             -- ^ On a new window request
+    mDownload   :: Environment -> URI -> String -> Int -> IO ()  -- ^ On a download request
 }
 
 -- | Graphical elements

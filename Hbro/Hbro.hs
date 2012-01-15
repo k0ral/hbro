@@ -145,7 +145,7 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
     _ <- on webView createWebView $ \frame -> do
         webFrameGetUri frame >>= maybe (return webView) (\uri -> do
             whenLoud $ putStrLn ("Requesting new window: " ++ show uri ++ "...")
-            (mNewWindowHook config) environment uri)
+            ((mNewWindow . mHooks) config) environment uri)
 
 -- Bind download hook
     void $ on webView downloadRequested $ \download -> do
@@ -156,7 +156,7 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
         case (uri, filename) of
             (Just uri', Just filename') -> do
                 whenNormal $ putStrLn ("Requested download: " ++ show uri')
-                (mDownloadHook config) environment uri' filename' size
+                ((mDownload  . mHooks) config) environment uri' filename' size
             _                           -> return ()
         return False
         

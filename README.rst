@@ -3,7 +3,7 @@ hbro
 ====
 
 
-**In a nutshell**: *hbro* is a minimal KISS compliant browser written in Haskell and for linux, still in development but pretty usable.
+**In a nutshell**: *hbro* is a minimal KISS compliant browser for linux written and configured in Haskell, still in development but pretty usable.
 
 Informations about versions, dependencies, source repositories and contacts can be found in hackage_.
 
