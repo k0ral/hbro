@@ -53,7 +53,7 @@ listenToCommands environment commands repSocket = do
 -- Typically called when exiting application.            
 closeSocket :: Context -> String -> IO ()
 closeSocket context socketURI = do
-    whenLoud $ putStrLn "Closing socket " ++ socketURI ++ " ..."
+    whenLoud $ putStrLn ("Closing socket " ++ socketURI ++ " ...")
     void $ sendCommand context socketURI "QUIT"
         
 -- | Return the socket path to use for the given browser's process ID.

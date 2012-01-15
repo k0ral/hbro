@@ -6,7 +6,7 @@ module Hbro.Hbro (
 ) where
 
 -- {{{ Imports
-import Hbro.Config
+--import Hbro.Config
 import Hbro.Core
 import Hbro.Gui
 --import Hbro.Keys
