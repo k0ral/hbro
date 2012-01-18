@@ -21,7 +21,7 @@ import Graphics.UI.Gtk.WebKit.WebView hiding(webViewLoadUri)
 
 import Prelude hiding(mapM_)
 
-import System.Console.CmdArgs (whenNormal)
+import System.Console.CmdArgs (whenLoud)
 import System.Glib.Signals
 -- }}}
 
@@ -60,6 +60,7 @@ init builder webView = do
 
 open :: PromptBar -> String -> String -> IO ()
 open _promptBar@PromptBar {mBox = promptBox, mDescription = description, mEntry = entry} newDescription defaultText = do
+    whenLoud $ putStrLn "Opening prompt."
     labelSetText description newDescription
     entrySetText entry defaultText
     

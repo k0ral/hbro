@@ -13,6 +13,8 @@ import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.Layout.HBox
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
+import Graphics.UI.Gtk.WebKit.NetworkRequest
+import Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView
 import Graphics.UI.Gtk.Windows.Window
@@ -57,6 +59,7 @@ data Config = {-forall a.-} Config {
     mSetup             :: Environment -> IO (),            -- ^ Custom startup instructions
     mCommands          :: CommandsList,                    -- ^ Custom commands to use with IPC sockets
     mHooks             :: Hooks,
+    mMIMEDisposition   :: Environment -> NetworkRequest -> String -> WebPolicyDecision -> IO (),
     mError             :: Maybe String                     -- ^ Error
     --mCustom            :: a
 }
@@ -71,8 +74,8 @@ data CommonDirectories = CommonDirectories {
 
 -- | Set of functions to be triggered when some events occur
 data Hooks = Hooks {
-    mNewWindow  :: Environment -> URI -> IO WebView,             -- ^ On a new window request
-    mDownload   :: Environment -> URI -> String -> Int -> IO ()  -- ^ On a download request
+    mDownload        :: Environment -> URI -> String -> Int -> IO (), -- ^ On a download request
+    mNewWindow       :: Environment -> URI -> IO WebView              -- ^ On a new window request
 }
 
 -- | Graphical elements

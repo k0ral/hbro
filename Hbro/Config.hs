@@ -17,6 +17,8 @@ import Data.ByteString.Char8 (pack)
 import Data.Foldable
 
 import Graphics.UI.Gtk.General.General
+import Graphics.UI.Gtk.WebKit.NetworkRequest
+import Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri, webViewLoadUri)
 
 import Prelude hiding(mapM_)
@@ -43,12 +45,23 @@ defaultConfig directories = Config {
     mSetup             = const (return () :: IO ()),
     mCommands          = defaultCommandsList,
     mHooks             = defaultHooks,
+    mMIMEDisposition   = defaultMIMEDisposition,
     mError             = Nothing
 }
 
+-- | Display content if webview can show the given MIME type, otherwise download it.
+-- /!\ NetworkRequest's Haskell binding is missing the function "webkit_network_request_get_message", which makes it rather useless...
+defaultMIMEDisposition :: Environment -> NetworkRequest -> String -> WebPolicyDecision -> IO ()
+defaultMIMEDisposition env _request mimetype policyDecision = do
+    canShow <- webViewCanShowMimeType ((mWebView . mGUI) env) mimetype
+
+    case (canShow, mimetype) of
+        (True, _) -> webPolicyDecisionUse      policyDecision
+        _         -> webPolicyDecisionDownload policyDecision
+
 -- | Pack of default hooks
 defaultHooks :: Hooks
-defaultHooks = Hooks defaultNewWindowHook (\_ _ _ _ -> return ())
+defaultHooks = Hooks (\_ _ _ _ -> return ()) defaultNewWindowHook
 
 -- | Default behavior when a new window is requested: load URI in current window.
 defaultNewWindowHook :: Environment -> URI -> IO WebView

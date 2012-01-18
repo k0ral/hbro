@@ -32,7 +32,7 @@ import System.Console.CmdArgs
 -- {{{ Browsing
 -- | Load homepage (set from configuration file).
 goHome :: WebView -> Config -> IO ()
-goHome webView config@Config{ mHomePage = homeURI } = forM_ (parseURIReference homeURI) $ webViewLoadUri webView
+goHome webView _config@Config{ mHomePage = homeURI } = forM_ (parseURIReference homeURI) $ webViewLoadUri webView
 -- }}}
 
 -- {{{ Scrolling

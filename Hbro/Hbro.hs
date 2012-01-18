@@ -130,7 +130,7 @@ realMain (config, options) = do
     ZMQ.withContext 1 $ realMain' config options gui
 
 realMain' :: Config -> CliOptions -> GUI -> ZMQ.Context -> IO ()
-realMain' config options gui@GUI {mWebView = webView, mWindow = window} context = let
+realMain' config options gui@GUI {mWebView = webView} context = let
     environment      = Environment options config gui context
     setup            = mSetup config
     socketDir        = mSocketDir config 
@@ -160,8 +160,13 @@ realMain' config options gui@GUI {mWebView = webView, mWindow = window} context 
             _                           -> return ()
         return False
         
--- Setup key handler
+-- Bind key hook
     rec i <- after webView keyPressEvent $ keyEventHandler keyEventCallback i webView
+
+-- Setup MIME disposition
+    void $ on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> do
+        (mMIMEDisposition config) environment request mimetype decision
+        return True
 
 -- Load homepage
     startURI <- case (mURI options) of

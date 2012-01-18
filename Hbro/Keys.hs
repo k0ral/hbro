@@ -28,7 +28,7 @@ import Graphics.UI.Gtk.WebKit.WebView
 
 import Prelude hiding(mapM_)
 
-import System.Console.CmdArgs (whenLoud, whenNormal)
+import System.Console.CmdArgs (whenLoud)
 import System.Glib.Signals
 -- }}}
 
