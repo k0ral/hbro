@@ -16,6 +16,6 @@ main = do
 
     uiFile <- getDataFileName "examples/ui.xml"
     
-    launchHbro $ \d -> (defaultConfig d) {
-        mUIFile = uiFile
+    launchHbro $ defaultConfig {
+        mUIFile = const uiFile
     }

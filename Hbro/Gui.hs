@@ -1,12 +1,14 @@
 {-# LANGUAGE DoRec #-}
 module Hbro.Gui (
+    getObject,
     initGUI,
     showWebInspector,
     toggleVisibility
 ) where
 
 -- {{{ Imports
---import Hbro.Util
+import Hbro.Core
+import Hbro.Util
 import qualified Hbro.Prompt as Prompt
 import Hbro.Types
 
@@ -33,24 +35,27 @@ import Prelude hiding(mapM_)
 import System.Console.CmdArgs (whenNormal)
 import System.Glib.Attributes
 import System.Glib.Signals
+import System.Glib.Types
 -- }}}
 
-initGUI :: FilePath -> [AttrOp WebSettings] -> IO GUI
-initGUI xmlPath settings = do
-    whenNormal $ putStr ("Loading GUI from " ++ xmlPath ++ "... ")
-    void GTK.initGUI
+-- Util
+getObject :: GObjectClass a => (GObject -> a) -> String -> K a        
+getObject cast name = with (mBuilder . mGUI) $ \builder -> builderGetObject builder cast name
 
+initGUI :: (RefDirs -> FilePath) -> [AttrOp WebSettings] -> IO GUI
+initGUI xmlPath settings = do
+    void GTK.initGUI
 -- Load XML
+    xmlPath' <- resolve xmlPath
+    whenNormal . putStr . ("Loading GUI from " ++) . (++ "... ") $ xmlPath'
     builder <- builderNew
-    builderAddFromFile builder xmlPath
- 
+    builderAddFromFile builder xmlPath'
 -- Initialize components
     (webView, sWindow) <- initWebView      builder settings
     (window, wBox)     <- initWindow       builder webView
-    promptBar          <- Prompt.init      builder webView
+    promptBar          <- Prompt.init      builder
     statusBar          <- initStatusBar    builder
     inspectorWindow    <- initWebInspector webView wBox
-    
 -- Show window
     widgetShowAll window
     widgetHide (mBox promptBar)
@@ -71,17 +76,14 @@ initWebView builder settings = do
 -- Initialize ScrolledWindows
     window <- builderGetObject builder castToScrolledWindow "webViewParent"
     scrolledWindowSetPolicy window PolicyNever PolicyNever
-    
 -- Initialize WebSettings
     webSettings <- webSettingsNew
     set webSettings settings
-    
 -- Initialize WebView
     webView     <- webViewNew
     set webView [ widgetCanDefault := True ]
     webViewSetWebSettings webView webSettings
-    containerAdd window webView
-    
+    containerAdd window webView    
 -- 
     _ <- on webView closeWebView $ GTK.mainQuit >> return False
     
@@ -151,12 +153,11 @@ initWebInspector webView windowBox = do
 
     return inspectorWindow
 
-
 -- | Show web inspector for current webpage.
-showWebInspector :: WebView -> IO ()
-showWebInspector webView = do
-    inspector <- webViewGetInspector webView
-    webInspectorInspectCoordinates inspector 0 0
+showWebInspector :: K ()
+showWebInspector = do
+    inspector <- with (mWebView . mGUI) webViewGetInspector
+    io $ webInspectorInspectCoordinates inspector 0 0
 -- }}}
 
 

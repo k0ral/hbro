@@ -1,73 +1,90 @@
 module Hbro.Socket where
     
 -- {{{ Imports
+import Hbro.Core
 import Hbro.Util
 import Hbro.Types
 
+import Control.Concurrent
 import Control.Monad hiding(mapM_)
 
 import Data.ByteString.Char8 (pack, unpack)
 --import Data.Foldable
-import qualified Data.Map as Map
+import qualified Data.Map as M
 
 import Prelude hiding(mapM_)
 
 import System.Console.CmdArgs (whenNormal, whenLoud)
 import System.FilePath
+import System.Posix.Process
+import System.Posix.Types
 import System.ZMQ 
 -- }}}
     
--- | Create a response socket to listen for commands.
--- Loops on listenToSocket until "Quit" command is received.
-openRepSocket :: Context -> String -> (Socket Rep -> IO ()) -> IO ()
-openRepSocket context socketURI listen = do    
-    whenNormal $ putStrLn ("Opening socket at " ++ socketURI)
-    withSocket context Rep $ \repSocket -> do
-        bind repSocket socketURI
-        listen repSocket
+-- | Open socket    
+openIPCSocket :: K ()    
+openIPCSocket = do
+-- Resolve socket URI    
+    pid       <- io getProcessID
+    socketURI <- with (mSocketDir . mConfig) $ resolve >=> (return . (socketFile pid))
+-- Open socket and listen to commands
+    --let commandsList = M.fromList commands
+    mapK (void . forkIO) $ withK mContext $ \context -> do
+        io . whenNormal . putStrLn . ("Opening socket at " ++) $ socketURI
+        mapK2 (withSocket context Rep) $ \sock -> do
+            io $ bind sock socketURI
+            readCommands sock
+
+
+-- | Close the response socket by sending it the command "QUIT".
+-- Typically called when exiting application.            
+closeIPCSocket :: K ()
+closeIPCSocket = getSocketURI >>= \uri -> do 
+    (io . whenLoud . putStrLn . ("Closing socket " ++) . (++ " ...")) uri
+    (void . (`sendCommand` "QUIT")) uri
+
 
 -- | Listen for incoming requests from response socket.
 -- Parse received commands and feed the corresponding callback, if any.
-listenToCommands :: Environment -> CommandsMap -> Socket Rep -> IO ()
-listenToCommands environment commands repSocket = do
-    message      <- receive repSocket []
-    let message' =  unpack message
+readCommands :: Socket Rep -> K ()
+readCommands sock = do
+    message <- io $ unpack `fmap` receive sock []
 
-    case words message' of
+    case words message of
     -- Empty command
-        [] -> send repSocket (pack "ERROR Unknown command") []
+        [] -> io $ send sock (pack "ERROR Unknown command") []
     -- Exit command
-        ["QUIT"] -> do
-            whenLoud $ putStrLn "Receiving QUIT command"
-            send repSocket (pack "OK") []
+        ["QUIT"] -> io $ do
+            whenLoud . putStrLn $ "Receiving QUIT command"
+            send sock (pack "OK") []
     -- Valid command
-        command:arguments -> do
-            whenLoud $ putStrLn ("Receiving command: " ++ message')
-            case Map.lookup command commands of
-                Just callback -> callback arguments repSocket environment
-                _             -> send repSocket (pack "ERROR Unknown command") []
+        command:arguments -> withK (M.fromList . mCommands . mConfig) $ \commands -> do
+            io . whenLoud . putStrLn . ("Receiving command: " ++) $ message
+            case M.lookup command commands of
+                Just callback -> callback arguments >>= io . (send'' sock) . pack
+                _             -> io $ send sock (pack "ERROR Unknown command") []
 
-            listenToCommands environment commands repSocket
+            readCommands sock
         
--- | Close the response socket by sending it the command "QUIT".
--- Typically called when exiting application.            
-closeSocket :: Context -> String -> IO ()
-closeSocket context socketURI = do
-    whenLoud $ putStrLn ("Closing socket " ++ socketURI ++ " ...")
-    void $ sendCommand context socketURI "QUIT"
+getSocketURI :: K String
+getSocketURI = with (mSocketDir . mConfig) $ \dir -> do
+    dir' <- resolve dir
+    (`socketFile` dir') `fmap` getProcessID
         
 -- | Return the socket path to use for the given browser's process ID.
-socketFile :: String -> String -> String
-socketFile pid socketDir = "ipc://" ++ socketDir </> "hbro." ++ pid
+socketFile :: ProcessID -> String -> String
+socketFile pid socketDir = "ipc://" ++ socketDir </> "hbro." ++ show pid
   
 -- | Send a single command (through a Request socket) to the given Response socket,
 -- and return the answer.
-sendCommand :: Context -> String -> String -> IO String
-sendCommand context socketURI command = withSocket context Req $ \reqSocket -> do
-    connect reqSocket socketURI
-    send reqSocket (pack command) []
-    receive reqSocket [] >>= return . unpack
+sendCommand :: String -> String -> K String
+sendCommand socketURI command = with mContext $ \context -> withSocket context Req $ \sock -> do
+    connect sock socketURI
+    send sock (pack command) []
+    unpack `fmap` receive sock []
         
 -- | Same as 'sendCommand', but for all running instances of the browser.
-sendCommandToAll :: Context -> FilePath -> String -> IO [String]
-sendCommandToAll context socketDir command = getAllProcessIDs >>= mapM (\pid -> sendCommand context (socketFile pid socketDir) command)
+sendCommandToAll :: String -> K [String]
+sendCommandToAll command = withK (mSocketDir . mConfig) $ \dir -> do
+    dir' <- io $ resolve dir
+    (io getAllProcessIDs) >>= mapM ((`sendCommand` command) . (`socketFile` dir'))

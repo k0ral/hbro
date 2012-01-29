@@ -1,10 +1,12 @@
 module Hbro.Prompt where
 
 -- {{{ Imports
+import Hbro.Core
 import Hbro.Types
+--import Hbro.Util
 
 import Control.Monad hiding(forM_, mapM_)
-import Control.Monad.Trans
+--import Control.Monad.Trans
 
 --import Data.Foldable
 import Data.IORef
@@ -15,18 +17,15 @@ import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Entry.Editable
 import Graphics.UI.Gtk.Entry.Entry
-import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Layout.HBox
-import Graphics.UI.Gtk.WebKit.WebView hiding(webViewLoadUri)
 
 import Prelude hiding(mapM_)
 
 import System.Console.CmdArgs (whenLoud)
-import System.Glib.Signals
 -- }}}
 
-init :: Builder -> WebView -> IO PromptBar
-init builder webView = do
+init :: Builder -> IO PromptBar
+init builder = do
     label  <- builderGetObject builder castToLabel "promptDescription"
     labelSetAttributes label [
       AttrStyle  {paStart = 0, paEnd = -1, paStyle = StyleItalic},
@@ -34,28 +33,9 @@ init builder webView = do
     
     entry                  <- builderGetObject builder castToEntry "promptEntry"
     box                    <- builderGetObject builder castToHBox  "promptBox"
-    callbackRef            <- newIORef (const $ return ())
-    incrementalCallbackRef <- newIORef (const $ return ())
-    
--- Validate/cancel prompt
-    void $ on entry keyPressEvent $ do
-      key      <- eventKeyName
-      liftIO $ do  
-        callback <- readIORef callbackRef
-
-        when (key == "Return") $ entryGetText entry >>= callback
-        when (key == "Return" || key == "Escape") $ do        
-            widgetHide box
-            writeIORef callbackRef            (const $ return ())
-            writeIORef incrementalCallbackRef (const $ return ())
-            widgetGrabFocus webView
-      return False
-    
--- Incremental behavior
-    void $ on entry editableChanged $ do
-        callback <- readIORef incrementalCallbackRef
-        entryGetText entry >>= callback
-    
+    callbackRef            <- newIORef (const $ return () :: String -> K ())
+    incrementalCallbackRef <- newIORef (const $ return () :: String -> K ())
+        
     return $ PromptBar box label entry callbackRef incrementalCallbackRef
 
 open :: PromptBar -> String -> String -> IO ()
@@ -70,19 +50,19 @@ open _promptBar@PromptBar {mBox = promptBox, mDescription = description, mEntry 
     
 -- | Open prompt bar with given description and default value,
 -- and register a callback to trigger at validation.
-read :: PromptBar         -- ^ 
-     -> String            -- ^ Prompt description
-     -> String            -- ^ Initial value
-     -> (String -> IO ()) -- ^ Callback function to trigger when validating prompt value
-     -> IO ()
+read :: String           -- ^ Prompt description
+     -> String           -- ^ Initial value
+     -> (String -> K ()) -- ^ Callback function to trigger when validating prompt value
+     -> K ()
 read = read' False
 
 -- | Same as 'prompt', but callback is triggered for each change in prompt's entry.
-readIncremental :: PromptBar -> String -> String -> (String -> IO ()) -> IO ()
-readIncremental = read' True
+incrementalRead, iread :: String -> String -> (String -> K ()) -> K ()
+incrementalRead = read' True
+iread           = incrementalRead
 
-read' :: Bool -> PromptBar -> String -> String -> (String -> IO ()) -> IO ()
-read' incremental promptBar description defaultText callback = do
+read' :: Bool -> String -> String -> (String -> K ()) -> K ()
+read' incremental description defaultText callback = with (mPromptBar . mGUI) $ \promptBar -> do
     open promptBar description defaultText
 
 -- Register callback

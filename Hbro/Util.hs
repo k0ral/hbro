@@ -1,41 +1,57 @@
 module Hbro.Util (
+    io,
+    resolve,
 -- * Process management
     spawn,
     getAllProcessIDs,
--- * WebKit functions redefinition
-    webFrameGetUri,
-    webViewGetUri,
-    webViewLoadUri,
 -- * Misc
+    send'',
     labelSetMarkupTemporary,
     dmenu,
     errorHandler
 ) where
 
 -- {{{ Imports
---import Hbro.Types
+import Hbro.Types
 
 --import Control.Monad.Reader
 import Control.Monad
+import Control.Monad.IO.Class
 
+import Data.ByteString (ByteString)
+--import Data.IORef
 import Data.List
-import Data.IORef
 
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.General.General
-import qualified Graphics.UI.Gtk.WebKit.WebFrame as WebKit
-import qualified Graphics.UI.Gtk.WebKit.WebView as WebKit
-
-import Network.URI
 
 import System.Console.CmdArgs
+import System.Directory
+import System.Environment.XDG.BaseDir
 import qualified System.Info as Sys
 import System.IO
 import System.IO.Error
 import System.Posix.Process
+import System.Posix.Types
 import System.Process
+import System.ZMQ
 -- }}}
 
+
+io :: MonadIO m => IO a -> m a
+io = liftIO
+
+send'' :: Socket a -> ByteString -> IO ()
+send'' x y = send x y []
+
+resolve :: (RefDirs -> a) -> IO a
+resolve f = do
+    homeDir   <- getHomeDirectory
+    tmpDir    <- getTemporaryDirectory
+    configDir <- getUserConfigDir "hbro"
+    dataDir   <- getUserDataDir   "hbro"
+    
+    (return . f) (RefDirs homeDir tmpDir configDir dataDir)
 
 -- {{{ Process management
 -- | Run external command and won't kill when parent process exit.
@@ -46,31 +62,13 @@ spawn' :: CreateProcess -> IO ()
 spawn' command = createProcess command { std_in = CreatePipe,  std_out = CreatePipe, std_err = CreatePipe, close_fds = True } >> return ()
 
 -- | Return the list of process IDs corresponding to all running instances of the browser.
-getAllProcessIDs :: IO [FilePath]
+getAllProcessIDs :: IO [ProcessID]
 getAllProcessIDs = do 
     (_, pids, _)  <- readProcessWithExitCode "pidof" ["hbro"] []
     (_, pids', _) <- readProcessWithExitCode "pidof" ["hbro-" ++ Sys.os ++ "-" ++ Sys.arch] []
     myPid         <- getProcessID
 
-    return $ delete (show myPid) . nub . words $ pids ++ " " ++ pids'
--- }}}
-
--- {{{ Webkit functions redefinition
--- | Replacement for Graphics.UI.Gtk.WebKit.WebFrame(webFrameGetUri), using the Network.URI type.
-webFrameGetUri :: WebKit.WebFrame -> IO (Maybe URI)
-webFrameGetUri frame = (>>= parseURI) `fmap` WebKit.webFrameGetUri frame
-
--- | Replacement for Graphics.UI.Gtk.WebKit.WebView(webViewGetUri), using the Network.URI type.
-webViewGetUri :: WebKit.WebView -> IO (Maybe URI)
-webViewGetUri webView = (>>= parseURI) `fmap` WebKit.webViewGetUri webView
-
--- | Replacement for Graphics.UI.Gtk.WebKit.WebView(webViewLoadUri), using the Network.URI type.
-webViewLoadUri :: WebKit.WebView -> URI -> IO ()
-webViewLoadUri webView uri = do
-    whenLoud $ putStrLn ("Loading URI: " ++ show uri)
-    case uriScheme uri of
-        [] -> WebKit.webViewLoadUri webView ("http://" ++ show uri)
-        _  -> WebKit.webViewLoadUri webView (show uri)
+    return $ delete myPid . map (read :: String -> ProcessID) . nub . words $ pids ++ " " ++ pids'
 -- }}}
 
 -- | Set a temporary markup text to a label that disappears after some delay.

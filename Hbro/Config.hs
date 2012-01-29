@@ -2,128 +2,165 @@ module Hbro.Config (
 -- * Default configuration
     defaultConfig,
     defaultHooks,
-    defaultNewWindowHook,
+    defaultKeyHandler,
+    defaultKeyBindings,
+    defaultLinkClickedHook,
+    defaultMIMEDisposition,
+--    defaultNewWindowHook,
+    defaultTitleChangedHook,
     defaultCommandsList
 ) where
 
 -- {{{ Import
-import Hbro.Keys
+import Hbro.Core
+--import Hbro.Keys
+import Hbro.Gui
+import qualified Hbro.Prompt as Prompt
 import Hbro.Types
 import Hbro.Util
 
 import Control.Monad.Reader hiding(mapM_)
 
-import Data.ByteString.Char8 (pack)
 import Data.Foldable
+import qualified Data.Map as M
 
+import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General
-import Graphics.UI.Gtk.WebKit.NetworkRequest
+import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.WebKit.WebPolicyDecision
-import Graphics.UI.Gtk.WebKit.WebView hiding(webViewGetUri, webViewLoadUri)
+import Graphics.UI.Gtk.WebKit.WebView
+import Graphics.UI.Gtk.Windows.Window
 
 import Prelude hiding(mapM_)
 
 import Network.URI
 
+import System.Console.CmdArgs (whenLoud)
 import System.FilePath
-import System.ZMQ 
+import System.Glib.Attributes
 -- }}}
 
 
 -- | Default configuration.
 -- Homepage: Google, socket directory: /tmp,
 -- UI file: ~/.config/hbro/, no key/command binding.
-defaultConfig :: CommonDirectories -> Config
-defaultConfig directories = Config {
-    mCommonDirectories = directories,
+defaultConfig :: Config
+defaultConfig = Config {
     mHomePage          = "https://encrypted.google.com/",
-    mSocketDir         = mTemporary directories,
-    mUIFile            = (mConfiguration directories) </> "ui.xml",
-    mKeyEventHandler   = simpleKeyEventHandler,
-    mKeyEventCallback  = \_ -> simpleKeyEventCallback (keysListToMap []),
+    mSocketDir         = mTemporary,
+    mUIFile            = (</> "ui.xml") . mConfiguration,
     mWebSettings       = [],
-    mSetup             = const (return () :: IO ()),
     mCommands          = defaultCommandsList,
     mHooks             = defaultHooks,
-    mMIMEDisposition   = defaultMIMEDisposition,
     mError             = Nothing
 }
 
--- | Display content if webview can show the given MIME type, otherwise download it.
--- /!\ NetworkRequest's Haskell binding is missing the function "webkit_network_request_get_message", which makes it rather useless...
-defaultMIMEDisposition :: Environment -> NetworkRequest -> String -> WebPolicyDecision -> IO ()
-defaultMIMEDisposition env _request mimetype policyDecision = do
-    canShow <- webViewCanShowMimeType ((mWebView . mGUI) env) mimetype
-
-    case (canShow, mimetype) of
-        (True, _) -> webPolicyDecisionUse      policyDecision
-        _         -> webPolicyDecisionDownload policyDecision
-
 -- | Pack of default hooks
 defaultHooks :: Hooks
-defaultHooks = Hooks (\_ _ _ _ -> return ()) defaultNewWindowHook
+defaultHooks = Hooks {
+    mBackForward     = (\_ decision -> io $ webPolicyDecisionUse decision),
+    mDownload        = (\_ _ _ -> return ()),
+    mFormResubmitted = (\_ decision -> io $ webPolicyDecisionUse decision),
+    mFormSubmitted   = (\_ decision -> io $ webPolicyDecisionUse decision),
+    mKeyPressed      = void . (defaultKeyHandler defaultKeyBindings),
+    mLinkClicked     = defaultLinkClickedHook,
+    mLoadFinished    = return (),
+    mMIMEDisposition = defaultMIMEDisposition,
+    mNewWindow       = const $ return (), --defaultNewWindowHook,
+    mOtherNavigation = (\_ decision -> io $ webPolicyDecisionUse decision),
+    mReload          = (\_ decision -> io $ webPolicyDecisionUse decision),
+    mStartUp         = return (),
+    mTitleChanged    = defaultTitleChangedHook
+}
 
--- | Default behavior when a new window is requested: load URI in current window.
-defaultNewWindowHook :: Environment -> URI -> IO WebView
-defaultNewWindowHook env uri = webViewLoadUri webView uri >> return webView
-  where
-    webView = (mWebView . mGUI) env
+-- | Look for a callback associated to the given keystrokes and trigger it, if any.
+defaultKeyHandler :: KeysList -> String -> K (String, Bool)
+defaultKeyHandler keysList keystrokes = do
+    io . whenLoud . putStrLn . ("Key pressed: " ++) $ keystrokes                                    
+    case M.lookup keystrokes (M.fromList keysList) of
+        Just callback -> (io . whenLoud . putStrLn $ " (mapped)") >> callback >> return (keystrokes, True) 
+        _ -> (io . whenLoud . putStrLn $ " (unmapped)") >> return (keystrokes, False)
+
+-- | Default key bindings.
+defaultKeyBindings :: KeysList
+defaultKeyBindings = [
+-- Browse
+    ("M-<Left>",      goBack),
+    ("M-<Right>",     goForward),
+    ("<Escape>",      stopLoading),
+    ("<F5>",          reload),
+    ("C-r",           reload),
+    ("C-<F5>",        reloadBypassCache),
+    ("C-R",           reloadBypassCache),
+    ("C-^",           scroll Horizontal (Absolute 0)),
+    ("C-$",           scroll Horizontal (Absolute 100)),
+    ("C-<Home>",      scroll Vertical   (Absolute 0)),
+    ("C-<End>",       scroll Vertical   (Absolute 100)),
+    ("M-<Home>",      goHome),
+-- Display
+    ("C-+",           zoomIn),
+    ("C--",           zoomOut),
+    ("<F11>",         with (mWindow . mGUI) windowFullscreen),
+    ("<Escape>",      with (mWindow . mGUI) windowUnfullscreen),
+    ("C-b",           with (mStatusBar . mGUI) toggleVisibility),
+    ("C-u",           toggleSourceMode),
+-- Prompt
+    ("C-o",           Prompt.read "Open URI" [] (mapM_ loadURI . parseURIReference)),
+    ("M-o",           withURI $ \uri -> Prompt.read "Open URI " (show uri) (mapM_ loadURI . parseURIReference)),
+-- Search
+    ("/",             Prompt.iread "Search " [] $ searchText False True True >=> const (return ())),
+    ("C-f",           Prompt.iread "Search " [] $ searchText False True True >=> const (return ())),
+    ("?",             Prompt.iread "Search " [] $ searchText False False True >=> const (return ())),
+    ("C-n",           withK (mEntry . mPromptBar . mGUI) $ (io . entryGetText) >=> searchText False True True >=> const (return ())),
+    ("C-N",           withK (mEntry . mPromptBar . mGUI) $ (io . entryGetText) >=> searchText False False True >=> const (return ())),
+-- Misc
+    ("<Escape>",      with (mBox . mPromptBar . mGUI) widgetHide), -- DUPE !
+    ("C-i",           showWebInspector),
+    ("C-p",           printPage), -- DUPE !
+    ("C-t",           io $ spawn "hbro" []),
+    ("C-w",           io mainQuit)
+    ]
+
+-- | Left click loads the new page in current window, middle click loads the new page in a new window, right click does nothing.
+defaultLinkClickedHook :: Button -> URI -> WebPolicyDecision -> K ()
+defaultLinkClickedHook ButtonL _uri decision = io $ webPolicyDecisionUse    decision
+defaultLinkClickedHook ButtonM  uri decision = io $ webPolicyDecisionIgnore decision >> spawn "hbro" ["-u", show uri]
+defaultLinkClickedHook _       _uri decision = io $ webPolicyDecisionIgnore decision
+
+-- /!\ NetworkRequest's Haskell binding is missing the function "webkit_network_request_get_message", which makes it rather useless...
+-- | Display content if webview can show the given MIME type, otherwise download it.
+defaultMIMEDisposition :: URI -> String -> WebPolicyDecision -> K ()
+defaultMIMEDisposition _uri mimetype decision = with (mWebView . mGUI) $ \view -> do
+    canShow <- webViewCanShowMimeType view mimetype
+
+    case canShow of
+        True -> webPolicyDecisionUse      decision
+        _    -> webPolicyDecisionDownload decision
+
+--- | Default behavior when a new window is requested: load URI in current window.
+--defaultNewWindowHook :: URI -> K ()
+--defaultNewWindowHook uri = loadURI uri
+
+-- | Update the main window's title
+defaultTitleChangedHook :: String -> K ()            
+defaultTitleChangedHook title = with (mWindow . mGUI) (`set` [ windowTitle := ("hbro | " ++ title)])
 
 -- | List of default supported requests.
 defaultCommandsList :: CommandsList
 defaultCommandsList = [
     -- Get information
-    ("GET_URI", \_arguments repSocket browser -> liftIO $ do
-        getUri <- postGUISync $ webViewGetUri (mWebView $ mGUI browser)
-        case getUri of
-            Just uri -> send repSocket ((pack . show) uri) []
-            _        -> send repSocket (pack "ERROR No URL opened") [] ),
-
-    ("GET_TITLE", \_arguments repSocket browser -> liftIO $ do
-        getTitle <- postGUISync $ webViewGetTitle (mWebView $ mGUI browser)
-        case getTitle of
-            Just title -> send repSocket (pack title) []
-            _          -> send repSocket (pack "ERROR No title") [] ),
-
-    ("GET_FAVICON_URI", \_arguments repSocket browser -> liftIO $ do
-        getUri <- postGUISync $ webViewGetIconUri (mWebView $ mGUI browser)
-        case getUri of
-            Just uri -> send repSocket (pack uri) []
-            _        -> send repSocket (pack "ERROR No favicon uri") [] ),
-
-    ("GET_LOAD_PROGRESS", \_arguments repSocket browser -> liftIO $ do
-        progress <- postGUISync $ webViewGetProgress (mWebView $ mGUI browser)
-        send repSocket (pack (show progress)) [] ),
-
-
+    ("GET_URI",           \_arguments -> (maybe "ERROR" show) `fmap` mapK postGUISync getURI),
+    ("GET_TITLE",         \_arguments -> (maybe "ERROR" show) `fmap` mapK postGUISync getTitle),
+    ("GET_FAVICON_URI",   \_arguments -> (maybe "ERROR" show) `fmap` mapK postGUISync getFaviconURI),
+    ("GET_LOAD_PROGRESS", \_arguments -> show `fmap` mapK postGUISync getLoadProgress),
     -- Trigger actions
-    ("LOAD_URI", \arguments repSocket browser -> liftIO $ case arguments of 
-        uri:_ -> do
-            postGUIAsync $ mapM_ (webViewLoadUri (mWebView (mGUI browser))) (parseURIReference uri)
-            send repSocket (pack "OK") []
-        _     -> send repSocket (pack "ERROR: argument needed.") [] ),
-
-    ("STOP_LOADING", \_arguments repSocket browser -> liftIO $do
-        postGUIAsync $ webViewStopLoading (mWebView $ mGUI browser) 
-        send repSocket (pack "OK") [] ),
-
-    ("RELOAD", \_arguments repSocket browser -> liftIO $ do
-        postGUIAsync $ webViewReload (mWebView $ mGUI browser)
-        send repSocket (pack "OK") [] ),
-
-    ("GO_BACK", \_arguments repSocket browser -> liftIO $ do
-        postGUIAsync $ webViewGoBack (mWebView $ mGUI browser)
-        send repSocket (pack "OK") [] ),
-
-    ("GO_FORWARD", \_arguments repSocket browser -> liftIO $ do
-        postGUIAsync $ webViewGoForward (mWebView $ mGUI browser)
-        send repSocket (pack "OK") [] ),
-
-    ("ZOOM_IN", \_arguments repSocket browser -> liftIO $ do
-        postGUIAsync $ webViewZoomIn (mWebView $ mGUI browser)
-        send repSocket (pack "OK") [] ),
-
-    ("ZOOM_OUT", \_arguments repSocket browser -> liftIO $ do
-        postGUIAsync $ webViewZoomOut (mWebView $ mGUI browser)
-        send repSocket (pack "OK") [] )
+    ("LOAD_URI",          \arguments -> case arguments of 
+        uri:_ -> ((mapK postGUIAsync) . (mapM_ loadURI)) (parseURIReference uri) >> return "OK"
+        _     -> return "ERROR Argument needed."),
+    ("STOP_LOADING",      \_arguments -> mapK postGUIAsync stopLoading >> return "OK"),
+    ("RELOAD",            \_arguments -> mapK postGUIAsync reload >> return "OK"),
+    ("GO_BACK",           \_arguments -> mapK postGUIAsync goBack >> return "OK"),
+    ("GO_FORWARD",        \_arguments -> mapK postGUIAsync goForward >> return "OK"),
+    ("ZOOM_IN",           \_arguments -> mapK postGUIAsync zoomIn >> return "OK"),
+    ("ZOOM_OUT",          \_arguments -> mapK postGUIAsync zoomOut >> return "OK")
     ]

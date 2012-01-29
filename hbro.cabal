@@ -38,6 +38,7 @@ Library
         network,
         pango,
         process,
+        transformers,
         unix,
         webkit,
         xdg-basedir,
