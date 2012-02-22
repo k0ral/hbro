@@ -172,7 +172,6 @@ toggleSourceMode = do
       webViewSetViewSourceMode view =<< (not `fmap` webViewGetViewSourceMode view)
     reload
 
-
 -- | Wrapper around webFramePrint function, provided for convenience.
 printPage :: K ()
 printPage = with (mWebView . mGUI) $ webViewGetMainFrame >=> webFramePrint

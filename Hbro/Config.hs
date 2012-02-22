@@ -105,8 +105,8 @@ defaultKeyBindings = [
     ("C-b",           with (mStatusBar . mGUI) toggleVisibility),
     ("C-u",           toggleSourceMode),
 -- Prompt
-    ("C-o",           Prompt.read "Open URI" [] (mapM_ loadURI . parseURIReference)),
-    ("M-o",           withURI $ \uri -> Prompt.read "Open URI " (show uri) (mapM_ loadURI . parseURIReference)),
+    ("C-o",           Prompt.readURI "Open URI" [] loadURI),
+    ("M-o",           withURI $ \uri -> Prompt.readURI "Open URI " (show uri) loadURI),
 -- Search
     ("/",             Prompt.iread "Search " [] $ searchText False True True >=> const (return ())),
     ("C-f",           Prompt.iread "Search " [] $ searchText False True True >=> const (return ())),

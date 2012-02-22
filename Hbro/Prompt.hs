@@ -8,7 +8,7 @@ import Hbro.Types
 import Control.Monad hiding(forM_, mapM_)
 --import Control.Monad.Trans
 
---import Data.Foldable
+import Data.Foldable
 import Data.IORef
 
 import Graphics.Rendering.Pango.Enums
@@ -18,6 +18,8 @@ import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Entry.Editable
 import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.Layout.HBox
+
+import Network.URI
 
 import Prelude hiding(mapM_)
 
@@ -62,11 +64,25 @@ incrementalRead = read' True
 iread           = incrementalRead
 
 read' :: Bool -> String -> String -> (String -> K ()) -> K ()
-read' incremental description defaultText callback = with (mPromptBar . mGUI) $ \promptBar -> do
-    open promptBar description defaultText
+read' incremental description startValue callback = with (mPromptBar . mGUI) $ \promptBar -> do
+    open promptBar description startValue
 
 -- Register callback
     case incremental of
         True -> writeIORef (mIncrementalCallbackRef promptBar) callback
-        _    -> writeIORef (mCallbackRef promptBar)            callback
--- }}}
+        _    -> writeIORef (mCallbackRef            promptBar) callback
+
+-- | "read"" for URI values
+readURI :: String
+        -> String
+        -> (URI -> K ())
+        -> K ()
+readURI description startValue callback = with (mPromptBar . mGUI) $ \promptBar -> do
+    open promptBar description startValue
+    
+--  writeIORef (mIncrementalCallbackRef promptBar) checkURI
+    writeIORef (mCallbackRef            promptBar) $ mapM_ callback . parseURIReference
+    
+--checkURI :: String -> K ()
+--checkURI value = case isURI value of
+--    True -> 

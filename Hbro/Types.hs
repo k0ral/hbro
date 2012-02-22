@@ -59,15 +59,15 @@ data CliOptions = CliOptions {
 -- | Custom parameters provided by the user
 data Config = {-forall a.-} Config {
     --mCommonDirectories :: CommonDirectories,               -- ^ Custom directories used to store various runtime and static files
-    mSocketDir         :: RefDirs -> FilePath,             -- ^ Directory where 0MQ will be created ("/tmp" for example)
+    mSocketDir         :: RefDirs -> FilePath,             -- ^ Directory where 0MQ sockets will be created ("/tmp" for example)
     mUIFile            :: RefDirs -> FilePath,             -- ^ Path to XML file describing UI (used by GtkBuilder)
     mHomePage          :: String,                          -- ^ Startup page 
     mWebSettings       :: [AttrOp WebSettings],            -- ^ WebSettings' attributes to use with webkit (see Webkit.WebSettings documentation)
 --    mKeyEventHandler   :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool,  -- ^ Key event handler, which forwards keystrokes to mKeyEventCallback
 --    mKeyEventCallback  :: Environment -> KeyEventCallback, -- ^ Main key event callback, assumed to deal with each keystroke separately
-    mCommands          :: CommandsList,                    -- ^ Custom commands to use with IPC sockets
-    mHooks             :: Hooks,
-    mError             :: Maybe String                     -- ^ Error
+    mCommands          :: CommandsList,                    -- ^ Commands recognized through 0MQ sockets
+    mHooks             :: Hooks,                           -- ^ Set of functions triggered on specific events
+    mError             :: Maybe String                     -- ^ Error (used internally to notify about something wrong)
     --mCustom            :: a
 }
 
@@ -114,6 +114,8 @@ data RefDirs = RefDirs {
     mConfiguration :: FilePath,        -- ^ Configuration directory
     mData          :: FilePath         -- ^ Data directory
 }
+
+type PortableFilePath = RefDirs -> FilePath
 
 -- | List of bound keys.
 -- All callbacks are fed with the Environment instance.
