@@ -14,6 +14,7 @@ module Hbro.Util (
 -- {{{ Imports
 import Hbro.Types
 
+import Control.Exception
 --import Control.Monad.Reader
 import Control.Monad
 import Control.Monad.IO.Class
@@ -30,7 +31,7 @@ import System.Directory
 import System.Environment.XDG.BaseDir
 import qualified System.Info as Sys
 import System.IO
-import System.IO.Error
+import System.IO.Error hiding(try)
 import System.Posix.Process
 import System.Posix.Types
 import System.Process
@@ -91,7 +92,7 @@ dmenu options input = do
     hPutStr in_ input
     hClose in_
     
-    output <- try $ hGetLine out 
+    output <- try $ hGetLine out :: IO (Either IOError String)
     let output' = case output of
           Left _  -> Nothing
           Right x -> Just x

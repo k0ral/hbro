@@ -30,9 +30,6 @@ import Prelude hiding(mapM_)
 --import System.Glib.Signals
 -- }}}
 
-instance Ord Modifier where
-    m <= m' = fromEnum m <= fromEnum m'
-
 
 manageSequentialKeys :: (String -> K (String, Bool)) -> String -> K (String, Bool)
 manageSequentialKeys handler keystroke = do

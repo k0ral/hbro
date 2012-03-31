@@ -47,7 +47,7 @@ import System.Glib.Attributes
 -- UI file: ~/.config/hbro/, no key/command binding.
 defaultConfig :: Config
 defaultConfig = Config {
-    mHomePage          = "https://encrypted.google.com/",
+    mHomePage          = "https://duckduckgo.com/",
     mSocketDir         = mTemporary,
     mUIFile            = (</> "ui.xml") . mConfiguration,
     mWebSettings       = [],
@@ -88,7 +88,7 @@ defaultKeyBindings = [
 -- Browse
     ("M-<Left>",      goBack),
     ("M-<Right>",     goForward),
-    ("<Escape>",      stopLoading),
+    ("C-<Escape>",    stopLoading),
     ("<F5>",          reload),
     ("C-r",           reload),
     ("C-<F5>",        reloadBypassCache),
@@ -101,8 +101,8 @@ defaultKeyBindings = [
 -- Display
     ("C-+",           zoomIn),
     ("C--",           zoomOut),
-    ("<F11>",         with (mWindow . mGUI) windowFullscreen),
-    ("<Escape>",      with (mWindow . mGUI) windowUnfullscreen),
+    -- ("<F11>",         with (mWindow . mGUI) windowFullscreen),
+    -- ("<Escape>",      with (mWindow . mGUI) windowUnfullscreen),
     ("C-b",           with (mStatusBar . mGUI) toggleVisibility),
     ("C-u",           toggleSourceMode),
 -- Prompt
@@ -117,7 +117,7 @@ defaultKeyBindings = [
 -- Misc
     ("<Escape>",      with (mBox . mPromptBar . mGUI) widgetHide), -- DUPE !
     ("C-i",           showWebInspector),
-    ("C-p",           printPage), -- DUPE !
+    ("C-p",           printPage),
     ("C-t",           io $ spawn "hbro" []),
     ("C-w",           io mainQuit)
     ]
@@ -163,5 +163,4 @@ defaultCommandsList = [
     ("GO_BACK",           \_arguments -> mapK postGUIAsync goBack >> return "OK"),
     ("GO_FORWARD",        \_arguments -> mapK postGUIAsync goForward >> return "OK"),
     ("ZOOM_IN",           \_arguments -> mapK postGUIAsync zoomIn >> return "OK"),
-    ("ZOOM_OUT",          \_arguments -> mapK postGUIAsync zoomOut >> return "OK")
-    ]
+    ("ZOOM_OUT",          \_arguments -> mapK postGUIAsync zoomOut >> return "OK")]
