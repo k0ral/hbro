@@ -22,6 +22,7 @@ import Hbro.Util
 import Control.Monad.Reader hiding(mapM_)
 
 import Data.Foldable
+import Data.Functor
 import qualified Data.Map as M
 
 import Graphics.UI.Gtk.Abstract.Widget
@@ -149,10 +150,10 @@ defaultTitleChangedHook title = with (mWindow . mGUI) (`set` [ windowTitle := ("
 defaultCommandsList :: CommandsList
 defaultCommandsList = [
     -- Get information
-    ("GET_URI",           \_arguments -> (maybe "ERROR" show) `fmap` mapK postGUISync getURI),
-    ("GET_TITLE",         \_arguments -> (maybe "ERROR" show) `fmap` mapK postGUISync getTitle),
-    ("GET_FAVICON_URI",   \_arguments -> (maybe "ERROR" show) `fmap` mapK postGUISync getFaviconURI),
-    ("GET_LOAD_PROGRESS", \_arguments -> show `fmap` mapK postGUISync getLoadProgress),
+    ("GET_URI",           \_arguments -> (maybe "ERROR" show) <$> mapK postGUISync getURI),
+    ("GET_TITLE",         \_arguments -> (maybe "ERROR" show) <$> mapK postGUISync getTitle),
+    ("GET_FAVICON_URI",   \_arguments -> (maybe "ERROR" show) <$> mapK postGUISync getFaviconURI),
+    ("GET_LOAD_PROGRESS", \_arguments -> show <$> mapK postGUISync getLoadProgress),
     -- Trigger actions
     ("LOAD_URI",          \arguments -> case arguments of 
         uri:_ -> ((mapK postGUIAsync) . (mapM_ loadURI)) (parseURIReference uri) >> return "OK"

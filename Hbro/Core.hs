@@ -45,6 +45,7 @@ import Control.Monad.Reader hiding(forM_, mapM_)
 
 import Data.Dynamic
 import Data.Foldable
+import Data.Functor
 import Data.IORef
 import qualified Data.Map as M
 
@@ -102,7 +103,7 @@ getTitle = with (mWebView . mGUI) webViewGetTitle
 
 getState :: Typeable a => String -> a -> K (IORef a)  
 getState key defaultValue = with mState $ \state -> do
-    result <- (fromDynamic <=< M.lookup key) `fmap` readIORef state 
+    result <- (fromDynamic <=< M.lookup key) <$> readIORef state 
     case result of
         Just value -> return value
         _          -> do
@@ -169,7 +170,7 @@ searchText a b c text = with (mWebView . mGUI) $ \view -> webViewSearchText view
 toggleSourceMode :: K ()
 toggleSourceMode = do
     with (mWebView . mGUI) $ \view -> 
-      webViewSetViewSourceMode view =<< (not `fmap` webViewGetViewSourceMode view)
+      webViewSetViewSourceMode view =<< (not <$> webViewGetViewSourceMode view)
     reload
 
 -- | Wrapper around webFramePrint function, provided for convenience.

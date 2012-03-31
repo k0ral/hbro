@@ -51,7 +51,7 @@ resolve f = do
     configDir <- getUserConfigDir "hbro"
     dataDir   <- getUserDataDir   "hbro"
     
-    (return . f) (RefDirs homeDir tmpDir configDir dataDir)
+    return . f $ RefDirs homeDir tmpDir configDir dataDir
 
 -- {{{ Process management
 -- | Run external command and won't kill when parent process exit.
