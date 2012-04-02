@@ -67,11 +67,11 @@ cliOptions = CliOptions {
 
 getOptions :: IO CliOptions
 getOptions = cmdArgs $ cliOptions
-    &= verbosityArgs [explicit, name "verbose", name "v"] []
-    &= versionArg [ignore]
-    &= help "A minimal KISS-compliant browser."
-    &= helpArg [explicit, name "help", name "h"]
-    &= program "hbro"
+    &= verbosityArgs [explicit, name "verbose", name "v"] []
+    &= versionArg [ignore]
+    &= help "A minimal KISS-compliant browser."
+    &= helpArg [explicit, name "help", name "h"]
+    &= program "hbro"
 -- }}}
 
 -- {{{ Util
@@ -89,12 +89,12 @@ recompile = do
     customCompile dyreParameters 
     getErrorString dyreParameters 
 
-showError :: (Config, a) -> String -> (Config, a)
-showError (config, x) message = (config { mError = Just message }, x)
+showError :: (Config', a) -> String -> (Config', a)
+showError (_, x) message = (Left message, x)
 -- }}}
 
 -- {{{ Entry point      
-dyreParameters :: D.Params (Config, CliOptions)
+dyreParameters :: D.Params (Config', CliOptions)
 dyreParameters = D.defaultParams {
     D.projectName  = "hbro",
     D.showError    = showError,
@@ -115,16 +115,16 @@ launchHbro config = do
         >>= maybe exitSuccess (\e -> putStrLn e >> exitFailure)
 -- Handle vanilla mode
     case mVanilla options of
-        True -> D.wrapMain dyreParameters{ D.configCheck = False } (config, options)
-        _    -> D.wrapMain dyreParameters                          (config, options)
+        True -> D.wrapMain dyreParameters{ D.configCheck = False } (Right config, options)
+        _    -> D.wrapMain dyreParameters                          (Right config, options)
 
 -- At this point, the reconfiguration process is done
-realMain :: (Config, CliOptions) -> IO ()
-realMain (config, options) = do
+realMain :: (Config', CliOptions) -> IO ()
+realMain (Left e, _)             = putStrLn e
+realMain (Right config, options) = do
 -- Handle SIGINT
     void $ installHandler sigINT (Catch interruptHandler) Nothing
 -- Print configuration state
-    mapM_ putStrLn (mError config)
     whenLoud printDyrePaths
 -- Initialize GUI, state and IPC socket
     gui   <- initGUI (mUIFile config) (mWebSettings config)

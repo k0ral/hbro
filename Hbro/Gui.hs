@@ -21,6 +21,7 @@ import Graphics.UI.Gtk.Abstract.Container
 import Graphics.UI.Gtk.Abstract.Box
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Builder
+import Graphics.UI.Gtk.Display.Label
 import qualified Graphics.UI.Gtk.General.General as GTK
 import Graphics.UI.Gtk.Layout.HBox
 import Graphics.UI.Gtk.Layout.VBox
@@ -39,6 +40,7 @@ import System.Glib.Types
 -- }}}
 
 -- Util
+-- | Return the casted GObject corresponding to the given name (set in the builder's XML file)
 getObject :: GObjectClass a => (GObject -> a) -> String -> K a        
 getObject cast name = with (mBuilder . mGUI) $ \builder -> builderGetObject builder cast name
 
@@ -55,6 +57,7 @@ initGUI xmlPath settings = do
     (window, wBox)     <- initWindow       builder webView
     promptBar          <- Prompt.init      builder
     statusBar          <- initStatusBar    builder
+    notifyBar          <- initNotifyBar    builder
     inspectorWindow    <- initWebInspector webView wBox
 -- Show window
     widgetShowAll window
@@ -68,6 +71,7 @@ initGUI xmlPath settings = do
         mWebView         = webView, 
         mPromptBar       = promptBar, 
         mStatusBar       = statusBar, 
+        mNotifyBar       = notifyBar, 
         mBuilder         = builder
     }
 
@@ -103,7 +107,9 @@ initWindow builder webView = do
     
 initStatusBar :: Builder -> IO HBox
 initStatusBar builder = builderGetObject builder castToHBox "statusBox"
-    
+
+initNotifyBar :: Builder -> IO Label
+initNotifyBar builder = builderGetObject builder castToLabel "notifyLabel"
 
 -- {{{ Web inspector
 initWebInspector :: WebView -> VBox -> IO (Window)
@@ -159,7 +165,6 @@ showWebInspector = do
     inspector <- with (mWebView . mGUI) webViewGetInspector
     io $ webInspectorInspectCoordinates inspector 0 0
 -- }}}
-
 
 
 -- {{{ Util

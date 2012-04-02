@@ -57,7 +57,7 @@ data CliOptions = CliOptions {
 } deriving (Data, Typeable, Show, Eq)
 
 -- | Custom parameters provided by the user
-data Config = {-forall a.-} Config {
+data Config  = Config {
     --mCommonDirectories :: CommonDirectories,               -- ^ Custom directories used to store various runtime and static files
     mSocketDir         :: RefDirs -> FilePath,             -- ^ Directory where 0MQ sockets will be created ("/tmp" for example)
     mUIFile            :: RefDirs -> FilePath,             -- ^ Path to XML file describing UI (used by GtkBuilder)
@@ -66,10 +66,11 @@ data Config = {-forall a.-} Config {
 --    mKeyEventHandler   :: KeyEventCallback -> ConnectId WebView -> WebView -> EventM EKey Bool,  -- ^ Key event handler, which forwards keystrokes to mKeyEventCallback
 --    mKeyEventCallback  :: Environment -> KeyEventCallback, -- ^ Main key event callback, assumed to deal with each keystroke separately
     mCommands          :: CommandsList,                    -- ^ Commands recognized through 0MQ sockets
-    mHooks             :: Hooks,                           -- ^ Set of functions triggered on specific events
-    mError             :: Maybe String                     -- ^ Error (used internally to notify about something wrong)
-    --mCustom            :: a
+    mHooks             :: Hooks                            -- ^ Set of functions triggered on specific events
 }
+
+type Config' = Either String Config
+
 
 -- | Set of functions to be triggered when some events occur
 data Hooks = Hooks {
@@ -91,16 +92,18 @@ data Hooks = Hooks {
 -- | Graphical elements
 data GUI = GUI {
     mWindow             :: Window,          -- ^ Main window
-    mInspectorWindow    :: Window,          -- ^ WebInspector window
+    mInspectorWindow    :: Window,          -- ^ Web-inspector window
     mScrollWindow       :: ScrolledWindow,  -- ^ ScrolledWindow containing the webview
     mWebView            :: WebView,         -- ^ Browser's webview
     mPromptBar          :: PromptBar,       -- ^ Prompt bar
     mStatusBar          :: HBox,            -- ^ Status bar's horizontal box
+    mNotifyBar          :: Label,           -- ^ Bar used to display various notifications
     mBuilder            :: Builder          -- ^ Builder object created from XML file
 }
 
+-- | Prompt-bar elements
 data PromptBar = PromptBar {
-    mBox                    :: HBox,
+    mBox                    :: HBox,                   -- ^ Layout box
     mDescription            :: Label,                  -- ^ Description of current prompt
     mEntry                  :: Entry,                  -- ^ Prompt entry
     mCallbackRef            :: IORef (String -> K ()), -- ^

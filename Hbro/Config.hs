@@ -43,8 +43,8 @@ import System.Glib.Attributes
 
 
 -- | Default configuration.
--- Homepage: Google, socket directory: /tmp,
--- UI file: ~/.config/hbro/, no key/command binding.
+-- Homepage: DuckDuckGo, socket directory: system's temporary directory,
+-- UI file: ~/.config/hbro/, Webkit's default websettings, no key/command binding.
 defaultConfig :: Config
 defaultConfig = Config {
     mHomePage          = "https://duckduckgo.com/",
@@ -52,8 +52,7 @@ defaultConfig = Config {
     mUIFile            = (</> "ui.xml") . mConfiguration,
     mWebSettings       = [],
     mCommands          = defaultCommandsList,
-    mHooks             = defaultHooks,
-    mError             = Nothing
+    mHooks             = defaultHooks
 }
 
 -- | Pack of default hooks

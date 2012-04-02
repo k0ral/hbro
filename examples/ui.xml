@@ -39,13 +39,31 @@
                 <object class="GtkHBox" id="statusBox">
                     <property name="homogeneous">False</property>
                     <property name="spacing">5</property>
-
+                    
                     <child>
                         <object class="GtkLabel" id="void"></object>
                         <packing>
                             <property name="fill">False</property>
                             <property name="expand">False</property>
                         </packing>
+                    </child>
+                </object>
+
+                <packing>
+                    <property name="fill">False</property>
+                    <property name="expand">False</property>
+                </packing>
+            </child>
+
+
+            <!-- Notify bar -->
+            <child>
+                <object class="GtkHBox" id="notifyBox">
+                    <property name="homogeneous">False</property>
+                    <property name="spacing">5</property>
+                    
+                    <child>
+                        <object class="GtkLabel" id="notifyLabel"></object>
                     </child>
                 </object>
 
