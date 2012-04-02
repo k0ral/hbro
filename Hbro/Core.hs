@@ -31,6 +31,7 @@ module Hbro.Core (
     Position(..),
     scroll,
 -- * Misc
+    notify,
     searchText,
     toggleSourceMode,
     printPage,
@@ -49,6 +50,8 @@ import Data.Functor
 import Data.IORef
 import qualified Data.Map as M
 
+import Graphics.UI.Gtk.Display.Label
+import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebDataSource
@@ -130,7 +133,9 @@ loadURI uri = do
 reload, reloadBypassCache, stopLoading :: K ()
 reload            = with (mWebView . mGUI) webViewReload
 reloadBypassCache = with (mWebView . mGUI) webViewReloadBypassCache
-stopLoading       = with (mWebView . mGUI) webViewStopLoading
+stopLoading       = do
+    with (mWebView . mGUI) webViewStopLoading
+    notify 5000 "Stopped loading"
 -- }}}
 
 -- {{{ Display
@@ -162,6 +167,20 @@ scroll axis percentage = with (mScrollWindow . mGUI) $ \window -> do
 -- }}}
 
 -- {{{ Misc
+notify :: Int -> String -> K ()
+notify duration text = with (mNotificationBar . mGUI) $ \notificationBar -> do
+-- Set new content
+    let label = mLabel notificationBar
+    labelSetMarkup label text
+-- Remove old timer, if any
+    let timer = mTimer notificationBar
+    oldID <- readIORef timer
+    forM_ oldID timeoutRemove
+-- Add new timer
+    newID <- timeoutAdd (labelSetMarkup label "" >> return False) duration
+    modifyIORef timer $ const . Just $ newID
+
+-- | Wrapper around webViewSearchText, provided for convenience
 searchText :: Bool -> Bool -> Bool -> String -> K Bool
 searchText a b c text = with (mWebView . mGUI) $ \view -> webViewSearchText view text a b c     
 

@@ -58,12 +58,15 @@
 
             <!-- Notify bar -->
             <child>
-                <object class="GtkHBox" id="notifyBox">
+                <object class="GtkHBox" id="notificationBox">
                     <property name="homogeneous">False</property>
                     <property name="spacing">5</property>
                     
                     <child>
-                        <object class="GtkLabel" id="notifyLabel"></object>
+                        <object class="GtkLabel" id="notificationLabel">
+                            <property name="single-line-mode">True</property>
+                            <property name="xalign">0</property>
+                        </object>
                     </child>
                 </object>
 

@@ -28,7 +28,6 @@ openIPCSocket = do
     pid       <- io getProcessID
     socketURI <- with (mSocketDir . mConfig) $ resolve >=> (return . (socketFile pid))
 -- Open socket and listen to commands
-    --let commandsList = M.fromList commands
     mapK (void . forkIO) $ withK mContext $ \context -> do
         io . whenNormal . putStrLn . ("Opening socket at " ++) $ socketURI
         mapK2 (withSocket context Rep) $ \sock -> do

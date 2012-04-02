@@ -186,8 +186,10 @@ onDownload environment download = do
     
     case (uri, filename) of
         (Just uri', Just filename') -> do
-            whenNormal . putStrLn . ("Requested download: " ++) . show $ uri'
-            runK environment $ callback uri' filename' size
+            whenLoud . putStrLn . ("Requested download: " ++) . show $ uri'
+            runK environment $ do
+                notify 5000 . ("Downloading " ++) . show $ uri'
+                callback uri' filename' size
         _ -> return ()
     return False
   where 

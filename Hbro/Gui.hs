@@ -15,6 +15,7 @@ import Hbro.Types
 import Control.Monad hiding(forM_, mapM_)
 
 --import Data.Foldable
+import Data.IORef
 
 import Graphics.Rendering.Pango.Enums
 import Graphics.UI.Gtk.Abstract.Container
@@ -53,11 +54,11 @@ initGUI xmlPath settings = do
     builder <- builderNew
     builderAddFromFile builder xmlPath'
 -- Initialize components
-    (webView, sWindow) <- initWebView      builder settings
-    (window, wBox)     <- initWindow       builder webView
-    promptBar          <- Prompt.init      builder
-    statusBar          <- initStatusBar    builder
-    notifyBar          <- initNotifyBar    builder
+    (webView, sWindow) <- initWebView         builder settings
+    (window, wBox)     <- initWindow          builder webView
+    promptBar          <- Prompt.init         builder
+    statusBar          <- initStatusBar       builder
+    notificationBar    <- initNotificationBar builder
     inspectorWindow    <- initWebInspector webView wBox
 -- Show window
     widgetShowAll window
@@ -71,7 +72,7 @@ initGUI xmlPath settings = do
         mWebView         = webView, 
         mPromptBar       = promptBar, 
         mStatusBar       = statusBar, 
-        mNotifyBar       = notifyBar, 
+        mNotificationBar = notificationBar, 
         mBuilder         = builder
     }
 
@@ -108,8 +109,11 @@ initWindow builder webView = do
 initStatusBar :: Builder -> IO HBox
 initStatusBar builder = builderGetObject builder castToHBox "statusBox"
 
-initNotifyBar :: Builder -> IO Label
-initNotifyBar builder = builderGetObject builder castToLabel "notifyLabel"
+initNotificationBar :: Builder -> IO NotificationBar
+initNotificationBar builder = do
+    label <- builderGetObject builder castToLabel "notificationLabel"
+    timer <- newIORef Nothing
+    return $ NotificationBar label timer
 
 -- {{{ Web inspector
 initWebInspector :: WebView -> VBox -> IO (Window)

@@ -14,8 +14,9 @@ import Data.Map
 import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Entry.Entry
-import Graphics.UI.Gtk.Layout.HBox
+import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Gdk.EventM
+import Graphics.UI.Gtk.Layout.HBox
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import Graphics.UI.Gtk.WebKit.WebSettings
@@ -97,7 +98,7 @@ data GUI = GUI {
     mWebView            :: WebView,         -- ^ Browser's webview
     mPromptBar          :: PromptBar,       -- ^ Prompt bar
     mStatusBar          :: HBox,            -- ^ Status bar's horizontal box
-    mNotifyBar          :: Label,           -- ^ Bar used to display various notifications
+    mNotificationBar    :: NotificationBar, -- ^ Bar used to display various notifications
     mBuilder            :: Builder          -- ^ Builder object created from XML file
 }
 
@@ -110,6 +111,12 @@ data PromptBar = PromptBar {
     mIncrementalCallbackRef :: IORef (String -> K ())  -- ^
 }
 
+-- | Notification-bar elements
+data NotificationBar = NotificationBar {
+    mLabel   :: Label,                          -- ^ Content
+    mTimer   :: IORef (Maybe HandlerId)         -- ^ Timer handler
+}
+
 -- | Set of reference directories, typically used to build FilePath-s
 data RefDirs = RefDirs {
     mHome          :: FilePath,        -- ^ Home directory
@@ -120,15 +127,11 @@ data RefDirs = RefDirs {
 
 type PortableFilePath = RefDirs -> FilePath
 
--- | List of bound keys.
--- All callbacks are fed with the Environment instance.
--- 
 -- Note 1 : for modifiers, lists are used for convenience purposes,
 --          but are transformed into sets in hbro's internal machinery,
 --          so that order and repetition don't matter.
--- 
--- Note 2 : for printable characters accessed via the shift modifier,
---          you do have to include Shift in modifiers list.
+-- | List of bound keys.
+-- All callbacks are fed with the Environment instance.
 type KeysList         = [(String, K ())]
 type KeysMap          = Map String (K ())
 type KeyEventCallback = [Modifier] -> String -> IO Bool
