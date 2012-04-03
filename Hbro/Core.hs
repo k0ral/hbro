@@ -117,8 +117,15 @@ getState key defaultValue = with mState $ \state -> do
 
 -- {{{ Browsing
 goBack, goForward, goHome :: K ()
-goBack    = with  (mWebView . mGUI) webViewGoBack
-goForward = with  (mWebView . mGUI) webViewGoForward
+goBack    = withK (mWebView . mGUI) $ \view -> do
+    canGoBack <- io . webViewCanGoBack $ view
+    unless canGoBack $ notify 5000 "Cannot go back anymore"
+    io . webViewGoBack $ view
+goForward = withK (mWebView . mGUI) $ \view -> do
+    canGoForward <- io . webViewCanGoForward $ view
+    unless canGoForward $ notify 5000 "Cannot go forward anymore"
+    io . webViewGoForward $ view
+
 goHome    = withK (mHomePage . mConfig) $ mapM_ loadURI . parseURIReference
 
 loadURI :: URI -> K ()
@@ -181,8 +188,9 @@ notify duration text = with (mNotificationBar . mGUI) $ \notificationBar -> do
     modifyIORef timer $ const . Just $ newID
 
 -- | Wrapper around webViewSearchText, provided for convenience
-searchText :: Bool -> Bool -> Bool -> String -> K Bool
-searchText a b c text = with (mWebView . mGUI) $ \view -> webViewSearchText view text a b c     
+searchText :: CaseSensitivity -> Direction -> Wrap -> String -> K Bool
+searchText s d w text = with (mWebView . mGUI) $ \view -> 
+    webViewSearchText view text (isCaseSensitive s) (isForward d) (isWrapped w)
 
 -- | Toggle source display.
 -- Current implementation forces a refresh of current web page, which may be undesired.

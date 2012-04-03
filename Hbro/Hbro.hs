@@ -188,7 +188,7 @@ onDownload environment download = do
         (Just uri', Just filename') -> do
             whenLoud . putStrLn . ("Requested download: " ++) . show $ uri'
             runK environment $ do
-                notify 5000 . ("Downloading " ++) . show $ uri'
+                notify 5000 $ "Requested download: " ++ filename' ++ " (" ++ show size ++ ")"
                 callback uri' filename' size
         _ -> return ()
     return False

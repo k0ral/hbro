@@ -4,6 +4,10 @@ module Hbro.Util (
 -- * Process management
     spawn,
     getAllProcessIDs,
+-- * Boolean data-types conversion
+    isCaseSensitive,
+    isForward,
+    isWrapped,
 -- * Misc
     send'',
     labelSetMarkupTemporary,
@@ -105,3 +109,16 @@ errorHandler file e = do
   when (isAlreadyInUseError e) $ (whenNormal . putStrLn) ("ERROR: file <" ++ file ++ "> is already opened and cannot be reopened.")
   when (isDoesNotExistError e) $ (whenNormal . putStrLn) ("ERROR: file <" ++ file ++ "> doesn't exist.")
   when (isPermissionError   e) $ (whenNormal . putStrLn) ("ERROR: user doesn't have permission to open file <" ++ file ++ ">.")
+
+-- Boolean types conversion
+isCaseSensitive :: CaseSensitivity -> Bool
+isCaseSensitive CaseSensitive = True
+isCaseSensitive _             = False
+
+isForward :: Direction -> Bool
+isForward Forward = True
+isForward _       = False
+
+isWrapped :: Wrap -> Bool
+isWrapped Wrap = True
+isWrapped _    = False

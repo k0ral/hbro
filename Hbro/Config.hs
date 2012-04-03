@@ -59,7 +59,7 @@ defaultConfig = Config {
 defaultHooks :: Hooks
 defaultHooks = Hooks {
     mBackForward     = (\_ decision -> io $ webPolicyDecisionUse decision),
-    mDownload        = (\_ _ _ -> return ()),
+    mDownload        = defaultDownloadHook,
     mFormResubmitted = (\_ decision -> io $ webPolicyDecisionUse decision),
     mFormSubmitted   = (\_ decision -> io $ webPolicyDecisionUse decision),
     mKeyPressed      = void . (defaultKeyHandler defaultKeyBindings),
@@ -73,13 +73,19 @@ defaultHooks = Hooks {
     mTitleChanged    = defaultTitleChangedHook
 }
 
+-- | Warn user about missing download hook.
+defaultDownloadHook :: URI -> String -> Int -> K ()
+defaultDownloadHook _ _ _ = notify 5000 "No download hook defined."
+
 -- | Look for a callback associated to the given keystrokes and trigger it, if any.
 defaultKeyHandler :: KeysList -> String -> K (String, Bool)
 defaultKeyHandler keysList keystrokes = do
-    io . whenLoud . putStrLn . ("Key pressed: " ++) $ keystrokes                                    
-    case M.lookup keystrokes (M.fromList keysList) of
-        Just callback -> (io . whenLoud . putStrLn $ " (mapped)") >> callback >> return (keystrokes, True) 
-        _ -> (io . whenLoud . putStrLn $ " (unmapped)") >> return (keystrokes, False)
+    io . whenLoud . putStr $ "Key pressed: " ++ keystrokes
+    (log', isMapped) <- case M.lookup keystrokes (M.fromList keysList) of
+        Just callback -> callback >> return (" (mapped)",   True) 
+        _             ->             return (" (unmapped)", False)
+    io . whenLoud . putStrLn $ log'
+    return (keystrokes, isMapped)
 
 -- | Default key bindings.
 defaultKeyBindings :: KeysList
@@ -91,7 +97,7 @@ defaultKeyBindings = [
     ("<F5>",          reload),
     ("C-r",           reload),
     ("C-<F5>",        reloadBypassCache),
-    ("C-R",           reloadBypassCache),
+    ("M-r",           reloadBypassCache),
     ("C-^",           scroll Horizontal (Absolute 0)),
     ("C-$",           scroll Horizontal (Absolute 100)),
     ("C-<Home>",      scroll Vertical   (Absolute 0)),
@@ -108,13 +114,13 @@ defaultKeyBindings = [
     ("C-o",           Prompt.readURI "Open URI" [] loadURI),
     ("M-o",           withURI $ \uri -> Prompt.readURI "Open URI " (show uri) loadURI),
 -- Search
-    ("/",             Prompt.iread "Search " [] $ searchText False True True >=> const (return ())),
-    ("C-f",           Prompt.iread "Search " [] $ searchText False True True >=> const (return ())),
-    ("?",             Prompt.iread "Search " [] $ searchText False False True >=> const (return ())),
-    ("C-n",           withK (mEntry . mPromptBar . mGUI) $ (io . entryGetText) >=> searchText False True True >=> const (return ())),
-    ("C-N",           withK (mEntry . mPromptBar . mGUI) $ (io . entryGetText) >=> searchText False False True >=> const (return ())),
+    ("/",             Prompt.iread "Search " [] $ void . searchText CaseInsensitive Forward Wrap),
+    ("C-f",           Prompt.iread "Search " [] $ void . searchText CaseInsensitive Forward Wrap),
+    ("?",             Prompt.iread "Search " [] $ void . searchText CaseInsensitive Backward Wrap),
+    ("C-n",           withK (mEntry . mPromptBar . mGUI) $ (io . entryGetText) >=> void . searchText CaseInsensitive Forward Wrap),
+    ("C-N",           withK (mEntry . mPromptBar . mGUI) $ (io . entryGetText) >=> void . searchText CaseInsensitive Backward Wrap),
 -- Misc
-    ("<Escape>",      with (mBox . mPromptBar . mGUI) widgetHide), -- DUPE !
+    ("<Escape>",      with (mBox . mPromptBar . mGUI) widgetHide),
     ("C-i",           showWebInspector),
     ("C-p",           printPage),
     ("C-t",           io $ spawn "hbro" []),

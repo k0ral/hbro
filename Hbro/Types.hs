@@ -142,3 +142,8 @@ type CommandsMap  = Map String ([String] -> K String)
 
 -- |
 data Button = ButtonL | ButtonM | ButtonR
+
+-- Boolean datatypes
+data CaseSensitivity = CaseSensitive | CaseInsensitive
+data Direction       = Forward       | Backward
+data Wrap            = Wrap          | NoWrap
