@@ -10,7 +10,8 @@ module Hbro.Hbro (
 import Hbro.Core
 import Hbro.Gui
 import Hbro.Keys
-import Hbro.Socket
+import qualified Hbro.Prompt as Prompt
+import qualified Hbro.Socket as Socket
 import Hbro.Types
 import Hbro.Util
 
@@ -162,7 +163,7 @@ realMain' environment@Environment{ mOptions = options, mConfig = config, mGUI = 
         _ -> return Nothing
     
     runK environment $ do
-        openIPCSocket
+        Socket.open
 
     -- Custom start-up
         mStartUp . mHooks $ config
@@ -171,7 +172,7 @@ realMain' environment@Environment{ mOptions = options, mConfig = config, mGUI = 
     -- Main loop
         io mainGUI
         
-        closeIPCSocket
+        Socket.close
 
 interruptHandler :: IO ()
 interruptHandler = whenLoud (putStrLn "Received SIGINT.") >> mainQuit
@@ -283,16 +284,12 @@ onPromptKeyPress env = do
 
       when (key == "Return") . runK env $ io (entryGetText entry) >>= callback
       when (key == "Return" || key == "Escape") $ do        
-          widgetHide box
-          writeIORef callbackRef            (const $ return ())
-          writeIORef incrementalCallbackRef (const $ return ())
+          runK env Prompt.clean
           widgetGrabFocus webView
     return False
   where
     callbackRef            = mCallbackRef            . mPromptBar . mGUI $ env
-    incrementalCallbackRef = mIncrementalCallbackRef . mPromptBar . mGUI $ env 
     entry                  = mEntry                  . mPromptBar . mGUI $ env
-    box                    = mBox                    . mPromptBar . mGUI $ env
     webView                = mWebView                             . mGUI $ env
     
 -- Incremental behavior

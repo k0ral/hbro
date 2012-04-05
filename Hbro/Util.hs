@@ -1,4 +1,5 @@
 module Hbro.Util (
+-- * General purpose
     io,
     resolve,
 -- * Process management
@@ -8,6 +9,9 @@ module Hbro.Util (
     isCaseSensitive,
     isForward,
     isWrapped,
+-- * Common pango attributes
+    allItalic,
+    allBold,
 -- * Misc
     send'',
     labelSetMarkupTemporary,
@@ -27,6 +31,7 @@ import Data.ByteString (ByteString)
 --import Data.IORef
 import Data.List
 
+import Graphics.Rendering.Pango.Enums
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.General.General
 
@@ -49,6 +54,7 @@ io = liftIO
 send'' :: Socket a -> ByteString -> IO ()
 send'' x y = send x y []
 
+-- |
 resolve :: (RefDirs -> a) -> IO a
 resolve f = do
     homeDir   <- getHomeDirectory
@@ -122,3 +128,9 @@ isForward _       = False
 isWrapped :: Wrap -> Bool
 isWrapped Wrap = True
 isWrapped _    = False
+
+-- Common pango attributes
+allItalic, allBold :: PangoAttribute
+allItalic = AttrStyle  {paStart = 0, paEnd = -1, paStyle  = StyleItalic}
+allBold   = AttrWeight {paStart = 0, paEnd = -1, paWeight = WeightBold}
+    

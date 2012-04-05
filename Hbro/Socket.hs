@@ -1,7 +1,7 @@
 module Hbro.Socket where
     
 -- {{{ Imports
-import Hbro.Core
+import Hbro.Core hiding(getURI)
 import Hbro.Util
 import Hbro.Types
 
@@ -21,9 +21,9 @@ import System.Posix.Types
 import System.ZMQ 
 -- }}}
     
--- | Open socket    
-openIPCSocket :: K ()    
-openIPCSocket = do
+-- | Open a response-socket at configured location, named hbro.<pid>, and start listening for commands    
+open :: K ()    
+open = do
 -- Resolve socket URI    
     pid       <- io getProcessID
     socketURI <- with (mSocketDir . mConfig) $ resolve >=> (return . (socketFile pid))
@@ -37,8 +37,8 @@ openIPCSocket = do
 
 -- | Close the response socket by sending it the command "QUIT".
 -- Typically called when exiting application.            
-closeIPCSocket :: K ()
-closeIPCSocket = getSocketURI >>= \uri -> do 
+close :: K ()
+close = getURI >>= \uri -> do 
     (io . whenLoud . putStrLn . ("Closing socket " ++) . (++ " ...")) uri
     (void . (`sendCommand` "QUIT")) uri
 
@@ -65,8 +65,8 @@ readCommands sock = do
 
             readCommands sock
         
-getSocketURI :: K String
-getSocketURI = with (mSocketDir . mConfig) $ \dir -> do
+getURI :: K String
+getURI = with (mSocketDir . mConfig) $ \dir -> do
     dir' <- resolve dir
     (`socketFile` dir') `fmap` getProcessID
         
