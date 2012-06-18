@@ -1,10 +1,11 @@
 {-# LANGUAGE DoRec #-}
 module Hbro.Keys (
 -- * Other
+    defaultKeyHandler,
+    emacsKeyHandler,
 -- * Util
     stringify,
     keyToString,
-    manageSequentialKeys
 ) where
 
 -- {{{ Imports
@@ -17,7 +18,7 @@ import Control.Monad hiding(forM_)
 
 --import Data.Foldable
 import Data.IORef
---import qualified Data.Map as M
+import qualified Data.Map as M
 --import qualified Data.Set as S
 
 import Graphics.UI.Gtk.Abstract.Widget
@@ -30,24 +31,31 @@ import Prelude hiding(mapM_)
 --import System.Glib.Signals
 -- }}}
 
+-- | Look for a callback associated to the given keystrokes and trigger it, if any.
+defaultKeyHandler :: KeysList -> String -> K (String, Bool)
+defaultKeyHandler keysList keystrokes = case M.lookup keystrokes (M.fromList keysList) of
+    Just callback -> callback >> return (keystrokes, True) 
+    _             ->             return (keystrokes, False)
 
-manageSequentialKeys :: (String -> K (String, Bool)) -> String -> K (String, Bool)
-manageSequentialKeys handler keystroke = do
-    keysRef         <- getState "Hbro.Keys.manageSequentialKeys" "" 
-    keys            <- io $ manageSequentialKeys' keysRef keystroke
-    (keys', result) <- handler keys
-    case result of
-        True -> (io . modifyIORef keysRef $ const []) >> return ([], result)
-        _    -> return (keys', result)
+-- | Emacs-like key handler.
+emacsKeyHandler :: KeysList     -- ^ Key bindings
+                -> [String]     -- ^ List of prefix keys
+                -> String       
+                -> K (String, Bool)
+emacsKeyHandler keysList prefixes keystrokes = do
+    keysRef <- getState "Hbro.Keys.manageSequentialKeys" "" 
+    io $ modifyIORef keysRef (++ keystrokes)
+    chainedKeys <- io $ readIORef keysRef
 
-manageSequentialKeys' :: IORef String -> String -> IO String
-manageSequentialKeys' previousKeys "<Escape>" = do
-    writeIORef previousKeys []
-    return []
-manageSequentialKeys' previousKeys keystroke = do
-    modifyIORef previousKeys (++ keystroke)
-    return =<< readIORef previousKeys
- 
+    case elem chainedKeys prefixes of
+        True -> do
+            io $ modifyIORef keysRef (++ " ")
+            return (chainedKeys ++ " ", False)
+        _    -> do
+            io $ writeIORef keysRef []
+            defaultKeyHandler keysList chainedKeys
+
+
 -- | Convert a KeyVal to a String.
 -- For printable characters, the corresponding String is returned, except for the space character for which "<Space>" is returned.
 -- For non-printable characters, the corresponding keyName wrapped into "< >" is returned.

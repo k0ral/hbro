@@ -26,7 +26,7 @@ import Graphics.UI.Gtk.Windows.Window
 import Network.URI
 
 import System.Console.CmdArgs
-import System.Glib.Attributes
+import System.Glib.Attributes hiding(get)
 --import System.Glib.Signals
 import System.ZMQ 
 -- }}}

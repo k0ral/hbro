@@ -130,7 +130,7 @@ goHome    = withK (mHomePage . mConfig) $ mapM_ loadURI . parseURIReference
 
 loadURI :: URI -> K ()
 loadURI uri = do
-    io . whenLoud . putStrLn . ("Loading URI: " ++) . show $ uri'
+    logVerbose $ "Loading URI: " ++ (show uri')
     with (mWebView . mGUI) (`webViewLoadUri` uri')
   where
     uri' = case uriScheme uri of

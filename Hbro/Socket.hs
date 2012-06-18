@@ -12,9 +12,8 @@ import Data.ByteString.Char8 (pack, unpack)
 --import Data.Foldable
 import qualified Data.Map as M
 
-import Prelude hiding(mapM_)
+import Prelude hiding(log, mapM_)
 
-import System.Console.CmdArgs (whenNormal, whenLoud)
 import System.FilePath
 import System.Posix.Process
 import System.Posix.Types
@@ -29,7 +28,7 @@ open = do
     socketURI <- with (mSocketDir . mConfig) $ resolve >=> (return . (socketFile pid))
 -- Open socket and listen to commands
     mapK (void . forkIO) $ withK mContext $ \context -> do
-        io . whenNormal . putStrLn . ("Opening socket at " ++) $ socketURI
+        logNormal $ "Opening socket at " ++ socketURI
         mapK2 (withSocket context Rep) $ \sock -> do
             io $ bind sock socketURI
             readCommands sock
@@ -39,8 +38,8 @@ open = do
 -- Typically called when exiting application.            
 close :: K ()
 close = getURI >>= \uri -> do 
-    (io . whenLoud . putStrLn . ("Closing socket " ++) . (++ " ...")) uri
-    (void . (`sendCommand` "QUIT")) uri
+    logVerbose . ("Closing socket " ++) . (++ " ...") $ uri
+    void . (`sendCommand` "QUIT") $ uri
 
 
 -- | Listen for incoming requests from response socket.
@@ -54,11 +53,11 @@ readCommands sock = do
         [] -> io $ send sock (pack "ERROR Unknown command") []
     -- Exit command
         ["QUIT"] -> io $ do
-            whenLoud . putStrLn $ "Receiving QUIT command"
+            logVerbose "Receiving QUIT command"
             send sock (pack "OK") []
     -- Valid command
         command:arguments -> withK (M.fromList . mCommands . mConfig) $ \commands -> do
-            io . whenLoud . putStrLn . ("Receiving command: " ++) $ message
+            logVerbose . ("Receiving command: " ++) $ message
             case M.lookup command commands of
                 Just callback -> callback arguments >>= io . (send'' sock) . pack
                 _             -> io $ send sock (pack "ERROR Unknown command") []

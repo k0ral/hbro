@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             0.9.0.0
+Version:             0.9.1.0
 Synopsis:            Minimal KISS compliant browser
 -- Description:         
 Homepage:            http://projects.haskell.org/hbro/
@@ -33,7 +33,7 @@ Library
         dyre,
         filepath,
         glib,
-        gtk,
+        gtk >= 0.12.3,
         mtl,
         network,
         pango,
@@ -44,6 +44,7 @@ Library
         xdg-basedir,
         zeromq-haskell
     Exposed-modules:
+        Hbro.Boot,
         Hbro.Config,
         Hbro.Core,
         Hbro.Gui,

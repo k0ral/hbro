@@ -1,9 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DoRec #-}
-module Hbro.Hbro (
--- * Main
-    launchHbro
-) where
+module Hbro.Hbro where
 
 -- {{{ Imports
 --import Hbro.Config
@@ -15,15 +12,12 @@ import qualified Hbro.Socket as Socket
 import Hbro.Types
 import Hbro.Util
 
-import qualified Config.Dyre as D
-import Config.Dyre.Compile
-import Config.Dyre.Paths
-
 --import Control.Concurrent
 import Control.Monad.Reader hiding(forM_, mapM_)
 
 import Data.Dynamic
 import Data.Foldable
+import Data.Functor
 import Data.IORef
 import qualified Data.Map as M
 
@@ -45,97 +39,26 @@ import Prelude hiding(concat, mapM_)
 
 import System.Console.CmdArgs
 import System.Directory
-import System.Exit
 import System.FilePath
 import System.Glib.Signals
-import System.IO
 --import System.Posix.Process
-import System.Posix.Signals
 import qualified System.ZMQ as ZMQ
 -- }}}
 
--- {{{ Commandline options
-cliOptions :: CliOptions
-cliOptions = CliOptions {
-    mURI           = def &= help "URI to open at start-up" &= explicit &= name "u" &= name "uri" &= typ "URI",
-    mVanilla       = def &= help "Do not read custom configuration file." &= explicit &= name "1" &= name "vanilla",
-    mRecompile     = def &= help "Force recompilation and do not launch browser." &= explicit &= name "r" &= name "recompile",
-    mDenyReconf    = def &= help "Deny recompilation even if the configuration file has changed." &= explicit &= name "deny-reconf",
-    mForceReconf   = def &= help "Force recompilation even if the configuration file hasn't changed." &= explicit &= name "force-reconf",
-    mDyreDebug     = def &= help "Force the application to use './cache/' as the cache directory, and ./ as the configuration directory. Useful to debug the program without installation." &= explicit &= name "dyre-debug",
-    mMasterBinary  = def &= explicit &= name "dyre-master-binary"
-}
-
-getOptions :: IO CliOptions
-getOptions = cmdArgs $ cliOptions
-    &= verbosityArgs [explicit, name "verbose", name "v"] []
-    &= versionArg [ignore]
-    &= help "A minimal KISS-compliant browser."
-    &= helpArg [explicit, name "help", name "h"]
-    &= program "hbro"
--- }}}
-
--- {{{ Util
-printDyrePaths :: IO ()
-printDyrePaths = getPaths dyreParameters >>= \(a,b,c,d,e) -> (putStrLn . unlines) [
-    "Current binary:  " ++ a,
-    "Custom binary:   " ++ b,
-    "Config file:     " ++ c,
-    "Cache directory: " ++ d,
-    "Lib directory:   " ++ e, []]
-
--- | Launch a recompilation of the configuration file
-recompile :: IO (Maybe String)
-recompile = do
-    customCompile dyreParameters 
-    getErrorString dyreParameters 
-
-showError :: (Config', a) -> String -> (Config', a)
-showError (_, x) message = (Left message, x)
--- }}}
-
--- {{{ Entry point      
-dyreParameters :: D.Params (Config', CliOptions)
-dyreParameters = D.defaultParams {
-    D.projectName  = "hbro",
-    D.showError    = showError,
-    D.realMain     = realMain,
-    D.ghcOpts      = ["-threaded"],
-    D.statusOut    = hPutStrLn stderr
-}
-
--- | Browser's main function.
--- To be called in main function with a proper configuration.
--- See Hbro.Main for an example.
-launchHbro :: Config -> IO ()
-launchHbro config = do
-    options <- getOptions
--- Handle recompilation
-    when (mRecompile options) $
-        recompile
-        >>= maybe exitSuccess (\e -> putStrLn e >> exitFailure)
--- Handle vanilla mode
-    case mVanilla options of
-        True -> D.wrapMain dyreParameters{ D.configCheck = False } (Right config, options)
-        _    -> D.wrapMain dyreParameters                          (Right config, options)
 
 -- At this point, the reconfiguration process is done
-realMain :: (Config', CliOptions) -> IO ()
-realMain (Left e, _)             = putStrLn e
-realMain (Right config, options) = do
--- Handle SIGINT
-    void $ installHandler sigINT (Catch interruptHandler) Nothing
--- Print configuration state
-    whenLoud printDyrePaths
+main :: (Config', CliOptions) -> IO ()
+main (Left e, _)             = putStrLn e
+main (Right config, options) = do
 -- Initialize GUI, state and IPC socket
     gui   <- initGUI (mUIFile config) (mWebSettings config)
     state <- newIORef (M.empty :: M.Map String Dynamic)
     
-    ZMQ.withContext 1 $ \context -> realMain' (Environment state options config gui context)
+    ZMQ.withContext 1 $ \context -> main' (Environment state options config gui context)
     whenNormal . putStrLn $ "Exiting..."
 
-realMain' :: Environment -> IO ()
-realMain' environment@Environment{ mOptions = options, mConfig = config, mGUI = gui} = let
+main' :: Environment -> IO ()
+main' environment@Environment{ mOptions = options, mConfig = config, mGUI = gui} = let
     entry   = (mEntry . mPromptBar) gui
     webView = mWebView gui
     hooks   = mHooks config
@@ -173,21 +96,18 @@ realMain' environment@Environment{ mOptions = options, mConfig = config, mGUI = 
         io mainGUI
         
         Socket.close
-
-interruptHandler :: IO ()
-interruptHandler = whenLoud (putStrLn "Received SIGINT.") >> mainQuit
 -- }}}
 
 -- {{{ Hooks
 onDownload :: Environment -> Download -> IO Bool
 onDownload environment download = do
-    uri      <- (>>= parseURI) `fmap` downloadGetUri download
+    uri      <- fmap (>>= parseURI) . downloadGetUri $ download
     filename <- downloadGetSuggestedFilename download
     size     <- downloadGetTotalSize download
     
     case (uri, filename) of
         (Just uri', Just filename') -> do
-            whenLoud . putStrLn . ("Requested download: " ++) . show $ uri'
+            logVerbose . ("Requested download: " ++) . show $ uri'
             runK environment $ do
                 notify 5000 $ "Requested download: " ++ filename' ++ " (" ++ show size ++ ")"
                 callback uri' filename' size
@@ -199,10 +119,11 @@ onDownload environment download = do
 onKeyPressed :: Environment -> EventM EKey Bool
 onKeyPressed env = do
     modifiers <- eventModifier
-    key'      <- keyToString `fmap` eventKeyVal
+    key'      <- keyToString <$> eventKeyVal
 
     io . forM_ key' $ \key -> do 
         let keystrokes = (++ key) . concat . map stringify $ modifiers
+        logVerbose $ "Key pressed: " ++ keystrokes
         runK env $ (mKeyPressed hooks) keystrokes
     return False
   where
@@ -255,7 +176,6 @@ onNewWindow _env _frame request _action decision = do
     return True
       
     
-
 -- Triggered in 2 cases:
 --  1/ Javascript window.open()
 --  2/ Context menu  "Open in new window"
@@ -304,8 +224,6 @@ onPromptChanged env = do
 -- 
 onTitleChanged :: Environment -> WebFrame -> String -> IO ()
 onTitleChanged env _frame title = do
-    whenLoud . putStrLn . ("Title changed: " ++) $ title
-    runK env $ hook title
-  where
-    hook = mTitleChanged . mHooks . mConfig $ env
+    logVerbose $ "Title changed: " ++ title
+    runK env $ (mTitleChanged . mHooks . mConfig $ env) title
 -- }}}  

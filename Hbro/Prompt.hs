@@ -22,8 +22,6 @@ import Graphics.UI.Gtk.Layout.HBox
 import Network.URI
 
 import Prelude hiding(mapM_)
-
-import System.Console.CmdArgs (whenLoud)
 -- }}}
 
 init :: Builder -> IO PromptBar
@@ -40,7 +38,7 @@ init builder = do
 
 open :: String -> String -> K ()
 open newDescription defaultText = with (mPromptBar . mGUI) $ \(PromptBar promptBox description entry _ _) -> do
-    whenLoud . putStrLn $ "Opening prompt."
+    logVerbose "Opening prompt."
     labelSetText description newDescription
     entrySetText entry defaultText
     
@@ -50,7 +48,7 @@ open newDescription defaultText = with (mPromptBar . mGUI) $ \(PromptBar promptB
 
 -- | Close prompt, clean its content and callbacks
 clean :: K ()
-clean = with (mPromptBar . mGUI) $ \(PromptBar box description entry cRef iRef) -> do
+clean = with (mPromptBar . mGUI) $ \(PromptBar box _ entry cRef iRef) -> do
      widgetRestoreText entry StateNormal 
      widgetHide box
      writeIORef cRef (const $ return ())
@@ -90,6 +88,6 @@ readURI description startValue callback = withK (mPromptBar . mGUI) $ \promptBar
     checkURI value = with (mEntry . mPromptBar . mGUI) $ \entry -> do
         widgetModifyText entry StateNormal color
       where
-        color = case isURI value of
+        color = case isURIReference value of
             True -> Color     0 65535 0
             _    -> Color 65535     0 0

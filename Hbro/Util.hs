@@ -1,6 +1,8 @@
 module Hbro.Util (
 -- * General purpose
     io,
+    logNormal,
+    logVerbose,
     resolve,
 -- * Process management
     spawn,
@@ -35,6 +37,8 @@ import Graphics.Rendering.Pango.Enums
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.General.General
 
+import Prelude hiding(log)
+
 import System.Console.CmdArgs
 import System.Directory
 import System.Environment.XDG.BaseDir
@@ -53,6 +57,10 @@ io = liftIO
 
 send'' :: Socket a -> ByteString -> IO ()
 send'' x y = send x y []
+
+logNormal, logVerbose :: (MonadIO m) => String -> m ()
+logNormal  = io . whenNormal . putStrLn
+logVerbose = io . whenLoud   . putStrLn
 
 -- |
 resolve :: (RefDirs -> a) -> IO a

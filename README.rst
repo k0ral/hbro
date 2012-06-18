@@ -26,7 +26,7 @@ Robustness & stability
 Extensibility and programmable interface
   Targets are advanced users who have various expectations ; to be sure everyone is happy, configuration should use a programming language, and an interprocess interface should be available. As he who can do the most can do the least, the default configuration should be suitable for users that cannot afford/don't want to spend (waste ?) their time in tweaks.
 
-Keyboard-friendly
+Keyboard driven
   Special attention should be given to allow keyboard control of the browser whenever possible ; however, this should not become an obsession in cases where mouse use is obviously a more convenient solution (yes, such cases do exist).
 
 Free software

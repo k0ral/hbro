@@ -1,8 +1,8 @@
 module Main where
 
 -- {{{ Imports
+import Hbro.Boot
 import Hbro.Config
-import Hbro.Hbro
 import Hbro.Types
 
 import Paths_hbro
@@ -13,6 +13,6 @@ main :: IO ()
 main = do
     uiFile <- getDataFileName "examples/ui.xml"
     
-    launchHbro $ defaultConfig {
+    hbro $ defaultConfig {
         mUIFile = const uiFile
     }

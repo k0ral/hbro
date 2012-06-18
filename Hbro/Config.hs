@@ -13,7 +13,7 @@ module Hbro.Config (
 
 -- {{{ Import
 import Hbro.Core
---import Hbro.Keys
+import Hbro.Keys
 import Hbro.Gui
 import qualified Hbro.Prompt as Prompt
 import Hbro.Types
@@ -23,7 +23,6 @@ import Control.Monad.Reader hiding(mapM_)
 
 import Data.Foldable
 import Data.Functor
-import qualified Data.Map as M
 
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.General.General
@@ -36,7 +35,6 @@ import Prelude hiding(mapM_)
 
 import Network.URI
 
-import System.Console.CmdArgs (whenLoud)
 import System.FilePath
 import System.Glib.Attributes
 -- }}}
@@ -76,16 +74,6 @@ defaultHooks = Hooks {
 -- | Warn user about missing download hook.
 defaultDownloadHook :: URI -> String -> Int -> K ()
 defaultDownloadHook _ _ _ = notify 5000 "No download hook defined."
-
--- | Look for a callback associated to the given keystrokes and trigger it, if any.
-defaultKeyHandler :: KeysList -> String -> K (String, Bool)
-defaultKeyHandler keysList keystrokes = do
-    io . whenLoud . putStr $ "Key pressed: " ++ keystrokes
-    (log', isMapped) <- case M.lookup keystrokes (M.fromList keysList) of
-        Just callback -> callback >> return (" (mapped)",   True) 
-        _             ->             return (" (unmapped)", False)
-    io . whenLoud . putStrLn $ log'
-    return (keystrokes, isMapped)
 
 -- | Default key bindings.
 defaultKeyBindings :: KeysList
