@@ -53,7 +53,8 @@ Library
         Hbro.Prompt,
         Hbro.Socket,
         Hbro.Types,
-        Hbro.Util
+        Hbro.Util,
+        Hbro.Webkit.WebSettings
     Ghc-options: -Wall
 
 Flag threaded
