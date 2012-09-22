@@ -1,12 +1,19 @@
+{-# LANGUAGE FlexibleContexts, RankNTypes #-}
+-- | Designed to be imported as @qualified@.
 module Hbro.Prompt where
 
 -- {{{ Imports
-import Hbro.Core
+--import Hbro.Core
 import Hbro.Types
 import Hbro.Util
+import Hbro.Gtk.Entry
 
+import Control.Conditional hiding(when)
 import Control.Monad hiding(forM_, mapM_)
---import Control.Monad.Trans
+import Control.Monad.Error hiding(forM_, mapM_, when)
+--import Control.Monad.IO.Class
+import Control.Monad.Reader hiding(forM_, mapM_, when)
+import Control.Monad.Trans.Control
 
 import Data.Foldable
 import Data.IORef
@@ -17,77 +24,113 @@ import Graphics.UI.Gtk.Builder
 import Graphics.UI.Gtk.Display.Label
 import Graphics.UI.Gtk.Entry.Editable
 import Graphics.UI.Gtk.Entry.Entry
+import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Layout.HBox
 
-import Network.URI
+import Network.URI hiding(parseURIReference)
 
 import Prelude hiding(mapM_)
+
+import System.Glib.Signals
 -- }}}
 
-init :: Builder -> IO PromptBar
-init builder = do
-    label <- builderGetObject builder castToLabel "promptDescription"
-    labelSetAttributes label [allItalic, allBold]
+instance Buildable PromptBar where
+    build builder = io $ do
+        label <- builderGetObject builder castToLabel "promptDescription"
+        entry <- builderGetObject builder castToEntry "promptEntry"
+        box   <- builderGetObject builder castToHBox  "promptBox"
 
-    entry                  <- builderGetObject builder castToEntry "promptEntry"
-    box                    <- builderGetObject builder castToHBox  "promptBox"
-    callbackRef            <- newIORef (const $ return () :: String -> K ())
-    incrementalCallbackRef <- newIORef (const $ return () :: String -> K ())
-        
-    return $ PromptBar box label entry callbackRef incrementalCallbackRef
+        return $ PromptBar box label entry
 
-open :: String -> String -> K ()
-open newDescription defaultText = with (mPromptBar . mGUI) $ \(PromptBar promptBox description entry _ _) -> do
+setup :: (MonadIO m, MonadBaseControl IO m, MonadReader r m, HasPromptBar r, HasHooks r, HasWebView r, MonadError HError m) => m ()
+setup = do
+    label <- asks _promptDescription
+    io $ labelSetAttributes label [allItalic, allBold]
+    io $ labelSetAttributes label [AttrForeground {paStart = 0, paEnd = -1, paColor = Color 32767 32767 32767}]
+
+    entry <- asks _promptEntry
+    io $ widgetModifyBase entry StateNormal $ Color 0 0 0
+    io $ widgetModifyText entry StateNormal $ Color 32767 32767 32767
+
+-- Validate/cancel prompt
+    webView <- asks _webview
+    io . void . on entry keyPressEvent $ do
+        key <- eventKeyName
+        when (key == "Return" || key == "Escape") $ io $ do
+            --runInIO clean
+            widgetGrabFocus webView
+            return ()
+        return False
+    return ()
+
+
+open :: (MonadIO m, MonadReader r m, HasPromptBar r) => String -> String -> m ()
+open newDescription defaultText = do
     logVerbose "Opening prompt."
-    labelSetText description newDescription
-    entrySetText entry defaultText
-    
-    widgetShow promptBox
-    widgetGrabFocus entry
-    editableSetPosition entry (-1)
+    entry <- asks _promptEntry
+    io . (`labelSetText` newDescription) =<< asks _promptDescription
+    io $ entrySetText entry defaultText
+    io . widgetShow =<< asks _promptBox
+    io $ widgetGrabFocus entry
+    io $ editableSetPosition entry (-1)
 
 -- | Close prompt, clean its content and callbacks
-clean :: K ()
-clean = with (mPromptBar . mGUI) $ \(PromptBar box _ entry cRef iRef) -> do
-     widgetRestoreText entry StateNormal 
-     widgetHide box
-     writeIORef cRef (const $ return ())
-     writeIORef iRef (const $ return ())
-   
-    
+clean :: (MonadIO m, MonadReader r m, HasHooks r, HasPromptBar r, MonadBaseControl IO m) => m ()
+clean = do
+     entry <- asks _promptEntry
+     io $ widgetRestoreText entry StateNormal
+     io $ widgetModifyText entry StateNormal $ Color 32767 32767 32767
+     io . widgetHide =<< asks _promptBox
+
+     asks _promptChanged   >>= \ref -> io $ readIORef ref >>= mapM_ signalDisconnect >> writeIORef ref Nothing
+     asks _promptValidated >>= \ref -> io $ readIORef ref >>= mapM_ signalDisconnect >> writeIORef ref Nothing
+
 -- | Open prompt bar with given description and default value,
 -- and register a callback to trigger at validation.
-read :: String           -- ^ Prompt description
-     -> String           -- ^ Initial value
-     -> (String -> K ()) -- ^ Callback function to trigger when validating prompt value
-     -> K ()
+read :: (MonadIO m, MonadBaseControl IO m, MonadReader r m, HasConfig r, HasOptions r, HasPromptBar r, HasGUI r, HasZMQContext r, HasHooks r, MonadError HError m)
+     => String        -- ^ Prompt description
+     -> String        -- ^ Initial value
+     -> EntryHook     -- ^ Function to trigger when validating prompt value
+     -> m ()
 read = read' False
 
--- | Same as 'prompt', but callback is triggered for each change in prompt's entry.
-incrementalRead, iread :: String -> String -> (String -> K ()) -> K ()
+-- | Same as 'read', but callback is triggered for each change in prompt's entry.
+incrementalRead, iread :: (MonadIO m, MonadBaseControl IO m, MonadReader r m, HasConfig r, HasOptions r, HasGUI r, HasPromptBar r, HasZMQContext r, HasHooks r, MonadError HError m) => String -> String -> EntryHook -> m ()
 incrementalRead = read' True
 -- | Alias for incrementalRead.
 iread           = incrementalRead
 
-read' :: Bool -> String -> String -> (String -> K ()) -> K ()
-read' incremental description startValue callback = do
+read' :: (MonadIO m, MonadBaseControl IO m, MonadReader r m, HasConfig r, HasOptions r, HasGUI r, HasPromptBar r, HasZMQContext r, HasHooks r, MonadError HError m) => Bool -> String -> String -> EntryHook -> m ()
+read' incremental description startValue f = do
+    clean
     open description startValue
-    with (mPromptBar . mGUI) $ \promptBar -> case incremental of
-        True -> writeIORef (mIncrementalCallbackRef promptBar) callback
-        _    -> writeIORef (mCallbackRef            promptBar) callback
+    (PromptBar { _entry = entry }) <- asks _promptBar
 
--- | Same as "read" for URI values
-readURI :: String -> String -> (URI -> K ()) -> K ()
-readURI description startValue callback = withK (mPromptBar . mGUI) $ \promptBar -> do
+    when incremental $ onEntryChanged entry f   >>= \i -> asks _promptChanged   >>= io . (`writeIORef` Just i)
+    onEntryValidated entry (f >=> const clean)  >>= \i -> asks _promptValidated >>= io . (`writeIORef` Just i)
+    return ()
+
+
+-- | Same as 'read' for URI values
+readURI :: (MonadReader r m, HasConfig r, HasOptions r, HasGUI r, HasPromptBar r, HasZMQContext r, HasHooks r, MonadBaseControl IO m, MonadIO m, MonadError HError m)
+        => String -> String -> EntryURIHook -> m ()
+readURI description startValue callback = do
+    clean
     open description startValue
     checkURI startValue
-    
-    io . writeIORef (mIncrementalCallbackRef promptBar) $ checkURI
-    io . writeIORef (mCallbackRef            promptBar) $ mapM_ callback . parseURIReference
+
+    (PromptBar { _entry = entry }) <- asks _promptBar
+    id1 <- onEntryChanged   entry $ checkURI
+    id2 <- onEntryValidated entry $ parseURIReference >=> callback >=> const clean
+    asks _promptChanged   >>= io . (`writeIORef` Just id1)
+    asks _promptValidated >>= io . (`writeIORef` Just id2)
+    return ()
   where
-    checkURI value = with (mEntry . mPromptBar . mGUI) $ \entry -> do
-        widgetModifyText entry StateNormal color
+    checkURI :: EntryHook
+    checkURI value = do
+        (PromptBar { _entry = entry }) <- asks _promptBar
+        io $ widgetModifyText entry StateNormal color
       where
-        color = case isURIReference value of
-            True -> Color     0 65535 0
-            _    -> Color 65535     0 0
+        color = (isURIReference value) ? green ?? red
+        green = Color     0 65535 0
+        red   = Color 65535     0 0

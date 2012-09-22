@@ -1,13 +1,13 @@
 Name:                hbro
-Version:             0.9.1.0
+Version:             1.0.0.0
 Synopsis:            Minimal KISS compliant browser
--- Description:         
+-- Description:
 Homepage:            http://projects.haskell.org/hbro/
 Category:            Browser,Web
 
 License:             OtherLicense
 License-file:        LICENSE
--- Copyright:           
+-- Copyright:
 Author:              koral
 Maintainer:          koral at mailoo dot org
 
@@ -28,12 +28,15 @@ Library
         base == 4.*,
         bytestring,
         cmdargs,
+        cond,
         containers,
+        data-default,
         directory,
         dyre,
         filepath,
         glib,
         gtk >= 0.12.3,
+        monad-control,
         mtl,
         network,
         pango,
@@ -44,17 +47,21 @@ Library
         xdg-basedir,
         zeromq-haskell
     Exposed-modules:
+        Hbro,
         Hbro.Boot,
-        Hbro.Config,
+        Hbro.Default,
+        Hbro.Clipboard,
         Hbro.Core,
         Hbro.Gui,
-        Hbro.Hbro,
         Hbro.Keys,
         Hbro.Prompt,
         Hbro.Socket,
         Hbro.Types,
         Hbro.Util,
-        Hbro.Webkit.WebSettings
+        Hbro.Gtk.Entry,
+        Hbro.Gtk.ScrolledWindow,
+        Hbro.Webkit.WebSettings,
+        Hbro.Webkit.WebView
     Ghc-options: -Wall
 
 Flag threaded
@@ -62,14 +69,16 @@ Flag threaded
     Default: True
 
 Executable hbro
-    Build-depends: 
+    Build-depends:
         hbro,
         base == 4.*,
+        data-default,
         directory,
+        glib,
+        gtk,
         mtl
     Main-is: Main.hs
-    Hs-Source-Dirs: Hbro  
+    Hs-Source-Dirs: Hbro
     Ghc-options: -Wall
     if flag(threaded)
         Ghc-options: -threaded
-

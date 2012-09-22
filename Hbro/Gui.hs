@@ -1,21 +1,20 @@
-{-# LANGUAGE DoRec #-}
-module Hbro.Gui (
-    getObject,
-    initGUI,
-    showWebInspector,
-    toggleVisibility
-) where
+{-# LANGUAGE DoRec, FlexibleContexts, FlexibleInstances #-}
+module Hbro.Gui where
 
 -- {{{ Imports
-import Hbro.Core
+--import Hbro.Core
 import Hbro.Util
 import qualified Hbro.Prompt as Prompt
 import Hbro.Types
+import Hbro.Webkit.WebView
 
+import Control.Conditional
 import Control.Monad hiding(forM_, mapM_)
+import Control.Monad.IO.Class
+import Control.Monad.Reader
 
 --import Data.Foldable
-import Data.IORef
+import Data.Functor
 
 import Graphics.Rendering.Pango.Enums
 import Graphics.UI.Gtk.Abstract.Container
@@ -28,13 +27,11 @@ import Graphics.UI.Gtk.Layout.HBox
 import Graphics.UI.Gtk.Layout.VBox
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import Graphics.UI.Gtk.WebKit.WebInspector
-import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView hiding(webViewLoadUri)
 import Graphics.UI.Gtk.Windows.Window
 
 import Prelude hiding(mapM_)
 
-import System.Console.CmdArgs (whenNormal)
 import System.Glib.Attributes
 import System.Glib.Signals
 import System.Glib.Types
@@ -42,92 +39,81 @@ import System.Glib.Types
 
 -- Util
 -- | Return the casted GObject corresponding to the given name (set in the builder's XML file)
-getObject :: GObjectClass a => (GObject -> a) -> String -> K a        
-getObject cast name = with (mBuilder . mGUI) $ \builder -> builderGetObject builder cast name
+getObject :: (MonadIO m, MonadReader r m, HasGUI r, GObjectClass a) => (GObject -> a) -> String -> m a
+getObject cast name = do
+    builder <- asks _builder
+    io $ builderGetObject builder cast name
 
-initGUI :: (RefDirs -> FilePath) -> [AttrOp WebSettings] -> IO GUI
-initGUI xmlPath settings = do
-    void GTK.initGUI
+build' :: (MonadIO m, MonadReader r m, HasConfig r) => m GUI
+build' = do
+    xmlPath <- asks _UIFile
+    io $ void GTK.initGUI
 -- Load XML
-    xmlPath' <- resolve xmlPath
-    whenNormal . putStr . ("Loading GUI from " ++) . (++ "... ") $ xmlPath'
-    builder <- builderNew
-    builderAddFromFile builder xmlPath'
--- Initialize components
-    (webView, sWindow) <- initWebView         builder settings
-    (window, wBox)     <- initWindow          builder webView
-    promptBar          <- Prompt.init         builder
-    statusBar          <- initStatusBar       builder
-    notificationBar    <- initNotificationBar builder
+    xmlPath' <- io xmlPath
+    logNormal $ "Loading GUI from " ++ xmlPath' ++ "... "
+    builder <- io builderNew
+    io $ builderAddFromFile builder xmlPath'
+-- Build components
+    (webView, sWindow) <- build builder
+    (window, wBox)     <- build builder
+    promptBar          <- build builder
+    statusBar          <- build builder
+    notificationBar    <- build builder
     inspectorWindow    <- initWebInspector webView wBox
 -- Show window
-    widgetShowAll window
-    widgetHide (mBox promptBar)
-    
-    whenNormal $ putStrLn "Done."
-    return $ GUI { 
-        mWindow          = window, 
-        mInspectorWindow = inspectorWindow, 
-        mScrollWindow    = sWindow, 
-        mWebView         = webView, 
-        mPromptBar       = promptBar, 
-        mStatusBar       = statusBar, 
-        mNotificationBar = notificationBar, 
-        mBuilder         = builder
+    io $ widgetShowAll window
+    io $ widgetHide (_box promptBar)
+
+    logNormal "Done."
+    return $ GUI {
+        __mainWindow      = window,
+        __inspectorWindow = inspectorWindow,
+        __scrollWindow    = sWindow,
+        __webView         = webView,
+        __promptBar       = promptBar,
+        __statusBar       = statusBar,
+        __notificationBar = notificationBar,
+        __builder         = builder
     }
 
-initWebView :: Builder -> [AttrOp WebSettings] -> IO (WebView, ScrolledWindow)
-initWebView builder settings = do
--- Initialize ScrolledWindows
-    window <- builderGetObject builder castToScrolledWindow "webViewParent"
-    scrolledWindowSetPolicy window PolicyNever PolicyNever
--- Initialize WebSettings
-    webSettings <- webSettingsNew
-    set webSettings settings
--- Initialize WebView
-    webView     <- webViewNew
-    set webView [ widgetCanDefault := True ]
-    webViewSetWebSettings webView webSettings
-    containerAdd window webView    
--- 
-    _ <- on webView closeWebView $ GTK.mainQuit >> return False
-    
-    return (webView, window)
+setupScrollWindow :: (MonadIO m, MonadReader r m, HasGUI r) => m ()
+setupScrollWindow = do
+    window <- asks _scrollWindow
+    io $ scrolledWindowSetPolicy window PolicyNever PolicyNever
 
-initWindow :: Builder -> WebView -> IO (Window, VBox)
-initWindow builder webView = do
-    window <- builderGetObject builder castToWindow "mainWindow"
-    windowSetDefault window $ Just webView
-    windowSetDefaultSize window 800 600
-    widgetModifyBg window StateNormal (Color 0 0 10000)
-    _ <- onDestroy window GTK.mainQuit
-    
-    box <- builderGetObject builder castToVBox "windowBox"
-    
-    return (window, box)
-    
-initStatusBar :: Builder -> IO HBox
-initStatusBar builder = builderGetObject builder castToHBox "statusBox"
+instance Buildable (Window, VBox) where
+    build builder = io $ do
+        window <- builderGetObject builder castToWindow "mainWindow"
+        box    <- builderGetObject builder castToVBox "windowBox"
+        return (window, box)
 
-initNotificationBar :: Builder -> IO NotificationBar
-initNotificationBar builder = do
-    label <- builderGetObject builder castToLabel "notificationLabel"
-    timer <- newIORef Nothing
-    return $ NotificationBar label timer
+setupWindow :: (MonadIO m, MonadReader r m, HasGUI r) => m ()
+setupWindow = do
+    window <- asks _mainWindow
+    io . windowSetDefault window . Just =<< asks _webView
+    io $ windowSetDefaultSize window 800 600
+    io $ widgetModifyBg window StateNormal (Color 0 0 10000)
+    io . void $ onDestroy window GTK.mainQuit
+
+instance Buildable StatusBar where
+    build builder = io $ StatusBar <$> builderGetObject builder castToHBox "statusBox"
+
+instance Buildable NotificationBar where
+    build builder = io $ NotificationBar <$> builderGetObject builder castToLabel "notificationLabel"
 
 -- {{{ Web inspector
-initWebInspector :: WebView -> VBox -> IO (Window)
+initWebInspector :: (MonadIO m) => WebView -> VBox -> m (Window)
 initWebInspector webView windowBox = do 
-    inspector       <- webViewGetInspector webView
-    inspectorWindow <- windowNew
-    set inspectorWindow [ windowTitle := "hbro | Web inspector" ]
+    inspector       <- io $ webViewGetInspector webView
+    inspectorWindow <- io windowNew
+    io $ set inspectorWindow [ windowTitle := "hbro | Web inspector" ]
 
-    _ <- on inspector inspectWebView $ \_ -> do
+    _ <- io $ on inspector inspectWebView $ \_ -> do
         view <- webViewNew
         containerAdd inspectorWindow view
         return view
     
-    _ <- on inspector showWindow $ do
+    _ <- io $ on inspector showWindow $ do
         widgetShowAll inspectorWindow
         return True
 
@@ -135,9 +121,9 @@ initWebInspector webView windowBox = do
     --_ <- on inspector finished $ return ()
 
 -- Attach inspector to browser's main window
-    _ <- on inspector attachWindow $ do
-        getWebView <- webInspectorGetWebView inspector
-        case getWebView of
+    _ <- io $ on inspector attachWindow $ do
+        webview <- webInspectorGetWebView inspector
+        case webview of
             Just view -> do 
                 widgetHide inspectorWindow
                 containerRemove inspectorWindow view
@@ -148,9 +134,9 @@ initWebInspector webView windowBox = do
             _ -> return False
 
 -- Detach inspector in a distinct window
-    _ <- on inspector detachWindow $ do
-        getWebView <- webInspectorGetWebView inspector
-        _ <- case getWebView of
+    _ <- io $ on inspector detachWindow $ do
+        webview <- webInspectorGetWebView inspector
+        _ <- case webview of
             Just view -> do
                 containerRemove windowBox view
                 containerAdd inspectorWindow view
@@ -162,21 +148,12 @@ initWebInspector webView windowBox = do
         return True
 
     return inspectorWindow
-
--- | Show web inspector for current webpage.
-showWebInspector :: K ()
-showWebInspector = do
-    inspector <- with (mWebView . mGUI) webViewGetInspector
-    io $ webInspectorInspectCoordinates inspector 0 0
 -- }}}
-
 
 -- {{{ Util
 -- | Toggle a widget's visibility (provided for convenience).
-toggleVisibility :: WidgetClass a => a -> IO ()
-toggleVisibility widget = do
+toggleVisibility :: (MonadIO m, WidgetClass a) => a -> m ()
+toggleVisibility widget = io $ do
     visibility <- get widget widgetVisible
-    case visibility of
-        False -> widgetShow widget
-        _     -> widgetHide widget
+    visibility ? widgetHide widget ?? widgetShow widget
 -- }}}

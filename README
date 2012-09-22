@@ -1,0 +1,92 @@
+====
+hbro
+====
+
+
+**In a nutshell**: *hbro* is a minimal KISS compliant browser for linux written, configured and extensible in Haskell.
+
+Informations about versions, dependencies, source repositories and contacts can be found in hackage_.
+
+
+Design principles
+-----------------
+
+`Do one thing well`_
+  Browsing is about retrieving, presenting and traversing web resources. Not about providing tabs, bookmarks, history, download management, adblocking, passwords saving, self-updating, ... There already exists standalone applications for most extra features one may think of, please reuse them. Hbro can be configured to call external programs for any task.
+
+`Keep It Simple, Stupid`_
+  Hbro is written with simplicity in mind, and without an obsession for performance, features or release frequency. It may not be the fastest browser, at least it starts-up almost instantly, doesn't consume all your RAM and doesn't crash. Simplicity makes *hbro* lightweight, scalable, stable, easy to maintain and hack. Its code is easy to understand to encourage users to hack it.
+
+Extensible
+  Targets are advanced users who have various expectations ; to be sure everyone is happy, hbro is configured using a programming language, and offers an interprocess interface. As he who can do the most can do the least, the default configuration should be suitable for users that cannot afford or don't want to spend (waste ?) their time in tweaks.
+
+Keyboard driven
+  Special attention is given to allow keyboard control of the browser whenever possible and not in conflict with another design principle.
+
+Free software
+  Hbro is distributed under the `Do-What-The-Fuck-You-Want-To public licence`_, which has a pretty self-explanatory name :) .
+
+Note that some of these principles are taken from the `suckless manifest`_.
+
+
+Components and libraries used
+-----------------------------
+
+Programming language : Haskell_
+  Modern, purely-functional language that makes it possible to work with a short, elegant and robust code.
+
+Layout engine : WebKit_
+  Webkit seems to be the only one being open-source, (kind of) standards-compliant and providing a Haskell binding. It's then not much of a choice, fortunately it's not that bad.
+
+UI toolkit : `GTK+`_
+  Given the above programming language and layout engine, there's no much choice left for the UI toolkit.
+
+Interprocess interface : ZeroMQ_
+  Socket-like interface that implements various convenient communication schemes like request-reply and publish-subscribe.
+
+Configuration system : Dyre_
+  Dynamic reconfiguration library for haskell programs.
+
+
+Suggestions about better alternatives for any of these points (except the programming language) are more than welcome :) .
+
+
+Configuration
+-------------
+
+By default, a pretty limited configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. Several extensions are provided with the * hbro-contrib_ * package, including a featured and self-explanatory example of configuration file.
+
+
+Known bugs and limitations
+--------------------------
+
+Patches or suggestions are welcome to deal with the following issues. See package description for contact address.
+
+Flash videos make hbro freeze
+  The demo webkit browser for haskell's binding has the same problem, so it doesn't seem to come from hbro itself.
+
+.. Javascript's window.open requests open in the same window instead of spawning a new one.
+   This is due to this webkit's bug.
+
+When toggling to source mode, current webpage is reloaded
+  This is an undesired behavior since the webpage may have changed after reloading; webkit's API allows to get the content of the DOM but only inside the body tag; it is also possible to store the HTML source as it is downloaded, but then any further change in the DOM (for example triggered by javascript functions) wouldn't be visible.
+
+No cookies management available
+  The Haskell binding is missing some necessary functions that make it impossible to act on cookies management.
+
+Configuring a proxy is impossible
+  This feature would make use of to the webkit_get_default_session_ function. Unfortunately, Webkit's Haskell binding doesn't provide such function for now.
+
+
+.. _hackage: http://hackage.haskell.org/package/hbro
+.. _Do one thing well: http://en.wikipedia.org/wiki/Unix_philosophy
+.. _Keep It Simple, Stupid: https://en.wikipedia.org/wiki/KISS_principle
+.. _suckless manifest: http://suckless.org/manifest/
+.. _Do-What-The-Fuck-You-Want-To public licence: http://en.wikipedia.org/wiki/WTFPL
+.. _Haskell: http://haskell.org/
+.. _WebKit: http://www.webkit.org/
+.. _GTK+: http://www.gtk.org/
+.. _ZeroMQ: http://www.zeromq.org/
+.. _Dyre: https://github.com/willdonnelly/dyre
+.. _webkit_get_default_session: http://webkitgtk.org/reference/webkitgtk/stable/webkitgtk-Global-functions.html
+.. _hbro-contrib: http://hackage.haskell.org/package/hbro-contrib

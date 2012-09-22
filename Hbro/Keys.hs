@@ -1,28 +1,23 @@
-{-# LANGUAGE DoRec #-}
-module Hbro.Keys (
--- * Other
-    defaultKeyHandler,
-    emacsKeyHandler,
--- * Util
-    stringify,
-    keyToString,
-) where
+{-# LANGUAGE DoRec, FlexibleContexts, RankNTypes #-}
+module Hbro.Keys where
 
 -- {{{ Imports
-import Hbro.Core
 import Hbro.Types
 import Hbro.Util
 
 import Control.Monad hiding(forM_)
---import Control.Monad.Trans
+import Control.Monad.Error hiding(forM_)
+--import Control.Monad.IO.Class
+import Control.Monad.Reader hiding(forM_)
+import Control.Monad.Trans.Control
 
 --import Data.Foldable
+import Data.Functor
 import Data.IORef
 import qualified Data.Map as M
 --import qualified Data.Set as S
 
 import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.Gdk.Keys
 
 import Prelude hiding(mapM_)
@@ -30,31 +25,6 @@ import Prelude hiding(mapM_)
 --import System.Console.CmdArgs (whenLoud)
 --import System.Glib.Signals
 -- }}}
-
--- | Look for a callback associated to the given keystrokes and trigger it, if any.
-defaultKeyHandler :: KeysList -> String -> K (String, Bool)
-defaultKeyHandler keysList keystrokes = case M.lookup keystrokes (M.fromList keysList) of
-    Just callback -> callback >> return (keystrokes, True) 
-    _             ->             return (keystrokes, False)
-
--- | Emacs-like key handler.
-emacsKeyHandler :: KeysList     -- ^ Key bindings
-                -> [String]     -- ^ List of prefix keys
-                -> String       
-                -> K (String, Bool)
-emacsKeyHandler keysList prefixes keystrokes = do
-    keysRef <- getState "Hbro.Keys.manageSequentialKeys" "" 
-    io $ modifyIORef keysRef (++ keystrokes)
-    chainedKeys <- io $ readIORef keysRef
-
-    case elem chainedKeys prefixes of
-        True -> do
-            io $ modifyIORef keysRef (++ " ")
-            return (chainedKeys ++ " ", False)
-        _    -> do
-            io $ writeIORef keysRef []
-            defaultKeyHandler keysList chainedKeys
-
 
 -- | Convert a KeyVal to a String.
 -- For printable characters, the corresponding String is returned, except for the space character for which "<Space>" is returned.
@@ -80,12 +50,32 @@ keyToString keyVal = case keyToChar keyVal of
         "dead_diaeresis"    -> Just "¨"
         x                   -> Just ('<':x ++ ">")
 
--- | Convert a Modifier to a String. 
-stringify :: Modifier -> String
-stringify Control = "C-"
---stringify' Shift   = "S-"
-stringify Alt     = "M-"
-stringify _       = []
+
+
+-- | Look for a callback associated to the given keystrokes and trigger it, if any.
+defaultKeyHandler :: KeysList -> KeyHook
+defaultKeyHandler (KeysList keysList) keystrokes = case M.lookup keystrokes (M.fromList keysList) of
+    Just callback -> callback
+    _             -> return ()
+
+-- | Emacs-like key handler.
+emacsKeyHandler :: (MonadIO m, MonadReader r m, HasConfig r, HasOptions r, HasGUI r, HasPromptBar r, HasZMQContext r, HasHooks r, HasKeys r, MonadError HError m, MonadBaseControl IO m)
+                => KeysList     -- ^ Key bindings
+                -> [String]     -- ^ List of prefix keys
+                -> String
+                -> m ()
+emacsKeyHandler keysList prefixes keystrokes = do
+    keys        <- asks _keys
+    chainedKeys <- (++ keystrokes) <$> io (readIORef keys)
+
+    case elem chainedKeys prefixes of
+        True -> do
+            io $ writeIORef keys $ chainedKeys ++ " "
+        _    -> do
+            io $ writeIORef keys ""
+            defaultKeyHandler keysList chainedKeys
+
+
 
 -- | Convert key bindings list to a map.
 -- keysListToMap :: KeysList -> KeysMap
