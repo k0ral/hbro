@@ -40,19 +40,18 @@ import qualified System.ZMQ as ZMQ
 -- | Main function to call in the configuration file (cf 'Hbro.Main')
 -- First parse commandline options, then perform dynamic reconfiguration process
 hbro :: Config -> Setup -> IO ()
-hbro config startUp = do
+hbro config setup = do
     opts <- Options.get
 
     when (_help opts)      $ putStrLn Options.help >> exitSuccess
     when (_recompile opts) $ Dyre.recompile >>= maybe exitSuccess (\e -> putStrLn e >> exitFailure)
 
-    Dyre.wrap realMain opts $ Right (config, startUp, opts)
+    Dyre.wrap realMain opts (config, setup, opts)
 
 
 -- | Entry point called after dynamic recompilation.
-realMain :: Either String (Config, Setup, CliOptions) -> IO ()
-realMain (Left e) = putStrLn e
-realMain (Right (config, Setup customSetup, options)) = do
+realMain :: (Config, Setup, CliOptions) -> IO ()
+realMain (config, Setup customSetup, options) = do
     void $ installHandler sigINT (Catch (runReaderT interruptHandler options)) Nothing
     runReaderT (whenLoud Dyre.printPaths) options
 

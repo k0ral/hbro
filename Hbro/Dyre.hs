@@ -26,17 +26,20 @@ printPaths = io $ do
         "Lib directory:   " ++ e, []]
 
 -- | Dynamic reconfiguration settings
-parameters :: (Either String a -> IO ()) -> Params (Either String a)
+parameters :: (a -> IO ()) -> Params (Either String a)
 parameters main = defaultParams {
     projectName             = "hbro",
     showError               = const Left,
-    realMain                = main,
+    realMain                = main',
     ghcOpts                 = ["-threaded"],
     statusOut               = hPutStrLn stderr,
     includeCurrentDirectory = False}
+  where
+    main' (Left e)  = putStrLn e
+    main' (Right x) = main x
 
-wrap :: (Either String a -> IO ()) -> CliOptions -> (Either String a -> IO ())
-wrap main opts = wrapMain $ (parameters main) { configCheck = not $ _vanilla opts }
+wrap :: (a -> IO ()) -> CliOptions -> a -> IO ()
+wrap main opts = wrapMain ((parameters main) { configCheck = not $ _vanilla opts }) . Right
 
 
 -- | Launch a recompilation of the configuration file
