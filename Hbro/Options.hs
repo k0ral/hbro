@@ -1,3 +1,4 @@
+-- | Designed to be imported as @qualified@.
 module Hbro.Options where
 
 -- {{{ Imports
@@ -11,8 +12,12 @@ import Control.Monad.IO.Class
 import Data.Default
 import Data.Functor
 
+import Network.URI as N
+
 import System.Console.GetOpt
+import System.Directory
 import System.Environment
+import System.FilePath
 -- }}}
 
 description :: [OptDescr (CliOptions -> CliOptions)]
@@ -35,3 +40,12 @@ get = io $ do
     case options of
         (opts, input, _, []) -> return $ (foldl (flip id) def opts) { __startURI = (null $ concat input) ? Nothing ?? Just (concat input) }
         (_, _, _, _)         -> return def
+
+getStartURI :: (MonadIO m, HasOptions a) => a -> m (Maybe URI)
+getStartURI options = io $ case (_startURI options) of
+    Just uri -> do
+        fileURI <- doesFileExist uri
+        case fileURI of
+            True -> getCurrentDirectory >>= return . N.parseURIReference . ("file://" ++) . (</> uri)
+            _    -> return $ N.parseURIReference uri
+    _ -> return Nothing

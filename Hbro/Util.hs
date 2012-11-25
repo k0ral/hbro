@@ -68,7 +68,6 @@ whenLoud f = do
         _ -> return ()
 
 
-
 logNormal, logVerbose :: (MonadIO m, MonadReader s m, HasOptions s) => String -> m ()
 logNormal  = whenNormal . io . putStrLn
 logVerbose = whenLoud   . io . putStrLn

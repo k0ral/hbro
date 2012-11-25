@@ -44,10 +44,17 @@ getObject cast name = do
     builder <- asks _builder
     io $ builderGetObject builder cast name
 
+-- | Toggle a widget's visibility (provided for convenience).
+toggleVisibility :: (MonadIO m, WidgetClass a) => a -> m ()
+toggleVisibility widget = io $ do
+    visibility <- get widget widgetVisible
+    visibility ? widgetHide widget ?? widgetShow widget
+
+
 build' :: (MonadIO m, MonadReader r m, HasConfig r) => m GUI
 build' = do
     xmlPath <- asks _UIFile
-    io $ void GTK.initGUI
+    io . void $ GTK.initGUI
 -- Load XML
     xmlPath' <- io xmlPath
     --logNormal $ "Loading GUI from " ++ xmlPath' ++ "... "
@@ -148,12 +155,4 @@ initWebInspector webView windowBox = do
         return True
 
     return inspectorWindow
--- }}}
-
--- {{{ Util
--- | Toggle a widget's visibility (provided for convenience).
-toggleVisibility :: (MonadIO m, WidgetClass a) => a -> m ()
-toggleVisibility widget = io $ do
-    visibility <- get widget widgetVisible
-    visibility ? widgetHide widget ?? widgetShow widget
 -- }}}

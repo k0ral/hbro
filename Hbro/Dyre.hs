@@ -1,3 +1,4 @@
+-- | Designed to be imported as @qualified@.
 module Hbro.Dyre where
 
 -- {{{ Imports
@@ -9,6 +10,7 @@ import Config.Dyre.Compile
 import Config.Dyre.Paths
 
 import Control.Monad.IO.Class
+import Control.Monad.Reader
 
 import System.IO
 -- }}}
@@ -39,7 +41,9 @@ parameters main = defaultParams {
     main' (Right x) = main x
 
 wrap :: (a -> IO ()) -> CliOptions -> a -> IO ()
-wrap main opts = wrapMain ((parameters main) { configCheck = not $ _vanilla opts }) . Right
+wrap main opts args = do
+    when (_verbose opts) printPaths
+    wrapMain ((parameters main) { configCheck = not $ _vanilla opts }) $ Right args
 
 
 -- | Launch a recompilation of the configuration file

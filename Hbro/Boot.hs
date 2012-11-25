@@ -27,10 +27,6 @@ import Data.IORef
 
 import Graphics.UI.Gtk.General.General hiding(initGUI)
 
-import Network.URI as N
-
-import System.Directory
-import System.FilePath
 import System.Exit
 import System.Posix.Signals
 import qualified System.ZMQ as ZMQ
@@ -53,11 +49,10 @@ hbro config setup = do
 realMain :: (Config, Setup, CliOptions) -> IO ()
 realMain (config, Setup customSetup, options) = do
     void $ installHandler sigINT (Catch (runReaderT interruptHandler options)) Nothing
-    runReaderT (whenLoud Dyre.printPaths) options
 
     gui        <- runReaderT Gui.build' config
     hooks      <- Hooks <$> newIORef Nothing <*> newIORef Nothing <*> newIORef Nothing
-    startURI   <- getStartURI options
+    startURI   <- Options.getStartURI options
     keys       <- newIORef ""
     zmqContext <- ZMQ.init 1
 
@@ -83,16 +78,5 @@ realMain (config, Setup customSetup, options) = do
 
 
 --
-getStartURI :: CliOptions -> IO (Maybe URI)
-getStartURI options = case (__startURI options) of
-    Just uri -> do
-        fileURI <- doesFileExist uri
-        case fileURI of
-            True -> getCurrentDirectory >>= return . N.parseURIReference . ("file://" ++) . (</> uri)
-            _    -> return $ N.parseURIReference uri
-    _ -> return Nothing
-
-
---
 interruptHandler :: (MonadIO m, MonadReader r m, HasOptions r) => m ()
-interruptHandler = logVerbose "Received SIGINT." >> io mainQuit
+interruptHandler = logNormal "Received SIGINT." >> io mainQuit
