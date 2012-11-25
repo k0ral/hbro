@@ -33,7 +33,6 @@ import Graphics.UI.Gtk.Windows.Window
 
 import Network.URI
 
-import System.Console.CmdArgs
 import System.Glib.GObject
 import System.Glib.Signals
 import System.IO.Error
@@ -59,18 +58,18 @@ instance Error HError where
     strMsg = OtherError
 
 instance Show HError where
-    show CannotGoBack         = "Unable to go back: already at oldest page."
-    show CannotGoForward      = "Unable to go forward: already at newest page."
-    show (IOE e)              = "IO error: " ++ ioeGetLocation e ++ ": " ++ fromMaybe "" (ioeGetFileName e) ++ " " ++ ioeGetErrorString e
-    show InvalidIconURI       = "No favicon URI."
-    show InvalidPageTitle     = "No page title."
-    show InvalidPageURI       = "Invalid page URI."
-    show (InvalidURI s)       = show s
-    show (EmptyDownloadURI _) = "Invalid download URI."
+    show CannotGoBack               = "Unable to go back: already at oldest page."
+    show CannotGoForward            = "Unable to go forward: already at newest page."
+    show (IOE e)                    = "IO error: " ++ ioeGetLocation e ++ ": " ++ fromMaybe "" (ioeGetFileName e) ++ " " ++ ioeGetErrorString e
+    show InvalidIconURI             = "No favicon URI."
+    show InvalidPageTitle           = "No page title."
+    show InvalidPageURI             = "Invalid page URI."
+    show (InvalidURI s)             = show s
+    show (EmptyDownloadURI _)       = "Invalid download URI."
     show (EmptySuggestedFileName _) = "No suggested name for this download."
-    show (EmptyRequestURI _)  = "Invalid request URI."
-    show EmptyCallback        = "No callback defined."
-    show (OtherError s)       = show s
+    show (EmptyRequestURI _)        = "Invalid request URI."
+    show EmptyCallback              = "No callback defined."
+    show (OtherError s)             = show s
 -- }}}
 
 data Context = Context {
@@ -85,28 +84,39 @@ data Context = Context {
 -- {{{ Commandline options
 -- | Available commandline options (cf hbro -h).
 data CliOptions = CliOptions {
-    __startURI     :: Maybe String,
-    __vanilla      :: Bool,
-    __recompile    :: Bool,
-    __denyReconf   :: Bool,
-    __forceReconf  :: Bool,
-    __dyreDebug    :: Bool,
-    __masterBinary :: Maybe String
-} deriving (Data, Typeable, Show, Eq)
+    __startURI      :: Maybe String,
+    __help          :: Bool,
+    __quiet         :: Bool,
+    __verbose       :: Bool,
+    __vanilla       :: Bool,
+    __recompile     :: Bool,
+    __denyReconf    :: Bool,
+    __forceReconf   :: Bool,
+    __dyreDebug     :: Bool}
+    deriving(Eq, Typeable, Show)
 
 
 class HasOptions m where
     _startURI   :: m -> Maybe String
+    _help       :: m -> Bool
+    _quiet      :: m -> Bool
+    _verbose    :: m -> Bool
     _vanilla    :: m -> Bool
     _recompile  :: m -> Bool
 
 instance HasOptions CliOptions where
     _startURI  = __startURI
+    _help      = __help
+    _quiet     = __quiet
+    _verbose   = __verbose
     _vanilla   = __vanilla
     _recompile = __recompile
 
 instance HasOptions Context where
     _startURI  = __startURI . __options
+    _help      = __help . __options
+    _quiet     = __quiet . __options
+    _verbose   = __verbose . __options
     _vanilla   = __vanilla . __options
     _recompile = __recompile . __options
 -- }}}

@@ -1,12 +1,12 @@
-{-# LANGUAGE DoRec, FlexibleContexts, FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
 module Hbro.Gui where
 
 -- {{{ Imports
 --import Hbro.Core
 import Hbro.Util
-import qualified Hbro.Prompt as Prompt
+import Hbro.Prompt()
 import Hbro.Types
-import Hbro.Webkit.WebView
+import Hbro.Webkit.WebView()
 
 import Control.Conditional
 import Control.Monad hiding(forM_, mapM_)
@@ -50,7 +50,7 @@ build' = do
     io $ void GTK.initGUI
 -- Load XML
     xmlPath' <- io xmlPath
-    logNormal $ "Loading GUI from " ++ xmlPath' ++ "... "
+    --logNormal $ "Loading GUI from " ++ xmlPath' ++ "... "
     builder <- io builderNew
     io $ builderAddFromFile builder xmlPath'
 -- Build components
@@ -64,7 +64,7 @@ build' = do
     io $ widgetShowAll window
     io $ widgetHide (_box promptBar)
 
-    logNormal "Done."
+    --logNormal "Done."
     return $ GUI {
         __mainWindow      = window,
         __inspectorWindow = inspectorWindow,
@@ -103,7 +103,7 @@ instance Buildable NotificationBar where
 
 -- {{{ Web inspector
 initWebInspector :: (MonadIO m) => WebView -> VBox -> m (Window)
-initWebInspector webView windowBox = do 
+initWebInspector webView windowBox = do
     inspector       <- io $ webViewGetInspector webView
     inspectorWindow <- io windowNew
     io $ set inspectorWindow [ windowTitle := "hbro | Web inspector" ]
@@ -112,7 +112,7 @@ initWebInspector webView windowBox = do
         view <- webViewNew
         containerAdd inspectorWindow view
         return view
-    
+
     _ <- io $ on inspector showWindow $ do
         widgetShowAll inspectorWindow
         return True
@@ -124,7 +124,7 @@ initWebInspector webView windowBox = do
     _ <- io $ on inspector attachWindow $ do
         webview <- webInspectorGetWebView inspector
         case webview of
-            Just view -> do 
+            Just view -> do
                 widgetHide inspectorWindow
                 containerRemove inspectorWindow view
                 widgetSetSizeRequest view (-1) 250
@@ -143,7 +143,7 @@ initWebInspector webView windowBox = do
                 widgetShowAll inspectorWindow
                 return True
             _ -> return False
-        
+
         widgetShowAll inspectorWindow
         return True
 

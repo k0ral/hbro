@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             1.0.0.0
+Version:             1.0.1.0
 Synopsis:            Minimal KISS compliant browser
 -- Description:
 Homepage:            http://projects.haskell.org/hbro/
@@ -27,7 +27,6 @@ Library
     Build-depends:
         base == 4.*,
         bytestring,
-        cmdargs,
         cond,
         containers,
         data-default,
@@ -52,8 +51,10 @@ Library
         Hbro.Default,
         Hbro.Clipboard,
         Hbro.Core,
+        Hbro.Dyre,
         Hbro.Gui,
         Hbro.Keys,
+        Hbro.Options,
         Hbro.Prompt,
         Hbro.Socket,
         Hbro.Types,

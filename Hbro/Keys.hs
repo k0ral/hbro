@@ -1,4 +1,4 @@
-{-# LANGUAGE DoRec, FlexibleContexts, RankNTypes #-}
+{-# LANGUAGE FlexibleContexts, RankNTypes #-}
 module Hbro.Keys where
 
 -- {{{ Imports
@@ -67,6 +67,7 @@ emacsKeyHandler :: (MonadIO m, MonadReader r m, HasConfig r, HasOptions r, HasGU
 emacsKeyHandler keysList prefixes keystrokes = do
     keys        <- asks _keys
     chainedKeys <- (++ keystrokes) <$> io (readIORef keys)
+    logVerbose $ "Pressed keys: " ++ chainedKeys
 
     case elem chainedKeys prefixes of
         True -> do

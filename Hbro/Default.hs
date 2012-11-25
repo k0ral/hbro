@@ -24,7 +24,6 @@ import Data.Default
 -- import Data.Functor
 
 import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.General.General
 import Graphics.UI.Gtk.Entry.Entry
 import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.UI.Gtk.WebKit.WebPolicyDecision
@@ -41,6 +40,19 @@ import System.Directory
 import System.Environment.XDG.BaseDir
 import System.Glib.Attributes
 -- }}}
+
+
+instance Default CliOptions where
+    def = CliOptions {
+        __startURI     = Nothing,
+        __help         = False,
+        __quiet        = False,
+        __verbose      = False,
+        __vanilla      = False,
+        __recompile    = False,
+        __denyReconf   = False,
+        __forceReconf  = False,
+        __dyreDebug    = False}
 
 -- | Default configuration.
 -- Homepage: DuckDuckGo, socket directory: system's temporary directory,
@@ -67,12 +79,12 @@ instance Default NewWindowHook where
         io $ webPolicyDecisionIgnore decision
         uri <- networkRequestGetUri request
         logVerbose $ "New window request: " ++ show uri
-        spawn "hbro" ["-u", show uri]
+        spawn "hbro" [show uri]
 
         --either (\e -> io . putStrLn $ "WARNING: wrong URI given, unable to open new window.") (const $ return ()) result
 
 instance Default NavigationHook where
-    def = let f WebNavigationReasonLinkClicked (Just MiddleButton) uri decision = io $ webPolicyDecisionIgnore decision >> spawn "hbro" ["-u", show uri]
+    def = let f WebNavigationReasonLinkClicked (Just MiddleButton) uri decision = io $ webPolicyDecisionIgnore decision >> spawn "hbro" [show uri]
               f _ _ _ decision                                                  = io $ webPolicyDecisionUse decision
           in NavigationHook f
 
@@ -107,7 +119,7 @@ instance Default KeysList where
         ("C-c",           getURI   >>= Clipboard.insert . show >> notify 5000 "URI copied to clipboard"),
         ("M-c",           getTitle >>= Clipboard.insert >> notify 5000 "Page title copied to clipboard"),
         ("C-v",           Clipboard.with $ parseURIReference >=> loadURI),
-        ("M-v",           Clipboard.with $ \uri -> spawn "hbro" ["-u", uri]),
+        ("M-v",           Clipboard.with $ \uri -> spawn "hbro" [uri]),
     -- Display
         ("C-+",           zoomIn),
         ("C--",           zoomOut),

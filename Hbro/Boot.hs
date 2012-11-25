@@ -3,7 +3,10 @@ module Hbro.Boot where
 
 -- {{{ Imports
 import Hbro.Core
+import Hbro.Default()
+import qualified Hbro.Dyre as Dyre
 import qualified Hbro.Gui as Gui
+import qualified Hbro.Options as Options
 import qualified Hbro.Prompt as Prompt
 import qualified Hbro.Socket as Socket
 import Hbro.Types
@@ -11,15 +14,13 @@ import Hbro.Util
 import Hbro.Webkit.WebView as WebView
 
 import Control.Concurrent
-import qualified Config.Dyre as D
-import Config.Dyre.Compile
-import Config.Dyre.Paths
 
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Error
 import Control.Monad.Reader
 
+import Data.Default
 -- import Data.Functor
 import Data.IORef
 -- import Data.Maybe
@@ -28,83 +29,32 @@ import Graphics.UI.Gtk.General.General hiding(initGUI)
 
 import Network.URI as N
 
-import System.Console.CmdArgs
 import System.Directory
 import System.FilePath
 import System.Exit
-import System.IO
 import System.Posix.Signals
 import qualified System.ZMQ as ZMQ
 -- }}}
 
--- {{{ Commandline options
-baseOptions :: CliOptions
-baseOptions = CliOptions {
-    __startURI      = def &= explicit &= name "u" &= name "uri"          &= typ "URI" &= help "URI to open at start-up",
-    __vanilla       = def &= explicit &= name "1" &= name "vanilla"      &= help "Do not read custom configuration file.",
-    __recompile     = def &= explicit &= name "r" &= name "recompile"    &= help "Force recompilation and do not launch browser.",
-    __denyReconf    = def &= explicit             &= name "deny-reconf"  &= help "Deny recompilation even if the configuration file has changed.",
-    __forceReconf   = def &= explicit             &= name "force-reconf" &= help "Force recompilation even if the configuration file hasn't changed.",
-    __dyreDebug     = def &= explicit             &= name "dyre-debug"   &= help "Force the application to use './cache/' as the cache directory, and ./ as the configuration directory. Useful to debug the program without installation.",
-    __masterBinary  = def &= explicit             &= name "dyre-master-binary"}
-
--- | Available commandline options (cf hbro -h).
-cliOptions :: Mode (CmdArgs CliOptions)
-cliOptions = cmdArgsMode $ baseOptions
-    &= verbosityArgs [explicit, name "verbose", name "v"] []
-    &= versionArg [ignore]
-    &= help "A minimal KISS-compliant browser."
-    &= helpArg [explicit, name "help", name "h"]
-    &= program "hbro"
--- }}}
-
--- {{{ Dynamic reconfiguration
--- | Print various paths used for dynamic reconfiguration
-printDyrePaths :: IO ()
-printDyrePaths = do
-    (a, b, c, d, e) <- getPaths dyreParameters
-    putStrLn $ unlines [
-        "Current binary:  " ++ a,
-        "Custom binary:   " ++ b,
-        "Config file:     " ++ c,
-        "Cache directory: " ++ d,
-        "Lib directory:   " ++ e, []]
-
--- | Dynamic reconfiguration settings
-dyreParameters :: D.Params (Either String (Config, Setup, CliOptions))
-dyreParameters = D.defaultParams {
-    D.projectName             = "hbro",
-    D.showError               = \_ -> Left,
-    D.realMain                = realMain,
-    D.ghcOpts                 = ["-threaded"],
-    D.statusOut               = hPutStrLn stderr,
-    D.includeCurrentDirectory = False}
-
--- | Launch a recompilation of the configuration file
-recompile :: IO (Maybe String)
-recompile = do
-    customCompile  dyreParameters
-    getErrorString dyreParameters
--- }}}
 
 -- | Main function to call in the configuration file (cf 'Hbro.Main')
 -- First parse commandline options, then perform dynamic reconfiguration process
 hbro :: Config -> Setup -> IO ()
 hbro config startUp = do
-    options <- cmdArgsRun cliOptions
+    opts <- Options.get
 
-    when (_recompile options) $
-        recompile >>= maybe exitSuccess (\e -> putStrLn e >> exitFailure)
+    when (_help opts)      $ putStrLn Options.help >> exitSuccess
+    when (_recompile opts) $ Dyre.recompile >>= maybe exitSuccess (\e -> putStrLn e >> exitFailure)
 
-    D.wrapMain dyreParameters{ D.configCheck = not $ _vanilla options } $ Right (config, startUp, options)
+    Dyre.wrap realMain opts $ Right (config, startUp, opts)
 
 
 -- | Entry point called after dynamic recompilation.
 realMain :: Either String (Config, Setup, CliOptions) -> IO ()
 realMain (Left e) = putStrLn e
 realMain (Right (config, Setup customSetup, options)) = do
-    void $ installHandler sigINT (Catch interruptHandler) Nothing
-    whenLoud printDyrePaths
+    void $ installHandler sigINT (Catch (runReaderT interruptHandler options)) Nothing
+    runReaderT (whenLoud Dyre.printPaths) options
 
     gui        <- runReaderT Gui.build' config
     hooks      <- Hooks <$> newIORef Nothing <*> newIORef Nothing <*> newIORef Nothing
@@ -130,7 +80,7 @@ realMain (Right (config, Setup customSetup, options)) = do
     either print return result
 
     ZMQ.term zmqContext
-    logNormal "Exiting..."
+    runReaderT (logNormal "Exiting...") options
 
 
 --
@@ -145,5 +95,5 @@ getStartURI options = case (__startURI options) of
 
 
 --
-interruptHandler :: IO ()
-interruptHandler = logVerbose "Received SIGINT." >> mainQuit
+interruptHandler :: (MonadIO m, MonadReader r m, HasOptions r) => m ()
+interruptHandler = logVerbose "Received SIGINT." >> io mainQuit

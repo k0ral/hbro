@@ -64,7 +64,7 @@ setup = do
     return ()
 
 
-open :: (MonadIO m, MonadReader r m, HasPromptBar r) => String -> String -> m ()
+open :: (MonadIO m, MonadReader r m, HasPromptBar r, HasOptions r) => String -> String -> m ()
 open newDescription defaultText = do
     logVerbose "Opening prompt."
     entry <- asks _promptEntry

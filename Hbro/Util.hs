@@ -29,11 +29,10 @@ import qualified Network.URI as N
 
 import Prelude hiding(log, mapM_)
 
-import System.Console.CmdArgs
 import System.FilePath
 import qualified System.Info as Sys
 -- import System.IO
-import System.IO.Error hiding(try)
+import System.IO.Error
 import System.Posix.Process
 import System.Posix.Types
 import System.Process
@@ -50,13 +49,29 @@ fork f = do
     void . liftBaseWith $ \runInIO -> forkIO $ finally (void $ runInIO f) (putMVar mvar ())
     return mvar
 
--- | Like '</>' with first argument in IO to build platform-dependent paths.
+-- | Like '(</>)' with first argument in IO to build platform-dependent paths.
 (>/>) :: (MonadIO m) => IO FilePath -> FilePath -> m FilePath
 (>/>) a b = io $ (</> b) <$> a
 
-logNormal, logVerbose :: (MonadIO m) => String -> m ()
-logNormal  = io . whenNormal . putStrLn
-logVerbose = io . whenLoud   . putStrLn
+whenNormal :: (MonadIO m, MonadReader s m, HasOptions s) => m () -> m ()
+whenNormal f = do
+    quiet <- asks _quiet
+    case quiet of
+        False -> f
+        _ -> return ()
+
+whenLoud :: (MonadIO m, MonadReader s m, HasOptions s) => m () -> m ()
+whenLoud f = do
+    verbose <- asks _verbose
+    case verbose of
+        True -> f
+        _ -> return ()
+
+
+
+logNormal, logVerbose :: (MonadIO m, MonadReader s m, HasOptions s) => String -> m ()
+logNormal  = whenNormal . io . putStrLn
+logVerbose = whenLoud   . io . putStrLn
 
 -- {{{ Process management
 -- | Run external command and won't kill when parent process exit.
@@ -84,11 +99,11 @@ labelSetMarkupTemporary {-x-} label text delay = do
   where
     clear = labelSetMarkup label ""
 
-errorHandler :: FilePath -> IOError -> IO ()
+errorHandler :: (MonadIO m, MonadReader r m, HasOptions r) => FilePath -> IOError -> m ()
 errorHandler file e = do
-  when (isAlreadyInUseError e) $ (whenNormal . putStrLn) ("ERROR: file <" ++ file ++ "> is already opened and cannot be reopened.")
-  when (isDoesNotExistError e) $ (whenNormal . putStrLn) ("ERROR: file <" ++ file ++ "> doesn't exist.")
-  when (isPermissionError   e) $ (whenNormal . putStrLn) ("ERROR: user doesn't have permission to open file <" ++ file ++ ">.")
+  when (isAlreadyInUseError e) $ whenNormal . io . putStrLn $ "ERROR: file <" ++ file ++ "> is already opened and cannot be reopened."
+  when (isDoesNotExistError e) $ whenNormal . io . putStrLn $ "ERROR: file <" ++ file ++ "> doesn't exist."
+  when (isPermissionError   e) $ whenNormal . io . putStrLn $ "ERROR: user doesn't have permission to open file <" ++ file ++ ">."
 
 
 parseURIReference :: (MonadError HError m) => String -> m URI

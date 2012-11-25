@@ -9,7 +9,7 @@ import Hbro.Webkit.WebView as WebView
 import Control.Monad.Error  hiding(forM_, mapM_)
 import Control.Monad.Reader hiding(forM_, mapM_)
 
-import Data.Default
+-- import Data.Default
 -- import Data.Foldable
 -- import Data.Functor
 
@@ -33,7 +33,7 @@ getState key defaultValue = do
             return defaultValue-}
 -- }}}
 
-goHome :: (MonadIO m, MonadReader r m, HasConfig r, HasWebView r, MonadError HError m) => m ()
+goHome :: (MonadIO m, MonadReader r m, HasConfig r, HasWebView r, HasOptions r, MonadError HError m) => m ()
 goHome = loadURI =<< asks _homePage
 
 quit :: (MonadIO m) => m ()
@@ -41,7 +41,7 @@ quit = io mainQuit
 
 -- {{{ Misc
 -- | Execute a javascript file on current webpage.
-executeJSFile :: (MonadIO m) => FilePath -> WebView -> m ()
+executeJSFile :: (MonadIO m, MonadReader r m, HasOptions r) => FilePath -> WebView -> m ()
 executeJSFile filePath webView = do
     logNormal $ "Executing Javascript file: " ++ filePath
     script <- io $ readFile filePath

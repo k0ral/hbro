@@ -44,7 +44,7 @@ open = do
 
 -- | Close the response socket by sending it the command "QUIT".
 -- Typically called when exiting application.
-close :: (Functor m, MonadIO m, MonadReader r m, HasConfig r, HasZMQContext r) => m ()
+close :: (Functor m, MonadIO m, MonadReader r m, HasConfig r, HasZMQContext r, HasOptions r) => m ()
 close = do
     uri <- getPath
     logVerbose $ "Closing socket " ++ show uri ++ "..."

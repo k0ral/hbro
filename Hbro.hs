@@ -12,7 +12,7 @@ module Hbro (
 
 import Hbro.Boot
 import Hbro.Core
-import Hbro.Default
+import Hbro.Default()
 import Hbro.Gui
 import Hbro.Keys
 import Hbro.Socket

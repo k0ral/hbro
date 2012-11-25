@@ -82,7 +82,7 @@ getTitle = webViewGetTitle =<< asks _webview
 -- }}}
 
 -- {{{ Browsing
-loadURI :: (MonadIO m, MonadReader r m, HasWebView r) => URI -> m ()
+loadURI :: (MonadIO m, MonadReader r m, HasWebView r, HasOptions r) => URI -> m ()
 loadURI uri = do
     logVerbose $ "Loading URI: " ++ (show uri')
     io . (`W.webViewLoadUri` uri') =<< asks _webview
@@ -134,14 +134,14 @@ showWebInspector = do
 afterKeyPressed :: (MonadIO m, MonadBaseControl IO m, MonadReader r m, HasConfig r, HasOptions r, HasGUI r, HasPromptBar r, HasZMQContext r, HasHooks r, MonadError HError m, HasKeys r) => KeyHook -> m (ConnectId WebView)
 afterKeyPressed f = do
   webView <- asks _webView
-  liftBaseWith $ \runInIO -> after webView keyPressEvent $ do
+  liftBaseWith $ \runInIO -> on webView keyPressEvent $ do
     modifiers <- eventModifier
     key'      <- keyToString <$> eventKeyVal
 
-    io . forM_ key' $ \key -> do
+    io . forM_ key' $ \key -> runInIO $ do
         let keystrokes = (++ key) . concat . map stringify $ modifiers
         logVerbose $ "Key pressed: " ++ keystrokes
-        runInIO $ f keystrokes `catchError` \e -> (io $ print e) >> notify 5000 (show e)
+        f keystrokes `catchError` \e -> (io $ print e) >> notify 5000 (show e)
     return False
 
 -- | Triggered in 2 cases:
@@ -165,7 +165,7 @@ instance Default NewWebViewHook where
 
         io . void . on webView W.webViewReady $ return True
         io . void . on webView W.navigationPolicyDecisionRequested $ \_ request _ decision -> do
-            W.networkRequestGetUri request >>= mapM_ (\uri -> spawn "hbro" ["-u", uri])
+            W.networkRequestGetUri request >>= mapM_ (\uri -> spawn "hbro" [uri])
             webPolicyDecisionIgnore decision
             return True
 
