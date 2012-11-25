@@ -31,7 +31,7 @@ Library
         containers,
         data-default,
         directory,
-        dyre,
+        dyre >= 0.8.8,
         filepath,
         glib,
         gtk >= 0.12.3,
