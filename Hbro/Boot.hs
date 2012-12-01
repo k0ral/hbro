@@ -29,7 +29,7 @@ import Graphics.UI.Gtk.General.General hiding(initGUI)
 
 import System.Exit
 import System.Posix.Signals
-import qualified System.ZMQ as ZMQ
+import qualified System.ZMQ3 as ZMQ
 -- }}}
 
 

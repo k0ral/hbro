@@ -25,7 +25,8 @@ import Prelude hiding(log, mapM_, read)
 import System.FilePath
 import System.Posix.Process
 import System.Posix.Types
-import qualified System.ZMQ as ZMQ
+import System.ZMQ3 as ZMQ hiding(close, receive, send)
+import qualified System.ZMQ3 as ZMQ (close, receive, send)
 -- }}}
 
 -- | Open a response-socket at configured location, named hbro.<pid>, and start listening for commands.
@@ -34,10 +35,10 @@ open = do
     pid       <- io getProcessID
     socketDir <- asks _socketDir
     path      <- socketPath pid <$> io socketDir
-    socket    <- io . (`ZMQ.socket` ZMQ.Rep) =<< asks _ZMQContext
+    socket    <- io . (`ZMQ.socket` Rep) =<< asks _ZMQContext
 
     logNormal $ "Opening socket at " ++ path
-    io $ ZMQ.bind socket path
+    io $ bind socket path
     readCommands socket
     io $ ZMQ.close socket
     return ()
@@ -86,18 +87,18 @@ socketPath :: ProcessID -> FilePath -> String
 socketPath pid socketDir = "ipc://" ++ socketDir </> "hbro." ++ show pid
 
 -- |
-send :: (MonadIO m) => ZMQ.Socket a -> String -> m ()
-send socket payload = io $ ZMQ.send socket (pack payload) []
+send :: (MonadIO m, Sender a) => Socket a -> String -> m ()
+send socket payload = io $ ZMQ.send socket [] (pack payload)
 
-read :: (MonadIO m) => ZMQ.Socket a -> m String
-read socket = io $ unpack <$> ZMQ.receive socket []
+read :: (MonadIO m, Receiver a) => Socket a -> m String
+read socket = io $ unpack <$> ZMQ.receive socket
 
 -- | Send a single command (through a Request socket) to the given Response socket, and return the answer.
 sendCommand :: (MonadIO m, MonadReader r m, HasZMQContext r) => String -> String -> m String
 sendCommand socketURI command = do
     context <- asks _ZMQContext
-    io $ ZMQ.withSocket context ZMQ.Req $ \socket -> do
-      ZMQ.connect socket socketURI
+    io $ withSocket context ZMQ.Req $ \socket -> do
+      connect socket socketURI
       send socket command
       read socket
 

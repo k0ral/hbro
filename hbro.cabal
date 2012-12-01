@@ -44,7 +44,7 @@ Library
         unix,
         webkit,
         xdg-basedir,
-        zeromq-haskell
+        zeromq3-haskell
     Exposed-modules:
         Hbro,
         Hbro.Boot,

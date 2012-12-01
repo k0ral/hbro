@@ -36,7 +36,7 @@ import Network.URI
 import System.Glib.GObject
 import System.Glib.Signals
 import System.IO.Error
-import qualified System.ZMQ as ZMQ
+import qualified System.ZMQ3 as ZMQ
 -- }}}
 
 -- {{{ Error
