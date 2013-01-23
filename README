@@ -3,7 +3,7 @@ hbro
 ====
 
 
-**In a nutshell**: *hbro* is a minimal KISS compliant browser for linux written, configured and extensible in Haskell.
+**In a nutshell**: *hbro* is a minimal, KISS compliant browser for linux written, configured and extensible in Haskell.
 
 Informations about versions, dependencies, source repositories and contacts can be found in hackage_.
 
@@ -12,21 +12,19 @@ Design principles
 -----------------
 
 `Do one thing well`_
-  Browsing is about retrieving, presenting and traversing web resources. Not about providing tabs, bookmarks, history, download management, adblocking, passwords saving, self-updating, ... There already exists standalone applications for most extra features one may think of, please reuse them. Hbro can be configured to call external programs for any task.
+  Browsing is about retrieving, presenting and traversing web resources. Not about providing tabs, bookmarks, history, download management, adblocking, passwords saving, self-updating, ... There already exists standalone applications for most extra features one may think of, please reuse them. *Hbro* can be configured to call external programs for any task.
 
 `Keep It Simple, Stupid`_
-  Hbro is written with simplicity in mind, and without an obsession for performance, features or release frequency. It may not be the fastest browser, at least it starts-up almost instantly, doesn't consume all your RAM and doesn't crash. Simplicity makes *hbro* lightweight, scalable, stable, easy to maintain and hack. Its code is easy to understand to encourage users to hack it.
+  *Hbro* is written with simplicity in mind, and without obsession for performance, features or release frequency. It should not take time to start-up, consume much RAM or crash. Simplicity provides lightweightness, scalability, stability and maintainability. Its code is easy to understand (well, as long as you speak Haskell...) to encourage users to hack it.
 
 Extensible
-  Targets are advanced users who have various expectations ; to be sure everyone is happy, hbro is configured using a programming language, and offers an interprocess interface. As he who can do the most can do the least, the default configuration should be suitable for users that cannot afford or don't want to spend (waste ?) their time in tweaks.
+  Targets are advanced users who have various expectations ; to be sure everyone is happy, *hbro* is configured using a programming language, and offers an interprocess interface. As he who can do the most can do the least, the default configuration should be suitable for users that cannot afford or don't want to spend (waste ?) their time in tweaks.
 
 Keyboard driven
-  Special attention is given to allow keyboard control of the browser whenever possible and not in conflict with another design principle.
+  Special attention is given to allow keyboard control of the browser whenever possible.
 
 Free software
-  Hbro is distributed under the `Do-What-The-Fuck-You-Want-To public licence`_, which has a pretty self-explanatory name :) .
-
-Note that some of these principles are taken from the `suckless manifest`_.
+  Hbro is distributed under the `Do-What-The-Fuck-You-Want-To public licence`_, which has a pretty self-explanatory name.
 
 
 Components and libraries used
@@ -36,7 +34,7 @@ Programming language : Haskell_
   Modern, purely-functional language that makes it possible to work with a short, elegant and robust code.
 
 Layout engine : WebKit_
-  Webkit seems to be the only one being open-source, (kind of) standards-compliant and providing a Haskell binding. It's then not much of a choice, fortunately it's not that bad.
+  Webkit seems to be the only engine being open-source, (kind of) standards-compliant and providing a Haskell binding. It's not much of a choice, fortunately it's not that bad.
 
 UI toolkit : `GTK+`_
   Given the above programming language and layout engine, there's no much choice left for the UI toolkit.
@@ -48,7 +46,7 @@ Configuration system : Dyre_
   Dynamic reconfiguration library for haskell programs.
 
 
-Suggestions about better alternatives for any of these points (except the programming language) are more than welcome :) .
+Suggestions about better alternatives for any of these points (except the programming language) are welcome.
 
 
 Configuration
@@ -62,8 +60,8 @@ Known bugs and limitations
 
 Patches or suggestions are welcome to deal with the following issues. See package description for contact address.
 
-Flash videos make hbro freeze
-  The demo webkit browser for haskell's binding has the same problem, so it doesn't seem to come from hbro itself.
+The browser crashes on loading some webpages, and on enabling javascript/flash
+  The demo webkit browser provided with haskell's binding crashes likewise, which suggests a problem in the haskell binding for webkit-gtk. Unfortunately, not much can be done on *hbro* itself to fix it.
 
 .. Javascript's window.open requests open in the same window instead of spawning a new one.
    This is due to this webkit's bug.
@@ -81,7 +79,6 @@ Configuring a proxy is impossible
 .. _hackage: http://hackage.haskell.org/package/hbro
 .. _Do one thing well: http://en.wikipedia.org/wiki/Unix_philosophy
 .. _Keep It Simple, Stupid: https://en.wikipedia.org/wiki/KISS_principle
-.. _suckless manifest: http://suckless.org/manifest/
 .. _Do-What-The-Fuck-You-Want-To public licence: http://en.wikipedia.org/wiki/WTFPL
 .. _Haskell: http://haskell.org/
 .. _WebKit: http://www.webkit.org/

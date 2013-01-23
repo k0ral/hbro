@@ -1,15 +1,17 @@
--- | Designed to be imported as @qualified@.
+{-# LANGUAGE FlexibleContexts #-}
+-- | Dynamic reconfiguration. Designed to be imported as @qualified@.
 module Hbro.Dyre where
 
 -- {{{ Imports
-import Hbro.Types
+import Hbro.Options
 import Hbro.Util
 
 import Config.Dyre
 import Config.Dyre.Compile
 import Config.Dyre.Paths
 
-import Control.Monad.IO.Class
+import Control.Lens
+import Control.Monad.Base
 import Control.Monad.Reader
 
 import System.IO
@@ -17,7 +19,7 @@ import System.IO
 
 
 -- | Print various paths used for dynamic reconfiguration
-printPaths :: MonadIO m => m ()
+printPaths :: MonadBase IO m => m ()
 printPaths = io $ do
     (a, b, c, d, e) <- getPaths (parameters $ const $ return ())
     putStrLn $ unlines [
@@ -42,8 +44,8 @@ parameters main = defaultParams {
 
 wrap :: (a -> IO ()) -> CliOptions -> a -> IO ()
 wrap main opts args = do
-    when (_verbose opts) printPaths
-    wrapMain ((parameters main) { configCheck = not $ _vanilla opts }) $ Right args
+    when (opts^.verbose) printPaths
+    wrapMain ((parameters main) { configCheck = not $ opts^.vanilla }) $ Right args
 
 
 -- | Launch a recompilation of the configuration file

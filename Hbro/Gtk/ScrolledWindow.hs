@@ -1,24 +1,27 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Hbro.Gtk.ScrolledWindow where
 
 -- {{{ Imports
 import Hbro.Util
-import Hbro.Types
 
-import Control.Monad.IO.Class
-import Control.Monad.Reader
+import Control.Monad.Base
 
 import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
 -- }}}
 
-getAdjustment :: (MonadIO m) => Axis -> ScrolledWindow -> m Adjustment
+data Axis     = Horizontal | Vertical
+data Position = Absolute Double | Relative Double
+
+
+getAdjustment :: (MonadBase IO m) => Axis -> ScrolledWindow -> m Adjustment
 getAdjustment Horizontal = io . scrolledWindowGetHAdjustment
 getAdjustment Vertical   = io . scrolledWindowGetVAdjustment
 
 
 -- | General scrolling command.
-scroll' :: (MonadIO m) => Axis -> Position -> ScrolledWindow -> m ()
-scroll' axis percentage scrollWindow = io $ do
+scroll :: (MonadBase IO m) => Axis -> Position -> ScrolledWindow -> m ()
+scroll axis percentage scrollWindow = io $ do
      adj     <- io . getAdjustment axis $ scrollWindow
      page    <- io $ adjustmentGetPageSize adj
      current <- io $ adjustmentGetValue adj
@@ -30,6 +33,3 @@ scroll' axis percentage scrollWindow = io $ do
          limit x            = (x `max` lower) `min` (upper - page)
 
      io $ adjustmentSetValue adj $ limit (shift percentage)
-
-scroll :: (MonadIO m, MonadReader r m, HasScrollWindow r) => Axis -> Position -> m ()
-scroll axis percentage = scroll' axis percentage =<< asks _scrollwindow

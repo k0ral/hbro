@@ -3,11 +3,13 @@ module Main where
 -- {{{ Imports
 import Hbro
 
-import Data.Default
+import Control.Lens
 
 import Paths_hbro
 -- }}}
 
--- | Default main function provided as example.
+-- | Default main function provided as example
 main :: IO ()
-main = hbro (def { __UIFile = getDataFileName "examples/ui.xml" }) def
+main = do
+    theUIFile <- getDataFileName "examples/ui.xml"
+    hbro (return ()) (set uIFile theUIFile)

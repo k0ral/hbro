@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             1.0.1.0
+Version:             1.1.0.0
 Synopsis:            Minimal KISS compliant browser
 -- Description:
 Homepage:            http://projects.haskell.org/hbro/
@@ -35,12 +35,14 @@ Library
         filepath,
         glib,
         gtk >= 0.12.3,
+        lens,
         monad-control,
         mtl,
         network,
         pango,
         process,
         transformers,
+        transformers-base,
         unix,
         webkit,
         xdg-basedir,
@@ -48,18 +50,19 @@ Library
     Exposed-modules:
         Hbro,
         Hbro.Boot,
-        Hbro.Default,
         Hbro.Clipboard,
+        Hbro.Config,
         Hbro.Core,
         Hbro.Dyre,
+        Hbro.Error,
         Hbro.Gui,
+        Hbro.IPC,
         Hbro.Keys,
+        Hbro.Network,
+        Hbro.Notification,
         Hbro.Options,
         Hbro.Prompt,
-        Hbro.Socket,
-        Hbro.Types,
         Hbro.Util,
-        Hbro.Gtk.Entry,
         Hbro.Gtk.ScrolledWindow,
         Hbro.Webkit.WebSettings,
         Hbro.Webkit.WebView
@@ -77,6 +80,7 @@ Executable hbro
         directory,
         glib,
         gtk,
+        lens,
         mtl
     Main-is: Main.hs
     Hs-Source-Dirs: Hbro
