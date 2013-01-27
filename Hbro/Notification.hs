@@ -1,4 +1,4 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, RankNTypes, TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Hbro.Notification where
 
 -- {{{ Imports

@@ -1,4 +1,3 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes #-}
 module Hbro.Boot (hbro) where
 
 -- {{{ Imports
@@ -8,7 +7,7 @@ import qualified Hbro.Dyre as Dyre
 import Hbro.Error
 import Hbro.Gui (GUI, GUIReader(..))
 import qualified Hbro.Gui as Gui
-import Hbro.IPC (IPC, IPCReader, readIPC)
+import Hbro.IPC (IPC(..), IPCReader(..))
 import qualified Hbro.IPC as IPC
 import qualified Hbro.Keys as Key
 import Hbro.Notification
@@ -32,6 +31,7 @@ import Data.Functor
 import Data.List
 import qualified Data.Map as M hiding(null)
 -- import Data.Maybe
+import Data.Version
 
 import Graphics.UI.Gtk.Abstract.Widget
 import Graphics.UI.Gtk.Gdk.EventM
@@ -42,35 +42,42 @@ import Graphics.UI.Gtk.WebKit.WebNavigationAction
 import Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import Graphics.UI.Gtk.WebKit.WebView as W
 
+import Paths_hbro
+
 import Prelude hiding(init)
 
 import System.Directory
 import System.Environment.XDG.BaseDir
 import System.Exit
+import System.FilePath
 import System.Glib.Signals
+import System.Posix.Files
+import System.Posix.Process
 import System.Posix.Signals
+import System.ZMQ3 (Rep(..))
 import qualified System.ZMQ3 as ZMQ
 -- }}}
 
 
 -- | Main function to call in the configuration file (cf file @Hbro/Main.hs@).
 -- First, commandline options are parsed, then configuration is dynamically applied.
-hbro :: K () -> (Config K -> Config K) -> IO ()
-hbro setup f = do
+hbro :: K () -> IO ()
+hbro setup = do
     opts <- Options.get
 
     when (opts^.Options.help)      $ putStrLn Options.usage >> exitSuccess
+    when (opts^.Options.version)   $ putStrLn (showVersion version) >> exitSuccess
     when (opts^.Options.verbose)   . putStrLn $ "Commandline options: " ++ show opts
     when (opts^.Options.recompile) $ Dyre.recompile >>= maybe exitSuccess (\e -> putStrLn e >> exitFailure)
 
-    Dyre.wrap hbro' opts (f, setup, opts)
+    Dyre.wrap hbro' opts (setup, opts)
 
 
-hbro' :: (Config K -> Config K, K (), CliOptions) -> IO ()
-hbro' (f, customSetup, options) = do
-    config <- initConfig f options
-    gui    <- initGUI config
-    ipc    <- initIPC config
+hbro' :: (K (), CliOptions) -> IO ()
+hbro' (customSetup, options) = do
+    config <- initConfig options
+    gui    <- initGUI
+    ipc    <- initIPC
 
     void $ installHandler sigINT (Catch onInterrupt) Nothing
     (result, logs) <- runK options config gui ipc $ main customSetup
@@ -80,29 +87,47 @@ hbro' (f, customSetup, options) = do
     unless (options^.Options.quiet) $ putStrLn "Exiting..."
 
 -- {{{ Initialization
-initConfig :: (MonadBase IO m) => (Config K -> Config K) -> CliOptions -> m (Config K)
-initConfig f options = do
-    socketDir' <- io $ getTemporaryDirectory
-    theUIFile  <- io $ getUserConfigDir "hbro" >/> "ui.xml"
-    let config = f
-          . set socketDir socketDir'
-          . set uIFile theUIFile
+initConfig :: (MonadBase IO m) => CliOptions -> m (Config K)
+initConfig options = do
+    let config = id
           . (options^.Options.quiet   ? set verbosity Quiet   ?? id)
           . (options^.Options.verbose ? set verbosity Verbose ?? id)
           $ def
-
-    when (config^.verbosity == Verbose) . io . putStrLn $ "Start-up configuration: \n" ++ show config
     return config
 
 
-initGUI :: (MonadBase IO m) => Config K -> m (GUI K)
-initGUI config = do
-    io $ void GTK.initGUI
-    Gui.buildFrom $ config^.uIFile
+initGUI :: (MonadBase IO m) => m (GUI K)
+initGUI = do
+    file     <- io (getUserConfigDir "hbro" >/> "ui.xml")
+    fallback <- io $ getDataFileName "examples/ui.xml"
+
+    file' <- io $ firstReadableOf [file, fallback]
+
+    case file' of
+        Just f -> do
+          io $ void GTK.initGUI
+          Gui.buildFrom f
+        _ -> io $ putStrLn "No UI file found." >> exitFailure
+  where
+    firstReadableOf []    = return Nothing
+    firstReadableOf (x:y) = do
+        isReadable <- fileAccess x True False False
+        isReadable ? return (Just x) ?? firstReadableOf y
 
 
-initIPC :: (MonadBase IO m) => Config K -> m IPC
-initIPC config = IPC.init =<< (IPC.getSocketPath $ config^.socketDir)
+initIPC :: (MonadBase IO m) => m IPC
+initIPC = io $ do
+    theContext <- ZMQ.init 1
+    socket     <- ZMQ.socket theContext Rep
+    ZMQ.bind socket =<< getSocketURI
+    return $ IPC theContext socket
+
+
+getSocketURI :: (MonadBase IO m) => m String
+getSocketURI = do
+    dir <- io getTemporaryDirectory
+    pid <- io getProcessID
+    return $ "ipc://" ++ dir </> "hbro." ++ show pid
 -- }}}
 
 
@@ -140,6 +165,9 @@ main customSetup = do
 -- Apply custom setup
     customSetup
 
+    config <- readConfig id
+    logV $ "Start-up configuration: \n" ++ show config
+
 -- Load startpage
     startURI <- Options.getStartURI
     maybe goHome load startURI
@@ -148,7 +176,7 @@ main customSetup = do
     io GTK.mainGUI
 
 -- Clean & close
-    void . (`IPC.sendCommand` "QUIT") =<< IPC.getSocketPath =<< readConfig socketDir
+    void . (`IPC.sendCommand` "QUIT") =<< getSocketURI
     io $ takeMVar threadSync
 
     io . ZMQ.close =<< readIPC IPC.receiver

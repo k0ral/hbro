@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts, RankNTypes #-}
 module Hbro.Util where
 
 -- {{{ Imports

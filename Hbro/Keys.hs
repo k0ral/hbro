@@ -1,4 +1,4 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, RankNTypes, TemplateHaskell, TupleSections #-}
+{-# LANGUAGE FlexibleInstances, TemplateHaskell, TupleSections #-}
 -- | Key bindings model.
 -- Designed to be imported as @qualified@.
 module Hbro.Keys (

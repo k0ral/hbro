@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, RankNTypes, TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances, TemplateHaskell #-}
 -- | Commandline options tools. Designed to be imported as @qualified@.
 module Hbro.Options (
     CliOptions(),
@@ -7,6 +7,7 @@ module Hbro.Options (
     help,
     quiet,
     verbose,
+    version,
     vanilla,
     recompile,
     denyReconf,
@@ -45,6 +46,7 @@ data CliOptions = CliOptions {
     _help          :: Bool,
     _quiet         :: Bool,
     _verbose       :: Bool,
+    _version       :: Bool,
     _vanilla       :: Bool,
     _recompile     :: Bool,
     _denyReconf    :: Bool,
@@ -60,6 +62,7 @@ instance Show CliOptions where
         ++ (view help        opts ? " HELP" ?? "")
         ++ (view quiet       opts ? " QUIET" ?? "")
         ++ (view verbose     opts ? " VERBOSE" ?? "")
+        ++ (view version     opts ? " VERSION" ?? "")
         ++ (view vanilla     opts ? " VANILLA" ?? "")
         ++ (view recompile   opts ? " RECOMPILE" ?? "")
         ++ (view denyReconf  opts ? " DENY_RECONFIGURATION" ?? "")
@@ -72,6 +75,7 @@ instance Default CliOptions where
         _help         = False,
         _quiet        = False,
         _verbose      = False,
+        _version      = False,
         _vanilla      = False,
         _recompile    = False,
         _denyReconf   = False,
@@ -95,6 +99,7 @@ description = [
     Option ['h']     ["help"]               (NoArg (\o -> o { _help      = True }))     "Print this help.",
     Option ['q']     ["quiet"]              (NoArg (\o -> o { _quiet     = True }))     "Do not print any log.",
     Option ['v']     ["verbose"]            (NoArg (\o -> o { _verbose   = True }))     "Print detailed logs.",
+    Option ['V']     ["version"]            (NoArg (\o -> o { _version   = True }))     "Print version.",
     Option ['1']     ["vanilla"]            (NoArg (\o -> o { _vanilla   = True }))     "Do not read custom configuration file.",
     Option ['r']     ["recompile"]          (NoArg (\o -> o { _recompile = True }))     "Only recompile configuration.",
     Option []        ["deny-reconf"]        (NoArg id)                                  "Do not recompile configuration even if it has changed.",

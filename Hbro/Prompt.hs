@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, RankNTypes, TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances, TemplateHaskell #-}
 -- | Designed to be imported as @qualified@.
 module Hbro.Prompt(
     PromptBar(..),

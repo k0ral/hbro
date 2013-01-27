@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, RankNTypes, TemplateHaskell #-}
 -- | Rewrite many 'Graphics.UI.Gtk.WebKit.WebView' functions in a monadic way.
 -- Designed to be imported as @qualified@.
 module Hbro.Webkit.WebView where

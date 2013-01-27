@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, RankNTypes, TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 -- | Designed to be imported as @qualified@.
 module Hbro.IPC where
 
@@ -7,7 +7,6 @@ module Hbro.IPC where
 import Hbro.Util
 
 import Control.Lens hiding(Context, Rep)
-import Control.Monad hiding(mapM_)
 import Control.Monad.Base
 -- import Control.Monad.Error hiding(mapM_)
 -- import Control.Monad.Writer
@@ -21,12 +20,10 @@ import Data.Map (Map)
 
 import Prelude hiding(log, mapM_, read)
 
-import System.FilePath
-import System.Posix.Process
 -- import System.Posix.Types
 -- import System.Process
-import System.ZMQ3 as ZMQ hiding(close, init, message, receive, send, socket)
-import qualified System.ZMQ3 as ZMQ (init, receive, send, socket)
+import System.ZMQ3 hiding(close, init, message, receive, send, socket)
+import qualified System.ZMQ3 as ZMQ (receive, send)
 -- }}}
 
 -- {{{ Types
@@ -42,18 +39,6 @@ makeLenses ''IPC
 
 newtype CommandsMap m = CommandsMap { unwrap :: Map String ([String] -> m String) }
 -- }}}
-
--- | Open a listening socket at given location
-init :: (MonadBase IO m) => String -> m IPC
-init uri = io $ do
-    theContext <- ZMQ.init 1
-    socket     <- ZMQ.socket theContext Rep
-    bind socket uri
-    return $ IPC theContext socket
-
--- | Return the socket path to use for the given browser's process ID.
-getSocketPath :: (Functor m, MonadBase IO m) => FilePath -> m String
-getSocketPath socketDir = ((("ipc://" ++ socketDir </> "hbro.") ++) . show) <$> io getProcessID
 
 -- | Send message through given socket
 send :: (MonadBase IO m, Sender a) => Socket a -> String -> m ()

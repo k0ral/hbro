@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 module Hbro.Gtk.ScrolledWindow where
 
 -- {{{ Imports

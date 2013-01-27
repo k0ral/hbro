@@ -1,4 +1,4 @@
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, RankNTypes, TemplateHaskell, UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances, TemplateHaskell, UndecidableInstances #-}
 module Hbro.Config where
 
 -- {{{ Imports
@@ -32,9 +32,6 @@ data Verbosity       = Quiet | Normal | Verbose deriving(Eq, Show)
 
 -- | Custom settings provided by the user
 data Config m = Config {
--- Paths
-    _socketDir        :: FilePath,                          -- ^ Directory where IPC sockets will be created (e.g. @/tmp@)
-    _UIFile           :: FilePath,                          -- ^ Path to XML file describing UI (used by @GtkBuilder@)
     _homePage         :: URI,                               -- ^ Startup page
 -- Parameters
     _verbosity        :: Verbosity,                         -- ^ Logs verbosity
@@ -54,15 +51,17 @@ data Config m = Config {
 makeLenses ''Config
 
 instance Show (Config m) where
-    show c = "Socket directory = " ++ c^.socketDir
-        ++ "\nUI file          = " ++ c^.uIFile
-        ++ "\nHome page        = " ++ (show $ c^.homePage)
+    show c = "Home page        = " ++ (show $ c^.homePage)
         ++ "\nVerbosity        = " ++ (show $ c^.verbosity)
 
 
 -- | 'MonadReader' for 'Config'
 class (Monad m) => ConfigReader n m | m -> n where
     readConfig :: Simple Lens (Config n) a -> m a
+
+instance ConfigReader n ((->) (Config n)) where
+    readConfig l = view l
+
 
 -- | 'MonadWriter' for 'Config'
 class (Monad m) => ConfigWriter n m | m -> n where
@@ -85,11 +84,6 @@ instance Show NavigationReason where
   show WebNavigationReasonFormResubmitted = "Form resubmitted"
   show WebNavigationReasonOther         = "Other"
 -- }}}
-
-
--- | Return socket URI used for the current process.
-getSocketURI :: (MonadBase IO m, ConfigReader n m) => m String
-getSocketURI = getSocketPath =<< readConfig socketDir
 
 -- | Run an action unless verbosity is 'Quiet'
 unlessQuiet :: (MonadBase IO m, ConfigReader n m) => m () -> m ()

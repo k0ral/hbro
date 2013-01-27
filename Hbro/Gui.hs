@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses, RankNTypes, TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances, TemplateHaskell #-}
 module Hbro.Gui (
     Buildable(..),
     StatusBar(..),

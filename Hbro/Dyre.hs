@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 -- | Dynamic reconfiguration. Designed to be imported as @qualified@.
 module Hbro.Dyre where
 

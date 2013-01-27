@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 -- | Designed to be imported as @qualified@.
 module Hbro.Webkit.WebSettings where
 

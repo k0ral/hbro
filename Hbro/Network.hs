@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 -- | Functions from 'Network.URI' rewritten with 'MonadError' instead of 'Maybe'.
 module Hbro.Network where
 

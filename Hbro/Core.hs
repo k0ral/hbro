@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, GeneralizedNewtypeDeriving, MultiParamTypeClasses, RankNTypes, TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances, TypeFamilies #-}
 module Hbro.Core where
 
 -- {{{ Imports
@@ -110,8 +110,6 @@ data ZoomDirection   = In            | Out
 -- {{{ Default configuration
 instance Default (Config K) where
     def = Config {
-        _socketDir        = "/tmp",
-        _UIFile           = "~/.config/hbro/ui.xml",
         _homePage         = maybe undefined id . N.parseURI $ "https://duckduckgo.com/",
         _verbosity        = Normal,
         _keyBindings      = defaultKeyBindings,
