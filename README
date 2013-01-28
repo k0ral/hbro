@@ -12,19 +12,20 @@ Design principles
 -----------------
 
 `Do one thing well`_
-  Browsing is about retrieving, presenting and traversing web resources. Not about providing tabs, bookmarks, history, download management, adblocking, passwords saving, self-updating, ... There already exists standalone applications for most extra features one may think of, please reuse them. *Hbro* can be configured to call external programs for any task.
+  A web browser is **not** a {window|bookmarks|history|download|passwords|package} manager, let alone an operating system.
+  A web browser retrieves, renders and traverses web pages, period.
 
 `Keep It Simple, Stupid`_
-  *Hbro* is written with simplicity in mind, and without obsession for performance, features or release frequency. It should not take time to start-up, consume much RAM or crash. Simplicity provides lightweightness, scalability, stability and maintainability. Its code is easy to understand (well, as long as you speak Haskell...) to encourage users to hack it.
+  The program should be written with simplicity in mind, and without obsession for performance, features or release frequency. It should not take time to start-up, consume much RAM or crash. Its code should be easy to understand (well, as long as you speak Haskell...) to encourage users to hack it. Simplicity provides lightness, scalability, stability and maintainability.
 
 Extensible
-  Targets are advanced users who have various expectations ; to be sure everyone is happy, *hbro* is configured using a programming language, and offers an interprocess interface. As he who can do the most can do the least, the default configuration should be suitable for users that cannot afford or don't want to spend (waste ?) their time in tweaks.
+  Configuration system should allow users to implement extra features. External programs should be able to query/order *hbro*.
+
+Good defaults
+  A default configuration, suitable for users that cannot afford or don't want to spend (waste ?) their time in tweaks, should be provided.
 
 Keyboard driven
-  Special attention is given to allow keyboard control of the browser whenever possible.
-
-Free software
-  Hbro is distributed under the `Do-What-The-Fuck-You-Want-To public licence`_, which has a pretty self-explanatory name.
+  Keyboard control should be made as much convenient, with as little mouse intervention, as possible.
 
 
 Components and libraries used
@@ -52,28 +53,27 @@ Suggestions about better alternatives for any of these points (except the progra
 Configuration
 -------------
 
-By default, a pretty limited configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. Several extensions are provided with the * hbro-contrib_ * package, including a featured and self-explanatory example of configuration file.
+By default, a minimal configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. Several extensions are provided with the * hbro-contrib_ * package, including a well-commented example of configuration file.
 
 
 Known bugs and limitations
 --------------------------
 
-Patches or suggestions are welcome to deal with the following issues. See package description for contact address.
+Unfortunately, many problems/limitations are inherited from the *Haskell* binding for *webkit*/*gtk*. Until fixed in upstream, nothing can be done on *hbro* to work around them. Here's a summary of them:
 
-The browser crashes on loading some webpages, and on enabling javascript/flash
-  The demo webkit browser provided with haskell's binding crashes likewise, which suggests a problem in the haskell binding for webkit-gtk. Unfortunately, not much can be done on *hbro* itself to fix it.
+- segfaults when loading some webpages or enabling javascript/flash;
+- no proxy configuration;
+- no cookies management;
+- javascript's ``window.open`` requests open in the same window instead of spawning a new one;
+- toggling to source mode reloads current webpage (which may be undesired)
 
-.. Javascript's window.open requests open in the same window instead of spawning a new one.
-   This is due to this webkit's bug.
+Patches or suggestions are welcome to deal with the following issues.
 
-When toggling to source mode, current webpage is reloaded
-  This is an undesired behavior since the webpage may have changed after reloading; webkit's API allows to get the content of the DOM but only inside the body tag; it is also possible to store the HTML source as it is downloaded, but then any further change in the DOM (for example triggered by javascript functions) wouldn't be visible.
 
-No cookies management available
-  The Haskell binding is missing some necessary functions that make it impossible to act on cookies management.
+License
+-------
 
-Configuring a proxy is impossible
-  This feature would make use of to the webkit_get_default_session_ function. Unfortunately, Webkit's Haskell binding doesn't provide such function for now.
+*hbro* is distributed under the `Do-What-The-Fuck-You-Want-To public licence`_, which has a pretty self-explanatory name.
 
 
 .. _hackage: http://hackage.haskell.org/package/hbro
@@ -85,5 +85,4 @@ Configuring a proxy is impossible
 .. _GTK+: http://www.gtk.org/
 .. _ZeroMQ: http://www.zeromq.org/
 .. _Dyre: https://github.com/willdonnelly/dyre
-.. _webkit_get_default_session: http://webkitgtk.org/reference/webkitgtk/stable/webkitgtk-Global-functions.html
 .. _hbro-contrib: http://hackage.haskell.org/package/hbro-contrib

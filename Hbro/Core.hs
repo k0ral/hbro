@@ -58,9 +58,6 @@ import qualified System.Glib.Attributes as G
 newtype K a = K { unKT :: ErrorT HError (WriterT String (ReaderT CliOptions (ReaderT (IORef (Config K)) (ReaderT (GUI K) (ReaderT IPC (ReaderT (IORef Keys.Status) IO)))))) a}
     deriving (Applicative, Functor, Monad, MonadBase IO, MonadError HError, MonadWriter String)
 
-{-instance MonadBase IO K where
-    liftBase = K . lift . lift . lift . lift . lift . lift-}
-
 instance MonadBaseControl IO K where
     newtype StM K a  = StK { unStK :: StM (ErrorT HError (WriterT String (ReaderT CliOptions (ReaderT (IORef (Config K)) (ReaderT (GUI K) (ReaderT IPC (ReaderT (IORef Keys.Status) IO))))))) a }
     liftBaseWith f   = K . liftBaseWith $ \runInBase -> f $ liftM StK . runInBase . unKT
@@ -167,8 +164,8 @@ defaultKeyBindings = M.singleton Keys.Normal $ Keys.toBindings [
         ("C-<End>",       scroll Vertical   (Absolute 100)),
         ("M-<Home>",      goHome),
     -- Copy/paste
-        ("C-c",           getURI   >>= Clipboard.insert . show), -- >> notify 5000 "URI copied to clipboard"),
-        ("M-c",           getTitle >>= Clipboard.insert), -- >> notify 5000 "Page title copied to clipboard"),
+        ("C-c",           getURI   >>= Clipboard.insert . show >> notify 5000 "URI copied to clipboard"),
+        ("M-c",           getTitle >>= Clipboard.insert >> notify 5000 "Page title copied to clipboard"),
         ("C-v",           Clipboard.with $ parseURIReference >=> load),
         ("M-v",           Clipboard.with $ \uri -> spawn "hbro" [uri]),
     -- Display
