@@ -11,7 +11,7 @@ import Hbro.IPC (IPC(..), IPCReader(..))
 import qualified Hbro.IPC as IPC
 import qualified Hbro.Keys as Key
 import Hbro.Notification
-import Hbro.Options (CliOptions)
+import Hbro.Options (CliOptions, OptionsReader(..))
 import qualified Hbro.Options as Options
 import Hbro.Util
 import qualified Hbro.Webkit.WebSettings as WS
@@ -24,6 +24,7 @@ import Control.Lens hiding((??))
 import Control.Monad
 import Control.Monad.Base
 import Control.Monad.Error hiding(when)
+import Control.Monad.Reader hiding(when)
 import Control.Monad.Trans.Control
 
 import Data.Default
@@ -46,13 +47,10 @@ import Paths_hbro
 
 import Prelude hiding(init)
 
-import System.Directory
 import System.Environment.XDG.BaseDir
 import System.Exit
-import System.FilePath
 import System.Glib.Signals
 import System.Posix.Files
-import System.Posix.Process
 import System.Posix.Signals
 import System.ZMQ3 (Rep(..))
 import qualified System.ZMQ3 as ZMQ
@@ -77,7 +75,7 @@ hbro' :: (K (), CliOptions) -> IO ()
 hbro' (customSetup, options) = do
     config <- initConfig options
     gui    <- initGUI
-    ipc    <- initIPC
+    ipc    <- runReaderT initIPC options
 
     void $ installHandler sigINT (Catch onInterrupt) Nothing
     (result, logs) <- runK options config gui ipc $ main customSetup
@@ -115,19 +113,12 @@ initGUI = do
         isReadable ? return (Just x) ?? firstReadableOf y
 
 
-initIPC :: (MonadBase IO m) => m IPC
-initIPC = io $ do
-    theContext <- ZMQ.init 1
-    socket     <- ZMQ.socket theContext Rep
-    ZMQ.bind socket =<< getSocketURI
+initIPC :: (MonadBase IO m, OptionsReader m) => m IPC
+initIPC = do
+    theContext <- io $ ZMQ.init 1
+    socket     <- io $ ZMQ.socket theContext Rep
+    io . ZMQ.bind socket =<< Options.getSocketURI
     return $ IPC theContext socket
-
-
-getSocketURI :: (MonadBase IO m) => m String
-getSocketURI = do
-    dir <- io getTemporaryDirectory
-    pid <- io getProcessID
-    return $ "ipc://" ++ dir </> "hbro." ++ show pid
 -- }}}
 
 
@@ -176,7 +167,7 @@ main customSetup = do
     io GTK.mainGUI
 
 -- Clean & close
-    void . (`IPC.sendCommand` "QUIT") =<< getSocketURI
+    void . (`IPC.sendCommand` "QUIT") =<< Options.getSocketURI
     io $ takeMVar threadSync
 
     io . ZMQ.close =<< readIPC IPC.receiver

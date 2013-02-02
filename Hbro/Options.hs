@@ -4,6 +4,7 @@ module Hbro.Options (
     CliOptions(),
     OptionsReader(..),
     startURI,
+    socketPath,
     help,
     quiet,
     verbose,
@@ -15,7 +16,8 @@ module Hbro.Options (
     dyreDebug,
     usage,
     get,
-    getStartURI)
+    getStartURI,
+    getSocketURI)
 where
 
 -- {{{ Imports
@@ -28,6 +30,8 @@ import Control.Monad.Reader
 
 import Data.Default
 import Data.Functor
+import Data.List
+import Data.Maybe
 
 import Network.URI as N
 
@@ -37,12 +41,14 @@ import System.Console.GetOpt
 import System.Directory
 import System.Environment
 import System.FilePath
+import System.Posix.Process
 -- }}}
 
 -- {{{ Types
 -- | Available commandline options (cf @hbro -h@).
 data CliOptions = CliOptions {
     _startURI      :: Maybe String,
+    _socketPath    :: Maybe FilePath,
     _help          :: Bool,
     _quiet         :: Bool,
     _verbose       :: Bool,
@@ -57,21 +63,23 @@ data CliOptions = CliOptions {
 makeLenses ''CliOptions
 
 instance Show CliOptions where
-    show opts =
-        (maybe "" ("URI=" ++) $ view startURI opts)
-        ++ (view help        opts ? " HELP" ?? "")
-        ++ (view quiet       opts ? " QUIET" ?? "")
-        ++ (view verbose     opts ? " VERBOSE" ?? "")
-        ++ (view version     opts ? " VERSION" ?? "")
-        ++ (view vanilla     opts ? " VANILLA" ?? "")
-        ++ (view recompile   opts ? " RECOMPILE" ?? "")
-        ++ (view denyReconf  opts ? " DENY_RECONFIGURATION" ?? "")
-        ++ (view forceReconf opts ? " FORCE_RECONFIGURATION" ?? "")
-        ++ (view dyreDebug   opts ? " DYRE_DEBUG" ?? "")
+    show opts = intercalate " " $ catMaybes [
+        return . ("URI=" ++)    =<< view startURI opts,
+        return . ("SOCKET=" ++) =<< view socketPath opts,
+        view help        opts ? Just "HELP" ?? Nothing,
+        view quiet       opts ? Just "QUIET" ?? Nothing,
+        view verbose     opts ? Just "VERBOSE" ?? Nothing,
+        view version     opts ? Just "VERSION" ?? Nothing,
+        view vanilla     opts ? Just "VANILLA" ?? Nothing,
+        view recompile   opts ? Just "RECOMPILE" ?? Nothing,
+        view denyReconf  opts ? Just "DENY_RECONFIGURATION" ?? Nothing,
+        view forceReconf opts ? Just "FORCE_RECONFIGURATION" ?? Nothing,
+        view dyreDebug   opts ? Just "DYRE_DEBUG" ?? Nothing]
 
 instance Default CliOptions where
     def = CliOptions {
         _startURI     = Nothing,
+        _socketPath   = Nothing,
         _help         = False,
         _quiet        = False,
         _verbose      = False,
@@ -96,15 +104,16 @@ instance OptionsReader ((->) CliOptions) where
 
 description :: [OptDescr (CliOptions -> CliOptions)]
 description = [
-    Option ['h']     ["help"]               (NoArg (\o -> o { _help      = True }))     "Print this help.",
-    Option ['q']     ["quiet"]              (NoArg (\o -> o { _quiet     = True }))     "Do not print any log.",
-    Option ['v']     ["verbose"]            (NoArg (\o -> o { _verbose   = True }))     "Print detailed logs.",
-    Option ['V']     ["version"]            (NoArg (\o -> o { _version   = True }))     "Print version.",
-    Option ['1']     ["vanilla"]            (NoArg (\o -> o { _vanilla   = True }))     "Do not read custom configuration file.",
-    Option ['r']     ["recompile"]          (NoArg (\o -> o { _recompile = True }))     "Only recompile configuration.",
-    Option []        ["deny-reconf"]        (NoArg id)                                  "Do not recompile configuration even if it has changed.",
-    Option []        ["force-reconf"]       (NoArg id)                                  "Recompile configuration before starting the program.",
-    Option []        ["dyre-debug"]         (NoArg id)                                  "Use './cache/' as the cache directory and ./ as the configuration directory. Useful to debug the program."]
+    Option ['h']     ["help"]               (NoArg (set help True))                         "Print this help.",
+    Option ['q']     ["quiet"]              (NoArg (set quiet True))                        "Do not print any log.",
+    Option ['v']     ["verbose"]            (NoArg (set verbose True))                      "Print detailed logs.",
+    Option ['V']     ["version"]            (NoArg (set version True))                      "Print version.",
+    Option ['1']     ["vanilla"]            (NoArg (set vanilla True))                      "Do not read custom configuration file.",
+    Option ['r']     ["recompile"]          (NoArg (set recompile True))                    "Only recompile configuration.",
+    Option ['s']     ["socket"]             (ReqArg (\v -> set socketPath (Just v)) "PATH") "Where to open IPC socket",
+    Option []        ["force-reconf"]       (NoArg id)                                      "Recompile configuration before starting the program.",
+    Option []        ["deny-reconf"]        (NoArg id)                                      "Do not recompile configuration even if it has changed.",
+    Option []        ["dyre-debug"]         (NoArg id)                                      "Use './cache/' as the cache directory and ./ as the configuration directory. Useful to debug the program."]
 
 -- | Usage text (cf @hbro -h@)
 usage :: String
@@ -130,3 +139,13 @@ getStartURI = do
               True -> io getCurrentDirectory >>= return . N.parseURIReference . ("file://" ++) . (</> uri)
               _    -> return $ N.parseURIReference uri
       _ -> return Nothing
+
+
+-- | Return socket URI used by this instance
+getSocketURI :: (MonadBase IO m, OptionsReader m) => m String
+getSocketURI = maybe getDefaultSocketURI (return . ("ipc://" ++)) =<< readOptions socketPath
+  where
+    getDefaultSocketURI = do
+      dir <- io getTemporaryDirectory
+      pid <- io getProcessID
+      return $ "ipc://" ++ dir </> "hbro." ++ show pid
