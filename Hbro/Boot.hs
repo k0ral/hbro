@@ -47,7 +47,6 @@ import Paths_hbro
 
 import Prelude hiding(init)
 
-import System.Environment.XDG.BaseDir
 import System.Exit
 import System.Glib.Signals
 import System.Posix.Files
@@ -73,8 +72,8 @@ hbro setup = do
 
 hbro' :: (K (), CliOptions) -> IO ()
 hbro' (customSetup, options) = do
-    config <- initConfig options
-    gui    <- initGUI
+    config <- runReaderT initConfig options
+    gui    <- runReaderT initGUI options
     ipc    <- runReaderT initIPC options
 
     void $ installHandler sigINT (Catch onInterrupt) Nothing
@@ -85,18 +84,18 @@ hbro' (customSetup, options) = do
     unless (options^.Options.quiet) $ putStrLn "Exiting..."
 
 -- {{{ Initialization
-initConfig :: (MonadBase IO m) => CliOptions -> m (Config K)
-initConfig options = do
-    let config = id
+initConfig :: (MonadBase IO m, OptionsReader m) => m (Config K)
+initConfig = do
+    options <- readOptions id
+    return $ id
           . (options^.Options.quiet   ? set verbosity Quiet   ?? id)
           . (options^.Options.verbose ? set verbosity Verbose ?? id)
           $ def
-    return config
 
 
-initGUI :: (MonadBase IO m) => m (GUI K)
+initGUI :: (MonadBase IO m, OptionsReader m) => m (GUI K)
 initGUI = do
-    file     <- io (getUserConfigDir "hbro" >/> "ui.xml")
+    file     <- Options.getUIFile
     fallback <- io $ getDataFileName "examples/ui.xml"
 
     file' <- io $ firstReadableOf [file, fallback]

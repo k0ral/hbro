@@ -17,7 +17,8 @@ module Hbro.Options (
     usage,
     get,
     getStartURI,
-    getSocketURI)
+    getSocketURI,
+    getUIFile)
 where
 
 -- {{{ Imports
@@ -40,6 +41,7 @@ import Prelude hiding(log)
 import System.Console.GetOpt
 import System.Directory
 import System.Environment
+import System.Environment.XDG.BaseDir
 import System.FilePath
 import System.Posix.Process
 -- }}}
@@ -49,6 +51,7 @@ import System.Posix.Process
 data CliOptions = CliOptions {
     _startURI      :: Maybe String,
     _socketPath    :: Maybe FilePath,
+    _UIFile        :: Maybe FilePath,
     _help          :: Bool,
     _quiet         :: Bool,
     _verbose       :: Bool,
@@ -64,8 +67,9 @@ makeLenses ''CliOptions
 
 instance Show CliOptions where
     show opts = intercalate " " $ catMaybes [
-        return . ("URI=" ++)    =<< view startURI opts,
-        return . ("SOCKET=" ++) =<< view socketPath opts,
+        return . ("URI=" ++)     =<< view startURI opts,
+        return . ("SOCKET=" ++)  =<< view socketPath opts,
+        return . ("UI_FILE=" ++) =<< view uIFile opts,
         view help        opts ? Just "HELP" ?? Nothing,
         view quiet       opts ? Just "QUIET" ?? Nothing,
         view verbose     opts ? Just "VERBOSE" ?? Nothing,
@@ -80,6 +84,7 @@ instance Default CliOptions where
     def = CliOptions {
         _startURI     = Nothing,
         _socketPath   = Nothing,
+        _UIFile       = Nothing,
         _help         = False,
         _quiet        = False,
         _verbose      = False,
@@ -104,16 +109,17 @@ instance OptionsReader ((->) CliOptions) where
 
 description :: [OptDescr (CliOptions -> CliOptions)]
 description = [
-    Option ['h']     ["help"]               (NoArg (set help True))                         "Print this help.",
-    Option ['q']     ["quiet"]              (NoArg (set quiet True))                        "Do not print any log.",
-    Option ['v']     ["verbose"]            (NoArg (set verbose True))                      "Print detailed logs.",
-    Option ['V']     ["version"]            (NoArg (set version True))                      "Print version.",
-    Option ['1']     ["vanilla"]            (NoArg (set vanilla True))                      "Do not read custom configuration file.",
-    Option ['r']     ["recompile"]          (NoArg (set recompile True))                    "Only recompile configuration.",
+    Option ['h']     ["help"]               (NoArg (set help True))                         "Print this help",
+    Option ['q']     ["quiet"]              (NoArg (set quiet True))                        "Do not print any log",
+    Option ['v']     ["verbose"]            (NoArg (set verbose True))                      "Print detailed logs",
+    Option ['V']     ["version"]            (NoArg (set version True))                      "Print version",
+    Option ['1']     ["vanilla"]            (NoArg (set vanilla True))                      "Do not read custom configuration file",
+    Option ['r']     ["recompile"]          (NoArg (set recompile True))                    "Only recompile configuration",
     Option ['s']     ["socket"]             (ReqArg (\v -> set socketPath (Just v)) "PATH") "Where to open IPC socket",
-    Option []        ["force-reconf"]       (NoArg id)                                      "Recompile configuration before starting the program.",
-    Option []        ["deny-reconf"]        (NoArg id)                                      "Do not recompile configuration even if it has changed.",
-    Option []        ["dyre-debug"]         (NoArg id)                                      "Use './cache/' as the cache directory and ./ as the configuration directory. Useful to debug the program."]
+    Option ['u']     ["ui"]                 (ReqArg (\v -> set uIFile (Just v)) "PATH")     "Path to UI descriptor (XML file)",
+    Option []        ["force-reconf"]       (NoArg id)                                      "Recompile configuration before starting the program",
+    Option []        ["deny-reconf"]        (NoArg id)                                      "Do not recompile configuration even if it has changed",
+    Option []        ["dyre-debug"]         (NoArg id)                                      "Use './cache/' as the cache directory and ./ as the configuration directory. Useful to debug the program"]
 
 -- | Usage text (cf @hbro -h@)
 usage :: String
@@ -149,3 +155,9 @@ getSocketURI = maybe getDefaultSocketURI (return . ("ipc://" ++)) =<< readOption
       dir <- io getTemporaryDirectory
       pid <- io getProcessID
       return $ "ipc://" ++ dir </> "hbro." ++ show pid
+
+-- | Return UI descriptor (XML file) used to build the GUI
+getUIFile :: (MonadBase IO m, OptionsReader m) => m FilePath
+getUIFile = maybe getDefaultUIFile return =<< readOptions uIFile
+  where
+    getDefaultUIFile = io (getUserConfigDir "hbro" >/> "ui.xml")
