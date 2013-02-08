@@ -72,12 +72,12 @@ hbro setup = do
 
 hbro' :: (K (), CliOptions) -> IO ()
 hbro' (customSetup, options) = do
+    void $ installHandler sigINT (Catch onInterrupt) Nothing
+
     config <- runReaderT initConfig options
     gui    <- runReaderT initGUI options
-    ipc    <- runReaderT initIPC options
 
-    void $ installHandler sigINT (Catch onInterrupt) Nothing
-    (result, logs) <- runK options config gui ipc $ main customSetup
+    (result, logs) <- withIPC options $ \ipc -> runK options config gui ipc $ main customSetup
 
     either print return result
     unless (options^.Options.quiet) . unless (null logs) $ putStrLn logs
@@ -112,12 +112,12 @@ initGUI = do
         isReadable ? return (Just x) ?? firstReadableOf y
 
 
-initIPC :: (MonadBase IO m, OptionsReader m) => m IPC
-initIPC = do
-    theContext <- io $ ZMQ.init 1
-    socket     <- io $ ZMQ.socket theContext Rep
-    io . ZMQ.bind socket =<< Options.getSocketURI
-    return $ IPC theContext socket
+withIPC :: (MonadBaseControl IO m) => CliOptions -> (IPC -> m a) -> m a
+withIPC options f = restoreM =<< (liftBaseWith $ \runInIO -> do
+  ZMQ.withContext $ \c -> do
+    ZMQ.withSocket c Rep $ \s -> do
+      io . ZMQ.bind s =<< runReaderT Options.getSocketURI options
+      runInIO $ f (IPC c s))
 -- }}}
 
 
@@ -168,9 +168,6 @@ main customSetup = do
 -- Clean & close
     void . (`IPC.sendCommand` "QUIT") =<< Options.getSocketURI
     io $ takeMVar threadSync
-
-    io . ZMQ.close =<< readIPC IPC.receiver
-    io . ZMQ.term =<< readIPC IPC.context
 
 
 -- | IPC thread that listens to commands from external world.

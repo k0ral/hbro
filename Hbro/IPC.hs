@@ -6,7 +6,7 @@ module Hbro.IPC where
 -- import Hbro.Error
 import Hbro.Util
 
-import Control.Lens hiding(Context, Rep)
+import Control.Lens hiding(Context)
 import Control.Monad.Base
 -- import Control.Monad.Error hiding(mapM_)
 -- import Control.Monad.Writer
@@ -22,7 +22,7 @@ import Prelude hiding(log, mapM_, read)
 
 -- import System.Posix.Types
 -- import System.Process
-import System.ZMQ3 hiding(close, init, message, receive, send, socket)
+import System.ZMQ3 hiding(close, context, init, message, receive, send, socket)
 import qualified System.ZMQ3 as ZMQ (receive, send)
 -- }}}
 
