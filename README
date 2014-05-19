@@ -53,7 +53,39 @@ Suggestions about better alternatives for any of these points (except the progra
 Configuration
 -------------
 
-By default, a minimal configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. Several extensions are provided with the * hbro-contrib_ * package, including a well-commented example of configuration file.
+By default, a minimal configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. Several extensions are provided with the * hbro-contrib_ * package, including a commented configuration file example.
+
+
+GUI layout
+----------
+
+The graphical layout is described in an XML file that is parsed by GtkBuilder_ to build up the whole GUI. This file is looked for in several places with the following order of priority:
+
+- the value from commandline option ``-u``;
+- the file ``~/.config/hbro.ui.xml``;
+- the file ``examples/ui.xml`` bundled with the package.
+
+You must at least define the following widgets with the adequate ``id`` attribute:
+
++-----------------------+-----------------------+
+| Type                  | ``id``                |
++=======================+=======================+
+| ``GtkWindow``         | ``mainWindow``        |
++-----------------------+-----------------------+
+| ``GtkVBox``           | ``windowBox``         |
++-----------------------+-----------------------+
+| ``GtkScrolledWindow`` | ``webViewParent``     |
++-----------------------+-----------------------+
+| ``GtkHBox``           | ``promptBox``         |
++-----------------------+-----------------------+
+| ``GtkLabel``          | ``promptDescription`` |
++-----------------------+-----------------------+
+| ``GtkEntry``          | ``promptEntry``       |
++-----------------------+-----------------------+
+| ``GtkHBox``           | ``statusBox``         |
++-----------------------+-----------------------+
+| ``GtkLabel``          | ``notificationLabel`` |
++-----------------------+-----------------------+
 
 
 Known bugs and limitations
@@ -86,3 +118,4 @@ License
 .. _ZeroMQ: http://www.zeromq.org/
 .. _Dyre: https://github.com/willdonnelly/dyre
 .. _hbro-contrib: http://hackage.haskell.org/package/hbro-contrib
+.. _GtkBuilder: https://developer.gnome.org/gtk3/stable/GtkBuilder.html
