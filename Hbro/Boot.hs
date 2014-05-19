@@ -150,7 +150,7 @@ main customSetup = do
     bindTitleChanged      =<< Gui.readGUI Gui.webView
 
 -- Default web settings
-    WS.set webSettingsMonospaceFontFamily               "consolas"
+    WS.set webSettingsMonospaceFontFamily               "inconsolata"
     WS.set webSettingsEnableDeveloperExtras             True
     WS.set webSettingsEnableHtml5Database               False
     WS.set webSettingsEnableHtml5LocalStorage           False
