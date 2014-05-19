@@ -123,7 +123,6 @@ getUIFile = do
         isReadable ? return (Just x) ?? firstReadableOf y
 
 
-
 withIPC :: (MonadBaseControl IO m) => CliOptions -> (IPC -> m a) -> m a
 withIPC options f = restoreM =<< (liftBaseWith $ \runInIO -> do
   ZMQ.withContext $ \c -> do
@@ -233,17 +232,19 @@ bindNewWebView webView = do
         return webView'
 
 
-bindDownload :: (MonadBase IO m, MonadBaseControl IO m, ConfigReader m m, MonadError HError m) =>  WebView -> m ()
+bindDownload :: (MonadBase IO m, MonadBaseControl IO m, ConfigReader m m, NotificationReader m, MonadError HError m) =>  WebView -> m ()
 bindDownload webView = do
     void . liftBaseWith $ \runInIO -> on webView W.downloadRequested $ \d -> do
         amount <- W.downloadGetTotalSize d
 
-        --notify 5000 $ "Requested download: " ++ filename ++ " (" ++ show size ++ ")"
         void . runInIO $ do
             uri      <- downloadGetUri d
             filename <- downloadGetSuggestedFilename d
             callback <- readConfig onDownload
-            logV $ "Requested download <" ++ show uri ++ ">"
+
+            logV        $ "Requested download <" ++ show uri ++ ">"
+            notify 5000 $ "Requested download: " ++ filename ++ " (" ++ show amount ++ ")"
+
             callback uri filename amount
         return False
 
@@ -339,7 +340,7 @@ bindKeys = do
             case (Key.lookup allStrokes =<< M.lookup theMode theBindings) of
                 Just (Key.Leaf callback) -> Key.writeStatus Key.strokes [] >> callback `catchError` \e -> (io $ print e) >> notify 5000 (show e)
                 Just (Key.Branch _)      -> Key.writeStatus Key.strokes allStrokes
-                _                    -> return () --}
+                _                        -> return ()
             return ()
         _ -> return ()
     return False

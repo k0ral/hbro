@@ -33,6 +33,7 @@ import Data.Default
 -- import Data.Foldable
 -- import Data.Functor
 import Data.IORef
+import Data.Maybe
 import qualified Data.Map as M
 
 import Graphics.UI.Gtk.Gdk.EventM

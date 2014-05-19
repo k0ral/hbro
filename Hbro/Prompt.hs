@@ -92,7 +92,6 @@ init promptBar = do
 
     void . onEntryChanged   entry' $ \v -> io (readIORef onChanged')   >>= \f -> f v
     void . onEntryValidated entry' $ \v -> io (readIORef onValidated') >>= \f -> f v
-    return ()
   where
     l            = _description promptBar
     entry'       = _entry promptBar

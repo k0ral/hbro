@@ -5,7 +5,6 @@ module Hbro.Webkit.WebView where
 -- {{{ Imports
 import Hbro.Error
 import Hbro.Network
---import Hbro.Types
 import Hbro.Util
 
 import Control.Monad.Base

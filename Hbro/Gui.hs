@@ -168,10 +168,10 @@ init = do
     Prompt.init      =<< readGUI promptBar
     WebView.init     w
 
-    io $ windowSetDefault mw (Just w)
+    io . windowSetDefault mw $ Just w
 
 -- Validate/cancel prompt
-    e <- readGUI (promptBar.(Prompt.entry))
+    e <- readGUI $ promptBar.(Prompt.entry)
     io . void $ on e keyPressEvent (f w)
 
 -- Show window
