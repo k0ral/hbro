@@ -124,7 +124,7 @@ instance Buildable NotificationBar where
     build b = io $ NotificationBar <$> builderGetObject b castToLabel "notificationLabel" <*> newIORef Nothing
 
 instance (Monad m) => Buildable (GUI m) where
-    build b = io $ do
+    build b = do
         (webView', sWindow') <- build b
         (window', wBox')     <- build b
         promptBar'           <- build b

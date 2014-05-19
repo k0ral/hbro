@@ -8,14 +8,14 @@
             <child>
                 <object class="GtkScrolledWindow" id="webViewParent"></object>
             </child>
-            
+
 
             <!-- Prompt bar -->
             <child>
                 <object class="GtkHBox" id="promptBox">
                     <property name="homogeneous">False</property>
                     <property name="spacing">10</property>
-                    
+
                     <child>
                         <object class="GtkLabel" id="promptDescription"></object>
                         <packing>
@@ -39,7 +39,7 @@
                 <object class="GtkHBox" id="statusBox">
                     <property name="homogeneous">False</property>
                     <property name="spacing">5</property>
-                    
+
                     <child>
                         <object class="GtkLabel" id="void"></object>
                         <packing>
@@ -61,7 +61,7 @@
                 <object class="GtkHBox" id="notificationBox">
                     <property name="homogeneous">False</property>
                     <property name="spacing">5</property>
-                    
+
                     <child>
                         <object class="GtkLabel" id="notificationLabel">
                             <property name="single-line-mode">True</property>

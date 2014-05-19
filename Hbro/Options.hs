@@ -7,6 +7,7 @@ module Hbro.Options (
     socketPath,
     help,
     quiet,
+    uIFile,
     verbose,
     version,
     vanilla,
@@ -17,8 +18,7 @@ module Hbro.Options (
     usage,
     get,
     getStartURI,
-    getSocketURI,
-    getUIFile)
+    getSocketURI)
 where
 
 -- {{{ Imports
@@ -41,7 +41,6 @@ import Prelude hiding(log)
 import System.Console.GetOpt
 import System.Directory
 import System.Environment
-import System.Environment.XDG.BaseDir
 import System.FilePath
 import System.Posix.Process
 -- }}}
@@ -155,9 +154,3 @@ getSocketURI = maybe getDefaultSocketURI (return . ("ipc://" ++)) =<< readOption
       dir <- io getTemporaryDirectory
       pid <- io getProcessID
       return $ "ipc://" ++ dir </> "hbro." ++ show pid
-
--- | Return UI descriptor (XML file) used to build the GUI
-getUIFile :: (MonadBase IO m, OptionsReader m) => m FilePath
-getUIFile = maybe getDefaultUIFile return =<< readOptions uIFile
-  where
-    getDefaultUIFile = io (getUserConfigDir "hbro" >/> "ui.xml")

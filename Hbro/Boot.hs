@@ -31,7 +31,7 @@ import Data.Default
 import Data.Functor
 import Data.List
 import qualified Data.Map as M hiding(null)
--- import Data.Maybe
+import Data.Maybe
 import Data.Version
 
 import Graphics.UI.Gtk.Abstract.Widget
@@ -47,6 +47,7 @@ import Paths_hbro
 
 import Prelude hiding(init)
 
+import System.Environment.XDG.BaseDir
 import System.Exit
 import System.Glib.Signals
 import System.Posix.Files
@@ -73,10 +74,10 @@ hbro' :: (K (), CliOptions) -> IO ()
 hbro' (customSetup, opts) = do
     void $ installHandler sigINT (Catch onInterrupt) Nothing
 
-    when (opts^.Options.verbose) . putStrLn $ "Commandline options: " ++ show opts
+    when (opts^.Options.verbose) . putStrLn $ "Commandline options: " ++ show opts ++ "\n"
 
     config <- runReaderT initConfig opts
-    gui    <- runReaderT initGUI opts
+    gui    <- initGUI opts
 
     (result, logs) <- withIPC opts $ \ipc -> runK opts config gui ipc $ main customSetup
 
@@ -94,23 +95,33 @@ initConfig = do
           $ def
 
 
-initGUI :: (MonadBase IO m, OptionsReader m) => m (GUI K)
-initGUI = do
-    file     <- Options.getUIFile
-    fallback <- io $ getDataFileName "examples/ui.xml"
+initGUI :: (MonadBase IO m) => CliOptions -> m (GUI K)
+initGUI opts = do
+    result <- runErrorT . (`runReaderT` opts) $ do
+        file <- getUIFile
+        whenM (readOptions Options.verbose) . io . putStrLn $ "Building GUI from file " ++ file ++ "\n"
 
-    file' <- io $ firstReadableOf [file, fallback]
+        io $ void GTK.initGUI
+        Gui.buildFrom file
+    either (\e -> io (putStrLn e >> exitFailure)) return result
 
-    case file' of
-        Just f -> do
-          io $ void GTK.initGUI
-          Gui.buildFrom f
-        _ -> io $ putStrLn "No UI file found." >> exitFailure
+
+getUIFile :: (MonadBase IO m, OptionsReader m, MonadError String m) => m FilePath
+getUIFile = do
+    fileFromOption  <- readOptions Options.uIFile
+    fileFromConfig  <- io (getUserConfigDir "hbro" >/> "ui.xml")
+    fileFromPackage <- io $ getDataFileName "examples/ui.xml"
+
+    maybe
+        (throwError "[ERROR] No readable UI file found.")
+        return
+        =<< io (firstReadableOf . catMaybes $ [fileFromOption, Just fileFromConfig, Just fileFromPackage])
   where
     firstReadableOf []    = return Nothing
     firstReadableOf (x:y) = do
         isReadable <- fileAccess x True False False
         isReadable ? return (Just x) ?? firstReadableOf y
+
 
 
 withIPC :: (MonadBaseControl IO m) => CliOptions -> (IPC -> m a) -> m a
