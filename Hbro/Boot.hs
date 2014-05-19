@@ -41,7 +41,9 @@ hbro :: K () -> IO ()
 hbro setup = void . runMaybeT $ do
     options <- parseOptions
 
-    Dyre.wrap (options^.dyreModeL) (\x -> withAsyncBound guiThread (mainThread x)) (setup, options)
+    Dyre.wrap (options^.dyreModeL)
+              (\x -> withAsyncBound guiThread (mainThread x))
+              (setup, options)
 
 -- | Gtk main loop thread.
 guiThread :: IO ()

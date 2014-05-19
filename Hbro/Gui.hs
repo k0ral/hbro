@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell #-}
 module Hbro.Gui (
 -- * Types
       GUI
@@ -43,7 +43,7 @@ import Control.Lens.Setter
 import Control.Lens.TH
 import Control.Monad.Reader hiding(join, mapM_, when)
 
-import Data.String.Utils
+import Data.Text as Text (intercalate, pack, snoc, splitOn, unpack)
 import Data.Text.Lazy as Lazy (Text)
 
 import Graphics.Rendering.Pango.Enums
@@ -202,7 +202,7 @@ render page uri = do
     loadString page (baseOf uri) =<< get webViewL
   where
     baseOf uri' = uri' {
-        uriPath = (++ "/") . join "/" . Prelude.init . split "/" $ uriPath uri'
+        uriPath = Text.unpack . (`snoc` '/') . Text.intercalate "/" . Prelude.init . splitOn "/" . Text.pack $ uriPath uri'
     }
 
 scroll :: (MonadBase IO m, MonadReader t m, HasGUI t) => Axis -> Position -> m ()
