@@ -44,18 +44,29 @@ toggle_ = (`modify_` not)
 -- | Reset default settings
 resetAll :: (MonadBase IO m, MonadReader t m, HasGUI t) => m ()
 resetAll = do
-    set webSettingsMonospaceFontFamily               "inconsolata"
+    set webSettingsAutoLoadImages                    True
+    set webSettingsAutoShrinkImages                  True
+    set webSettingsEnableDefaultContextMenu          True
+    set webSettingsDefaultEncoding                   "utf8"
     set webSettingsEnableDeveloperExtras             False
+    set webSettingsEnableDomPaste                    False
     set webSettingsEnableHtml5Database               False
     set webSettingsEnableHtml5LocalStorage           False
-    set webSettingsEnablePageCache                   False
+    set webSettingsEnableOfflineWebApplicationCache  False
+    set webSettingsEnablePageCache                   True
     set webSettingsEnablePlugins                     False
     set webSettingsEnablePrivateBrowsing             False
     set webSettingsEnableScripts                     False
     set webSettingsEnableSpellChecking               False
     set webSettingsEnableSpatialNavigation           False
     set webSettingsEnableUniversalAccessFromFileUris True
+    set webSettingsEnableSiteSpecificQuirks          False
     set webSettingsEnableXssAuditor                  False
     set webSettingsJSCanOpenWindowAuto               False
-    -- set webSettingsAutoLoadImages                    False
-    set webSettingsEnablePrivateBrowsing             True
+    set webSettingsMonospaceFontFamily               "inconsolata"
+    set webSettingsPrintBackgrounds                  True
+    set webSettingsResizableTextAreas                True
+    set webSettingsSpellCheckingLang                 Nothing
+    set webSettingsTabKeyCyclesThroughElements       True
+    set webSettingsUserStylesheetUri                 Nothing
+    set webSettingsZoomStep                          0.1
