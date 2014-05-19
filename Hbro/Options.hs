@@ -86,7 +86,7 @@ description =
     [ Option ['h']     ["help"]               help
         "Print this help."
     , Option ['r']     ["recompile"]          recompile
-        "Only recompile dyreMode"
+        "Recompile configuration file and exit."
     , Option ['V']     ["version"]            printVersion
         "Print version."
 -- Log level
@@ -101,15 +101,15 @@ description =
         "Where to open IPC socket"
     , Option ['u']     ["ui"]                 (optional uiFileL "PATH")
         "Path to UI descriptor (XML file)"
--- Dynamic redyreMode
+-- Dynamic reconfiguration
     , Option ['1']     ["vanilla"]            (flag dyreModeL Dyre.Vanilla)
-        "Do not read custom dyreMode file"
+        "Do not read custom configuration file"
     , Option []        ["force-reconf"]       (flag dyreModeL Dyre.ForceReconfiguration)
-        "Recompile dyreMode before starting the program"
+        "Recompile configuration file before starting the program"
     , Option []        ["deny-reconf"]        (flag dyreModeL Dyre.IgnoreReconfiguration)
-        "Do not recompile dyreMode even if it has changed"
+        "Do not recompile configuration file even if it has changed"
     , Option []        ["dyre-debug"]         (NoArg return)
-        "Use './cache/' as the cache directory and ./ as the dyreMode directory. Useful to debug the program."
+        "Use './cache/' as the cache directory and ./ as the configuration directory. Useful to debug the program."
     ]
 
 
@@ -135,7 +135,7 @@ setCustomLogLevel level options = do
 
 -- | Usage text (cf @hbro -h@)
 usage :: String
-usage = usageInfo "Usage: hbro [OPTIONS] URI" (description :: [OptDescr (CliOptions -> IO CliOptions)])
+usage = usageInfo "Usage: hbro [OPTIONS] [URI]" (description :: [OptDescr (CliOptions -> IO CliOptions)])
 
 -- | Get and parse commandline options
 parseOptions :: (MonadBase IO m, MonadPlus m) => m CliOptions
