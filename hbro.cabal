@@ -21,7 +21,7 @@ Source-repository head
     Location: https://bitbucket.org/k0ral/hbro
 Source-repository head
     Type:     hg
-    Location: http://hgweb.twyk.org/hbro
+    Location: https://hgweb.twyk.org/hbro
 
 Library
     Build-depends:

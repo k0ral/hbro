@@ -2,10 +2,9 @@
 hbro
 ====
 
+**In a nutshell**: *hbro* is a minimal, KISS compliant web browser for linux; it is written, configured and extensible in Haskell.
 
-**In a nutshell**: *hbro* is a minimal, KISS compliant browser for linux written, configured and extensible in Haskell.
-
-Informations about versions, dependencies, source repositories and contacts can be found in hackage_.
+Information about versions, dependencies, source repositories and contacts can be found in hackage_.
 
 
 Design principles
@@ -16,13 +15,13 @@ Design principles
   A web browser retrieves, renders and traverses web pages, period.
 
 `Keep It Simple, Stupid`_
-  The program should be written with simplicity in mind, and without obsession for performance, features or release frequency. It should not take time to start-up, consume much RAM or crash. Its code should be easy to understand (well, as long as you speak Haskell...) to encourage users to hack it. Simplicity provides lightness, scalability, stability and maintainability.
+  The program should be written with simplicity in mind, and without obsession for performance, features or release frequency. It should boot instantly, consume little memory and offer an uncluttered graphical interface. The code should be easy to grasp (well, as long as you speak Haskell...) to encourage users to hack it. Simplicity provides lightness, scalability, stability and maintainability.
 
 Extensible
-  Configuration system should allow users to implement extra features. External programs should be able to query/order *hbro*.
+  Configuration system should allow users to implement extra features. External programs should be able to query/command the web browser.
 
 Good defaults
-  A default configuration, suitable for users that cannot afford or don't want to spend (waste ?) their time in tweaks, should be provided.
+  The default behavior should be suitable for users that cannot afford or don't want to spend (waste ?) their time in tweaks.
 
 Keyboard driven
   Keyboard control should be made as much convenient, with as little mouse intervention, as possible.
@@ -35,10 +34,13 @@ Programming language : Haskell_
   Modern, purely-functional language that makes it possible to work with a short, elegant and robust code.
 
 Layout engine : WebKit_
-  Webkit seems to be the only engine being open-source, (kind of) standards-compliant and providing a Haskell binding. It's not much of a choice, fortunately it's not that bad.
+  Has to be open-source, be (kind of) standards-compliant, and provide a Haskell binding. WebKit is pretty much the only choice left.
+
+HTTP client : WebKit_
+  Ideally, the HTTP client should be delegated to a distinct library (typically http-conduit_), but WebKit clearly wasn't designed to be used as a *mere* layout engine. So for now, it still handles all network connections.
 
 UI toolkit : `GTK+`_
-  Given the above programming language and layout engine, there's no much choice left for the UI toolkit.
+  Given the programming language and layout engine, there's no much choice left for the UI toolkit.
 
 Interprocess interface : ZeroMQ_
   Socket-like interface that implements various convenient communication schemes like request-reply and publish-subscribe.
@@ -59,13 +61,13 @@ By default, a minimal configuration file (see ``Hbro/Main.hs``) is used to build
 GUI layout
 ----------
 
-The graphical layout is described in an XML file that is parsed by GtkBuilder_ to build up the whole GUI. This file is looked for in several places with the following order of priority:
+The graphical layout is described in an XML file that is parsed by GtkBuilder_. This file is looked for in several places with the following order of priority:
 
 - the value from commandline option ``-u``;
-- the file ``~/.config/hbro.ui.xml``;
+- the file ``~/.config/hbro/ui.xml``;
 - the file ``examples/ui.xml`` bundled with the package.
 
-You must at least define the following widgets with the adequate ``id`` attribute:
+At least the following widgets must be defined, with the adequate ``id`` attributes, for the browser to start:
 
 +-----------------------+-----------------------+
 | Type                  | ``id``                |
@@ -91,10 +93,10 @@ You must at least define the following widgets with the adequate ``id`` attribut
 Known bugs and limitations
 --------------------------
 
-Unfortunately, many problems/limitations are inherited from the *Haskell* binding for *webkit*/*gtk*. Until fixed in upstream, nothing can be done on *hbro* to work around them. Here's a summary of them:
+Many problems/limitations are inherited from the *Haskell* bindings webkitgtk3_ and gtk3_. Until fixed in upstream, nothing can be done on *hbro* to work around them. Here's a summary of them:
 
-- *segmentation faults when using HTTPS*;
-- *segmentation faults when loading some webpages or enabling javascript/flash*;
+- **segmentation faults when using HTTPS**;
+- **segmentation faults when loading some webpages while javascript/flash is enabled**;
 - vertical scrollbar cannot be hidden;
 - no proxy configuration;
 - no cookies management;
@@ -121,3 +123,6 @@ License
 .. _Dyre: https://github.com/willdonnelly/dyre
 .. _hbro-contrib: http://hackage.haskell.org/package/hbro-contrib
 .. _GtkBuilder: https://developer.gnome.org/gtk3/stable/GtkBuilder.html
+.. _http-conduit: https://hackage.haskell.org/package/http-conduit
+.. _webkitgtk3: http://hackage.haskell.org/package/webkitgtk3
+.. _gtk3: http://hackage.haskell.org/package/gtk3
