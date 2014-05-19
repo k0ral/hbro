@@ -1,61 +1,70 @@
 -- | Dynamic reconfiguration. Designed to be imported as @qualified@.
 module Hbro.Dyre (
+    Mode(..),
     wrap,
     recompile
 ) where
 
 -- {{{ Imports
-import Hbro.Options hiding(recompile)
 import Hbro.Util
 
 import Config.Dyre
 import Config.Dyre.Compile
 import Config.Dyre.Paths
 
-import Control.Lens
-import Control.Monad.Base
-import Control.Monad.Reader
+import Control.Monad hiding(mapM_)
+
+import Prelude hiding(mapM_)
 
 import System.IO
 -- }}}
 
+-- | How dynamic reconfiguration process should behave.
+-- Default is 'Normal', that is: use custom configuration file and recompile if change detected.
+data Mode = Normal | Vanilla | ForceReconfiguration | IgnoreReconfiguration
+    deriving(Eq, Show)
 
-nullMain :: a -> IO ()
-nullMain = const $ return ()
+instance Default Mode where def = Normal
 
--- Print various paths used for dynamic reconfiguration
-printPaths :: MonadBase IO m => m ()
-printPaths = io $ do
-    (a, b, c, d, e) <- getPaths $ parameters nullMain False
-    putStrLn $ unlines [
-        "Current binary:  " ++ a,
-        "Custom binary:   " ++ b,
-        "Config file:     " ++ c,
-        "Cache directory: " ++ d,
-        "Lib directory:   " ++ e]
+-- | Describe various paths used for dynamic reconfiguration
+describePaths :: MonadBase IO m => m String
+describePaths = io $ do
+    (a, b, c, d, e) <- getPaths baseParameters
+    return $ unlines
+        [ "Current binary:  " ++ a
+        , "Custom binary:   " ++ b
+        , "Config file:     " ++ c
+        , "Cache directory: " ++ d
+        , "Lib directory:   " ++ e
+        ]
 
 -- Dynamic reconfiguration settings
-parameters :: (a -> IO ()) -> Bool -> Params (Either String a)
-parameters main verbose' = defaultParams {
-    projectName             = "hbro",
-    showError               = const Left,
-    realMain                = main',
-    ghcOpts                 = ["-threaded"],
-    statusOut               = hPutStrLn stderr,
-    includeCurrentDirectory = False}
+parameters :: Mode -> (a -> IO b) -> Params (Either String a)
+parameters mode main = baseParameters
+    { configCheck = mode /= Vanilla
+    , realMain    = main'
+    }
   where
-    main' (Left e)  = putStrLn e
+    main' (Left e)  = errorM "hbro.dyre" e
     main' (Right x) = do
-      when verbose' printPaths
-      main x
+      debugM "hbro.dyre" . ("Dynamic reconfiguration paths:\n" ++) =<< describePaths
+      void $ main x
 
-wrap :: (a -> IO ()) -> CliOptions -> a -> IO ()
-wrap main opts args = do
-    wrapMain ((parameters main (opts^.verbose)) { configCheck = not $ opts^.vanilla }) $ Right args
+baseParameters :: Params (Either String a)
+baseParameters = defaultParams
+    { projectName             = "hbro"
+    , showError               = const Left
+    , ghcOpts                 = ["-threaded"]
+    , statusOut               = hPutStrLn stderr
+    , includeCurrentDirectory = False
+    }
+
+wrap :: (MonadBase IO m) => Mode -> (a -> IO b) -> a -> m ()
+wrap mode main args = io . wrapMain (parameters mode main) $ Right args
 
 
 -- | Launch a recompilation of the configuration file
-recompile :: IO (Maybe String)
-recompile = do
-    customCompile  $ parameters nullMain False
-    getErrorString $ parameters nullMain False
+recompile :: (MonadBase IO m) => m (Maybe String)
+recompile = io $ do
+    customCompile  baseParameters
+    getErrorString baseParameters

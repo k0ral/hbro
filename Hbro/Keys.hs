@@ -1,194 +1,135 @@
-{-# LANGUAGE FlexibleInstances, TemplateHaskell, TupleSections #-}
+{-# LANGUAGE TemplateHaskell, TupleSections #-}
 -- | Key bindings model.
 -- Designed to be imported as @qualified@.
 module Hbro.Keys (
-    Tree(..),
-    Stroke,
-    Bindings,
+-- * Modifiers
+    Modifier(..),
+    _Alt,
+    _Control,
+    _Shift,
+-- * Mode
     Mode(..),
-    Status(..),
-    mode,
-    strokes,
-    StatusReader(..),
-    StatusWriter(..),
-    StatusState,
-    mkStroke,
-    merge,
-    lookup,
-    deserialize,
-    prefixMod,
-    serialize,
-    toString,
-    mkBinding,
-    toBindings)
-where
+-- * Bindings implementation
+    KeyStroke,
+    Bindings,
+    Status,
+    Hooks,
+    statusL,
+    onKeyPressedL,
+-- * Interface
+    HasHooks(..),
+    initializeHooks,
+    Hbro.Keys.set,
+) where
 
 -- {{{ Imports
--- import Hbro.Util
+import Hbro.Gdk.KeyVal
+import Hbro.Keys.Model ((.|), modifiersL, keyL)
+import qualified Hbro.Keys.Model as Model
+import Hbro.Util hiding(Control, lookup)
 
-import Control.Lens
-import Control.Monad hiding(forM_)
--- import Control.Monad.Error hiding(forM_)
--- import Control.Monad.IO.Class
--- import Control.Monad.Reader hiding(forM_)
--- import Control.Monad.Trans.Control
+import Control.Concurrent.STM
+import Control.Lens.Getter
+import Control.Lens.Lens
+import Control.Lens.Setter
+import Control.Lens.TH
+import Control.Monad hiding(forM_, guard, mapM_)
+import Control.Monad.Reader hiding(forM_, guard, mapM_)
 
-import Data.Default
--- import Data.Foldable
-import Data.Functor
--- import Data.Monoid
-import Data.Map (Map)
-import qualified Data.Map as M
-import Data.Maybe
-import Data.Set (Set)
-import qualified Data.Set as S hiding(foldl)
+import Data.Foldable
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Ord
+import Data.Set as S hiding(foldl)
 
-import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.Gdk.EventM
-import Graphics.UI.Gtk.Gdk.Keys
--- import Graphics.UI.Gtk.General.Enums
+import qualified Graphics.UI.Gtk.Gdk.EventM as Gdk
 
-import Prelude hiding(lookup, mapM_)
+import Prelude as P hiding(foldl, lookup, mapM_)
 -- }}}
 
+-- {{{ Modifiers
+newtype Modifier = Modifier Gdk.Modifier deriving(Eq)
 
--- {{{ Types
--- | A tree implementation that labels edges
-data Tree edge leaf = Empty | Leaf leaf | Branch (Map edge (Tree edge leaf)) deriving(Show)
+instance Show Modifier where
+    show (Modifier Gdk.Control) = "C-"
+    show (Modifier Gdk.Shift)   = "S-"
+    show (Modifier Gdk.Alt)     = "M-"
+    show (Modifier _)           = ""
 
--- | A single keystroke, i.e. a set of modifiers and a single key (its string description)
-type Stroke = (Set Modifier, String)
+instance Ord Modifier where compare = comparing show
 
--- | List of keys bound to actions
-type Bindings m = Tree Stroke (m ())
+instance Read Modifier where
+    readsPrec _ []          = []
+    readsPrec n (' ':t)     = readsPrec n t
+    readsPrec _ ('C':'-':t) = (_Control, t) : []
+    readsPrec _ ('M':'-':t) = (_Alt, t) : []
+    -- readsPrec ('S':'-':t) = (Modifier Gdk.Shift, t)
+    readsPrec _ _           = []
 
+instance ToSet Modifier Modifier where toSet = S.singleton
 
+_Alt, _Control, _Shift :: Modifier
+_Alt     = Modifier Gdk.Alt
+_Control = Modifier Gdk.Control
+_Shift   = Modifier Gdk.Shift
+-- }}}
+
+-- {{{ Key mode (à la vi)
 data Mode = Normal | Insert deriving(Eq, Ord)
 
--- | Global state
-data Status = Status {
-    _mode     :: Mode,     -- ^ Current mode
-    _strokes  :: [Stroke]  -- ^ Previous keystrokes
+instance Default Mode where def = Normal
+-- }}}
+
+-- {{{ Bindings implementation
+type KeyStroke  = Model.KeyStroke Modifier KeyVal
+
+instance Show KeyStroke where
+   show s = S.foldr (++) "" (S.map show $ s^.modifiersL) ++ show (s^.keyL)
+
+instance Read KeyStroke where
+    readsPrec _ []      = []
+    readsPrec n string  = case readKey of
+        []                -> []
+        [(key', string'')] -> [(modifiers' .| key', string'')]
+        _                 -> []
+      where
+        readKey              = readsPrec n string'
+        (modifiers', string') = foldl (\(a,_) (c,d) -> (S.insert c a, d)) (S.empty, []) $ readModifiers string
+        readModifiers s      = case readsPrec n s of
+            []              -> []
+            [(modifier, t)] -> (modifier, t):(readModifiers t)
+            _               -> []
+    readList = maybeToList . fmap ((,"") . P.map fst) . sequence . P.map (listToMaybe . reads) . words
+
+instance ToNonEmpty KeyStroke KeyStroke where
+    toNonEmpty x = x :| []
+
+instance ToNonEmpty KeyStroke KeyVal where
+    toNonEmpty x = ((S.empty .| x) :| [])
+
+
+-- type Binding m  = Model.Binding  Hbro.Keys.Stroke (m ())
+type Bindings m = Model.Bindings KeyStroke (m ())
+type Status m   = Model.Status KeyStroke Mode (m ())
+data Hooks m    = Hooks
+    { _status       :: TVar (Status m)
+    , _onKeyPressed :: TMVar ([KeyStroke] -> m ())
     }
 
-instance Default Status where
-    def = Status Normal []
+makeLensesWith ?? ''Hooks $ lensRules
+    & lensField .~ (\name -> Just (tail name ++ "L"))
 
-makeLenses ''Status
+class HasHooks m t | t -> m where _hooks :: Lens' t (Hooks m)
 
--- | 'MonadReader' for 'Status'
-class StatusReader m where
-    readStatus :: Simple Lens Status a -> m a
+instance HasHooks m (Hooks m) where _hooks = id
 
--- | 'MonadWriter' for 'Status'
-class StatusWriter m where
-    writeStatus :: Simple Lens Status a -> a -> m ()
+initializeHooks :: IO (Hooks m)
+initializeHooks = Hooks <$> newTVarIO def <*> newEmptyTMVarIO
 
--- | 'MonadState' for 'Status'
-type (StatusState m) = (StatusReader m, StatusWriter m)
+set :: (MonadBase IO m, MonadReader r m, HasHooks n r) => Lens' (Hooks n) (TMVar a) -> a -> m ()
+set l v = io . atomically . (`writeTMVar` v) =<< askl (_hooks.l)
+-- }}}
+
 
 {-instance Monoid KeyMap where
     mempty = KeyBindings M.empty
     mappend (KeyBindings a) (KeyBindings b) = KeyBindings (mappend a b)-}
-
-instance Ord Modifier where
-    compare x y = compare (show x) (show y)
--- }}}
-
-
-mkStroke :: [Modifier] -> KeyVal -> Maybe Stroke
-mkStroke m k = Just . (S.fromList m,) =<< toString k
-
-
---toTree :: Ord a => [([a], b)] -> Tree a b
---toTree = foldl merge Empty . map toBranch
-
-toBranch :: Ord a => ([a], b) -> Tree a b
-toBranch ([], a)    = Leaf a
-toBranch ((h:t), a) = Branch (M.fromList [(h, toBranch (t, a))])
-
--- | In case of conflicts, the rightmost operand is preferred
-merge :: Ord a => Tree a b -> Tree a b -> Tree a b
-merge Empty      x          = x
-merge x          Empty      = x
-merge (Leaf _)   (Leaf b)   = Leaf b
-merge (Leaf _)   (Branch b) = Branch b
-merge (Branch _) (Leaf b)   = Leaf b
-merge (Branch a) (Branch b) = Branch $ M.unionWith merge a b
-
-
-lookup :: Ord a => [a] -> Tree a b -> Maybe (Tree a b)
-lookup _     Empty      = Nothing
-lookup []    (Leaf x)   = Just (Leaf x)
-lookup []    x          = Just x
-lookup _     (Leaf _)   = Nothing
-lookup (h:t) (Branch m) = M.lookup h m >>= lookup t
-
-
--- | Convert a KeyVal to a String.
--- For printable characters, the corresponding String is returned, except for the space character for which "<Space>" is returned.
--- For non-printable characters, the corresponding keyName wrapped into "< >" is returned.
--- For modifiers, Nothing is returned.
-toString :: KeyVal -> Maybe String
-toString keyVal = case keyToChar keyVal of
-    Just ' '    -> Just "<Space>"
-    Just char   -> Just [char]
-    _           -> case keyName keyVal of
-        "Caps_Lock"         -> Nothing
-        "Shift_L"           -> Nothing
-        "Shift_R"           -> Nothing
-        "Control_L"         -> Nothing
-        "Control_R"         -> Nothing
-        "Alt_L"             -> Nothing
-        "Alt_R"             -> Nothing
-        "Super_L"           -> Nothing
-        "Super_R"           -> Nothing
-        "Menu"              -> Nothing
-        "ISO_Level3_Shift"  -> Nothing
-        "dead_circumflex"   -> Just "^"
-        "dead_diaeresis"    -> Just "¨"
-        x                   -> Just ('<':x ++ ">")
-
-
-serialize :: Stroke -> String
-serialize (m, k) = S.foldr (++) "" (S.map serializeMod m) ++ k
-
-
-serializeMod :: Modifier -> String
-serializeMod Control = "C-"
--- serializeMod Shift   = "S-"
-serializeMod Alt     = "M-"
-serializeMod _       = ""
-
--- | Parse a 'String' representation of a keystrokes chain
-deserialize :: String -> Maybe [Stroke]
-deserialize ""          = Just []
-deserialize (' ':t)     = deserialize t
-deserialize ('C':'-':t) = prefixMod Control =<< deserialize t
-deserialize ('M':'-':t) = prefixMod Alt     =<< deserialize t
--- deserialize ('S':'-':t) = prefixMod Shift   =<< deserialize t
-deserialize (k:' ':t)   = prepend k <$> deserialize t
-deserialize (k:t)       = prefixVal k =<< deserialize t
-
-
-prefixMod :: Modifier -> [Stroke] -> Maybe [Stroke]
-prefixMod modifier ((m, keys):t) = Just ((S.insert modifier m, keys):t)
-prefixMod _        _             = Nothing
-
-
-prefixVal :: Char -> [Stroke] -> Maybe [Stroke]
-prefixVal k [] = Just [(S.empty, [k])]
-prefixVal k ((modifiers, keys):t)
-    | S.null modifiers = Just ((modifiers, k:keys):t)
-    | otherwise        = Nothing
-
-
-prepend :: Char -> [Stroke] -> [Stroke]
-prepend k x = (S.empty, [k]):x
-
-
-mkBinding :: String -> m () -> Maybe (Bindings m)
-mkBinding keys action = toBranch . (, action) <$> deserialize keys
-
-toBindings :: [(String, m ())] -> Bindings m
-toBindings = foldl merge Empty . catMaybes . map (\(a, b) -> mkBinding a b)

@@ -93,7 +93,9 @@ Known bugs and limitations
 
 Unfortunately, many problems/limitations are inherited from the *Haskell* binding for *webkit*/*gtk*. Until fixed in upstream, nothing can be done on *hbro* to work around them. Here's a summary of them:
 
-- segfaults when loading some webpages or enabling javascript/flash;
+- *segmentation faults when using HTTPS*;
+- *segmentation faults when loading some webpages or enabling javascript/flash*;
+- vertical scrollbar cannot be hidden;
 - no proxy configuration;
 - no cookies management;
 - javascript's ``window.open`` requests open in the same window instead of spawning a new one;

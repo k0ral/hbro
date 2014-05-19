@@ -1,154 +1,173 @@
-{-# LANGUAGE FlexibleInstances, TemplateHaskell #-}
--- | Commandline options tools. Designed to be imported as @qualified@.
+{-# LANGUAGE TemplateHaskell #-}
+-- | Commandline options tools.
 module Hbro.Options (
-    CliOptions(),
-    OptionsReader(..),
-    startURI,
-    socketPath,
-    help,
-    quiet,
-    uIFile,
-    verbose,
-    version,
-    vanilla,
-    recompile,
-    denyReconf,
-    forceReconf,
-    dyreDebug,
-    usage,
-    get,
-    getStartURI,
-    getSocketURI)
-where
+-- * Types
+      CliOptions()
+    , startURIL
+    , socketPathL
+    , dyreModeL
+    , uiFileL
+    , dyreDebugL
+-- * Util
+    , parseOptions
+    , usage
+    , getSocketURI
+) where
 
 -- {{{ Imports
+import qualified Hbro.Dyre as Dyre
+import Hbro.Logger as Logger
 import Hbro.Util
 
-import Control.Conditional
-import Control.Lens as L  hiding((??))
-import Control.Monad.Base
-import Control.Monad.Reader
+import Control.Lens.Getter
+import Control.Lens.Lens
+import Control.Lens.Setter
+import Control.Lens.TH
 
-import Data.Default
-import Data.Functor
-import Data.List
-import Data.Maybe
+import Data.Version
 
 import Network.URI as N
 
-import Prelude hiding(log)
+import Paths_hbro
+import Prelude hiding(mapM_)
 
 import System.Console.GetOpt
 import System.Directory
 import System.Environment
 import System.FilePath
 import System.Posix.Process
+import qualified System.ZMQ4 as ZMQ (version)
+
+import Text.Read hiding(get, lift)
 -- }}}
 
 -- {{{ Types
 -- | Available commandline options (cf @hbro -h@).
-data CliOptions = CliOptions {
-    _startURI      :: Maybe String,
-    _socketPath    :: Maybe FilePath,
-    _UIFile        :: Maybe FilePath,
-    _help          :: Bool,
-    _quiet         :: Bool,
-    _verbose       :: Bool,
-    _version       :: Bool,
-    _vanilla       :: Bool,
-    _recompile     :: Bool,
-    _denyReconf    :: Bool,
-    _forceReconf   :: Bool,
-    _dyreDebug     :: Bool}
-    deriving(Eq)
+data CliOptions = CliOptions
+    { _startURI   :: Maybe URI
+    , _socketPath :: Maybe FilePath
+    , _uiFile     :: Maybe FilePath
+    , _dyreMode   :: Dyre.Mode
+    , _dyreDebug  :: Bool
+    } deriving(Eq)
 
-makeLenses ''CliOptions
+makeLensesWith ?? ''CliOptions $ lensRules
+    & lensField .~ (\name -> Just (tail name ++ "L"))
 
 instance Show CliOptions where
-    show opts = intercalate " " $ catMaybes [
-        return . ("URI=" ++)     =<< view startURI opts,
-        return . ("SOCKET=" ++)  =<< view socketPath opts,
-        return . ("UI_FILE=" ++) =<< view uIFile opts,
-        view help        opts ? Just "HELP" ?? Nothing,
-        view quiet       opts ? Just "QUIET" ?? Nothing,
-        view verbose     opts ? Just "VERBOSE" ?? Nothing,
-        view version     opts ? Just "VERSION" ?? Nothing,
-        view vanilla     opts ? Just "VANILLA" ?? Nothing,
-        view recompile   opts ? Just "RECOMPILE" ?? Nothing,
-        view denyReconf  opts ? Just "DENY_RECONFIGURATION" ?? Nothing,
-        view forceReconf opts ? Just "FORCE_RECONFIGURATION" ?? Nothing,
-        view dyreDebug   opts ? Just "DYRE_DEBUG" ?? Nothing]
+    show opts = unwords $ catMaybes
+        [ return . ("URI=" ++) . show       =<< (opts^.startURIL)
+        , return . ("SOCKET=" ++)           =<< (opts^.socketPathL)
+        , return . ("UI_FILE=" ++)          =<< (opts^.uiFileL)
+        , return . ("DYRE_MODE=" ++) . show $ opts^.dyreModeL
+        , Just "DYRE_DEBUG" <| opts^.dyreDebugL |> Nothing
+        ]
 
 instance Default CliOptions where
     def = CliOptions {
-        _startURI     = Nothing,
-        _socketPath   = Nothing,
-        _UIFile       = Nothing,
-        _help         = False,
-        _quiet        = False,
-        _verbose      = False,
-        _version      = False,
-        _vanilla      = False,
-        _recompile    = False,
-        _denyReconf   = False,
-        _forceReconf  = False,
-        _dyreDebug    = False}
-
--- | 'MonadReader' for 'CliOptions'
-class OptionsReader m where
-    readOptions :: Simple Lens CliOptions a -> m a
-
-instance (Monad m) => OptionsReader (ReaderT CliOptions m) where
-    readOptions l = return . view l =<< ask
-
-instance OptionsReader ((->) CliOptions) where
-    readOptions l = view l
+        _startURI   = Nothing,
+        _socketPath = Nothing,
+        _uiFile     = Nothing,
+        _dyreMode   = def,
+        _dyreDebug  = False}
 -- }}}
 
+-- {{{ Util
+flag :: (Monad m) => Lens' CliOptions a -> a -> ArgDescr (CliOptions -> m CliOptions)
+flag attribute value = NoArg $ return . set attribute value
 
-description :: [OptDescr (CliOptions -> CliOptions)]
-description = [
-    Option ['h']     ["help"]               (NoArg (set help True))                         "Print this help",
-    Option ['q']     ["quiet"]              (NoArg (set quiet True))                        "Do not print any log",
-    Option ['v']     ["verbose"]            (NoArg (set verbose True))                      "Print detailed logs",
-    Option ['V']     ["version"]            (NoArg (set version True))                      "Print version",
-    Option ['1']     ["vanilla"]            (NoArg (set vanilla True))                      "Do not read custom configuration file",
-    Option ['r']     ["recompile"]          (NoArg (set recompile True))                    "Only recompile configuration",
-    Option ['s']     ["socket"]             (ReqArg (\v -> set socketPath (Just v)) "PATH") "Where to open IPC socket",
-    Option ['u']     ["ui"]                 (ReqArg (\v -> set uIFile (Just v)) "PATH")     "Path to UI descriptor (XML file)",
-    Option []        ["force-reconf"]       (NoArg id)                                      "Recompile configuration before starting the program",
-    Option []        ["deny-reconf"]        (NoArg id)                                      "Do not recompile configuration even if it has changed",
-    Option []        ["dyre-debug"]         (NoArg id)                                      "Use './cache/' as the cache directory and ./ as the configuration directory. Useful to debug the program"]
+optional :: (Monad m) => Lens' CliOptions (Maybe String) -> String -> ArgDescr (CliOptions -> m CliOptions)
+optional attribute name = ReqArg (\x -> return . set attribute (Just x)) name
+-- }}}
+
+description :: (MonadBase IO m, MonadPlus m) => [OptDescr (CliOptions -> m CliOptions)]
+description =
+-- Action
+    [ Option ['h']     ["help"]               help
+        "Print this help."
+    , Option ['r']     ["recompile"]          recompile
+        "Only recompile dyreMode"
+    , Option ['V']     ["version"]            printVersion
+        "Print version."
+-- Log level
+    , Option ['v']     ["verbose"]            (setLogLevel DEBUG)
+        "Equivalent to -l DEBUG."
+    , Option ['q']     ["quiet"]              (setLogLevel ERROR)
+        "Equivalent to -l ERROR."
+    , Option ['l']     ["log-level"]          (ReqArg setCustomLogLevel "VALUE")
+        "Set log level. VALUE may be one of DEBUG|INFO|NOTICE|WARNING|ERROR|CRITICAL|ALERT|EMERGENCY."
+-- Paths
+    , Option ['s']     ["socket"]             (optional socketPathL "PATH")
+        "Where to open IPC socket"
+    , Option ['u']     ["ui"]                 (optional uiFileL "PATH")
+        "Path to UI descriptor (XML file)"
+-- Dynamic redyreMode
+    , Option ['1']     ["vanilla"]            (flag dyreModeL Dyre.Vanilla)
+        "Do not read custom dyreMode file"
+    , Option []        ["force-reconf"]       (flag dyreModeL Dyre.ForceReconfiguration)
+        "Recompile dyreMode before starting the program"
+    , Option []        ["deny-reconf"]        (flag dyreModeL Dyre.IgnoreReconfiguration)
+        "Do not recompile dyreMode even if it has changed"
+    , Option []        ["dyre-debug"]         (NoArg return)
+        "Use './cache/' as the cache directory and ./ as the dyreMode directory. Useful to debug the program."
+    ]
+
+
+help, printVersion, recompile :: (MonadBase IO m, MonadPlus m) => ArgDescr (a -> m b)
+help         = NoArg . const $ io (putStrLn usage) >> abort
+recompile    = NoArg . const $ Dyre.recompile >>= mapM_ (io . putStrLn) >> abort
+printVersion = NoArg . const $ do
+    (a, b, c) <- io ZMQ.version
+    io . putStrLn $ "hbro: v" ++ showVersion version
+    io . putStrLn $ "0MQ library: v" ++ intercalate "." (map show [a, b, c])
+    abort
+
+setLogLevel :: (MonadBase IO m, MonadPlus m) => Priority -> ArgDescr (a -> m a)
+setLogLevel priority = NoArg $ \options -> do
+    Logger.initialize priority
+    return options
+
+setCustomLogLevel :: (MonadBase IO m) => String -> (a -> m a)
+setCustomLogLevel level options = do
+    maybe (io $ errorM "hbro.options" message) Logger.initialize $ readMaybe level
+    return options
+  where message = "Invalid log level '" ++ level ++ "'."
 
 -- | Usage text (cf @hbro -h@)
 usage :: String
-usage = usageInfo "Usage: hbro [OPTIONS] [URI]" description
+usage = usageInfo "Usage: hbro [OPTIONS] URI" (description :: [OptDescr (CliOptions -> IO CliOptions)])
 
 -- | Get and parse commandline options
-get :: (MonadBase IO m) => m CliOptions
-get = io $ do
-    options <- getOpt' Permute description <$> getArgs
-    case options of
-        (opts, input, _, []) -> return $ set startURI ((null $ concat input) ? Nothing ?? Just (concat input)) (foldl (flip id) def opts)
-        (_, _, _, _)         -> return def
+parseOptions :: (MonadBase IO m, MonadPlus m) => m CliOptions
+parseOptions = do
+    Logger.initialize INFO
+    (opts, input, unknown, errors) <- io $ getOpt' RequireOrder description <$> getArgs
+
+    unless (null errors)  $ io (errorM "hbro.options" (unlines errors)) >> abort
+    unless (null unknown) . io . infoM "hbro.options" $ "Unrecognized options: " ++ unwords unknown
+    unless (null $ tailSafe input) . io . infoM "hbro.options" $ "Ignored input: " ++ unlines (tailSafe input)
+
+    options <- foldl (>>=) (return def) opts >>= parseInput (listToMaybe input)
+    io . debugM "hbro.options" $ "Used options: " ++ show options
+    return options
 
 -- | Get URI passed in commandline, check whether it is a file path or an internet URI
 -- and return the corresponding normalized URI (that is: prefixed with "file://" or "http://")
-getStartURI :: (MonadBase IO m, OptionsReader m) => m (Maybe URI)
-getStartURI = do
-    theURI <- readOptions startURI
-    case theURI of
-      Just uri -> do
-          fileURI <- io $ doesFileExist uri
-          case fileURI of
-              True -> io getCurrentDirectory >>= return . N.parseURIReference . ("file://" ++) . (</> uri)
-              _    -> return $ N.parseURIReference uri
-      _ -> return Nothing
+parseInput :: (MonadBase IO m) => Maybe String -> CliOptions -> m CliOptions
+parseInput (Just uri) options = do
+    fileURI    <- io $ doesFileExist uri
+    currentDir <- io getCurrentDirectory
+    let parsedURI = case fileURI of
+                      True -> N.parseURIReference $ "file://" ++ (currentDir </> uri)
+                      _    -> N.parseURIReference uri
+    unless (isJust parsedURI) . io . errorM "hbro.options" $ "Invalid URI: " ++ uri
+    return $ set startURIL parsedURI options
+parseInput Nothing options = return options
 
 
 -- | Return socket URI used by this instance
-getSocketURI :: (MonadBase IO m, OptionsReader m) => m String
-getSocketURI = maybe getDefaultSocketURI (return . ("ipc://" ++)) =<< readOptions socketPath
+getSocketURI :: (MonadBase IO m) => CliOptions -> m String
+getSocketURI options = maybe getDefaultSocketURI (return . ("ipc://" ++)) $ options^.socketPathL
   where
     getDefaultSocketURI = do
       dir <- io getTemporaryDirectory

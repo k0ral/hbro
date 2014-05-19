@@ -1,120 +1,58 @@
-{-# LANGUAGE FlexibleInstances, TemplateHaskell, UndecidableInstances #-}
-module Hbro.Config where
+{-# LANGUAGE TemplateHaskell, UndecidableInstances #-}
+-- | General configuration parameters.
+-- The recommended way to import this module is:
+-- @
+-- import Hbro.Config hiding(get, set)
+-- import qualified Hbro.Config as Config (get, set)
+-- @
+module Hbro.Config
+    (
+-- * Types
+      Config
+    , homePageL
+    , HasConfig(..)
+-- * Getter/setter
+    , get
+    , set
+) where
 
 -- {{{ Imports
-import qualified Hbro.Keys as Key
-import Hbro.IPC
 import Hbro.Util
 
--- import Control.Conditional
+import Control.Concurrent.STM
 import Control.Lens hiding(set)
-import Control.Monad.Base
-import Control.Monad.Error  hiding(forM_, mapM_)
--- import Control.Monad.Writer hiding(forM_, mapM_)
+import qualified Control.Lens as L (set)
+import Control.Monad.Reader
 
--- import Data.Foldable (forM_, mapM_)
--- import Data.Functor
-import Data.List
-import Data.Map (Map)
-import qualified Data.Map as M
+import Network.URI (URI)
+import qualified Network.URI as N
 
-import Graphics.UI.Gtk.Gdk.EventM
-import Graphics.UI.Gtk.WebKit.WebNavigationAction
-
-import Network.URI as N hiding(parseURI, parseURIReference)
-
-import Prelude hiding(mapM_)
+import Prelude hiding(mapM_, read)
 -- }}}
-
--- {{{ Types
-data ResourceAction  = Load | Download
-data Verbosity       = Quiet | Normal | Verbose deriving(Eq, Show)
 
 -- | Custom settings provided by the user
-data Config m = Config {
-    _homePage         :: URI,                               -- ^ Startup page
--- Parameters
-    _verbosity        :: Verbosity,                         -- ^ Logs verbosity
--- Hooks
-    _keyBindings      :: Map Key.Mode (Key.Bindings m),     -- ^ Key bindings
-    _onDownload       :: URI -> String -> Int -> m (),      -- ^ Callback triggered when a download is requested
-    _onKeyStroke      :: [Key.Stroke] -> m (),              -- ^ Callback triggered when a key is pressed
-    _onLinkClicked    :: MouseButton -> URI -> m (),        -- ^ Callback triggered when a link is clicked
-    _onLoadRequested  :: URI -> m (),                       -- ^ Callback triggered when a load is requested
-    _onLoadFinished   :: m (),                              -- ^ Callback triggered when a load is finished
-    _onNewWindow      :: URI -> m (),                       -- ^ Callback triggered when a new window is requested
-    _onResourceOpened :: URI -> String -> m ResourceAction, -- ^ Callback triggered when opening a non HTML resource
-    _onTitleChanged   :: String -> m (),                    -- ^ Callback triggered when document title is changed
-    _commands         :: CommandsMap m                      -- ^ Commands recognized through IPC system
-}
+data Config = Config
+    { _homePage :: URI
+    }
 
-makeLenses ''Config
-
-instance Show (Config m) where
-    show c = unlines [
-        "Home page        = " ++ (show $ c^.homePage),
-        "Verbosity        = " ++ (show $ c^.verbosity)]
+makeLensesWith ?? ''Config $ lensRules
+    & lensField .~ (\name -> Just (tail name ++ "L"))
 
 
--- | 'MonadReader' for 'Config'
-class (Monad m) => ConfigReader n m | m -> n where
-    readConfig :: Simple Lens (Config n) a -> m a
+instance Show Config where
+    show c = "Home page = " ++ (show $ c^.homePageL)
 
-instance ConfigReader n ((->) (Config n)) where
-    readConfig l = view l
+instance Default Config where
+    def = Config
+        { _homePage = fromJust . N.parseURI $ "https://duckduckgo.com/"
+        }
 
+class HasConfig t where _config :: Lens' t (TVar Config)
 
--- | 'MonadWriter' for 'Config'
-class (Monad m) => ConfigWriter n m | m -> n where
-    writeConfig :: Simple Lens (Config n) a -> a -> m ()
+instance HasConfig (TVar Config) where _config = id
 
--- | 'MonadState' for 'Config'
-type ConfigState n m = (ConfigReader n m, ConfigWriter n m)
+get :: (MonadReader r m, MonadBase IO m, HasConfig r) => Lens' Config a -> m a
+get l = return . view l =<< io . atomically . readTVar =<< askl _config
 
-modifyConfig :: (ConfigState n m) => Simple Lens (Config n) a -> (a -> a) -> m ()
-modifyConfig l f = writeConfig l . f =<< readConfig l
-
-instance Eq NavigationReason where
-  a == b = (fromEnum a) == (fromEnum b)
-
-instance Show NavigationReason where
-  show WebNavigationReasonLinkClicked   = "Link clicked"
-  show WebNavigationReasonFormSubmitted = "Form submitted"
-  show WebNavigationReasonBackForward   = "Back/forward"
-  show WebNavigationReasonReload        = "Reload"
-  show WebNavigationReasonFormResubmitted = "Form resubmitted"
-  show WebNavigationReasonOther         = "Other"
--- }}}
-
--- | Run an action unless verbosity is 'Quiet'
-unlessQuiet :: (MonadBase IO m, ConfigReader n m) => m () -> m ()
-unlessQuiet f = do
-    quiet' <- readConfig verbosity
-    case quiet' of
-        Quiet -> return ()
-        _     -> f
-
--- | Run an action when verbosity is 'Verbose'
-whenLoud :: (MonadBase IO m, ConfigReader n m) => m () -> m ()
-whenLoud f = do
-    verbose' <- readConfig verbosity
-    case verbose' of
-        Verbose -> f
-        _       -> return ()
-
-
-log, logV :: (MonadBase IO m, ConfigReader n m) => String -> m ()
-log  = unlessQuiet . io . putStrLn
-logV = whenLoud    . io . putStrLn
-
--- | Bind a keystrokes chain to a callback, in a given mode
-bind :: (MonadBase IO m, ConfigState m m) => Key.Mode -> String -> m () -> m ()
-bind mode strokes action = case newBindings of
-    Just b -> do
-        oldValue <- readConfig keyBindings
-        let newValue = M.insertWith Key.merge mode b oldValue
-        void $ writeConfig keyBindings newValue
-        return ()
-    _ -> return ()
-  where
-    newBindings = Key.mkBinding strokes action
+set :: (MonadReader r m, MonadBase IO m, HasConfig r) => Lens' Config a -> a -> m ()
+set l v = io . atomically . (`modifyTVar` L.set l v) =<< askl _config

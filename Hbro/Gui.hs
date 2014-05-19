@@ -1,249 +1,270 @@
-{-# LANGUAGE FlexibleInstances, TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Hbro.Gui (
-    Buildable(..),
-    StatusBar(..),
-    GUI(),
-    GUIReader(..),
-    mainWindow,
-    inspectorWindow,
-    scrollWindow,
-    webView,
-    promptBar,
-    statusBar,
-    notificationBar,
-    builder,
-    getObject,
-    toggleVisibility,
-    buildFrom,
-    init)
-where
+-- * Types
+      GUI
+    , HasGUI(..)
+-- * Basic
+    , get
+    , initialize
+-- * Getter
+    , canRender
+    , isSourceMode
+    , getDOM
+-- * Actions
+    , toggle
+    , render
+    , scroll
+    , setSourceMode
+    , toggleSourceMode
+    , zoomIn
+    , zoomOut
+-- * Misc
+    , Axis(..)
+    , Position(..)
+    , getObject
+) where
 
 -- {{{ Imports
-import Hbro.Notification
-import Hbro.Prompt (PromptBar(..), PromptReader(..))
-import qualified Hbro.Prompt as Prompt
+import Hbro.Error as Hbro
+import Hbro.Gui.Buildable
+import Hbro.Gui.NotificationBar (HasNotificationBar(..))
+import qualified Hbro.Gui.NotificationBar as NotifBar
+import Hbro.Gui.PromptBar (PromptBar, HasPromptBar(..))
+import qualified Hbro.Gui.PromptBar as Prompt
+import Hbro.Gui.PromptBar.Signals as Prompt
+import Hbro.Gui.StatusBar
 import Hbro.Util
-import qualified Hbro.Webkit.WebView as WebView
+import Hbro.Webkit.Lifted
 
-import Control.Applicative
-import Control.Conditional hiding(when)
-import Control.Lens hiding((??), view)
-import Control.Monad hiding(forM_, mapM_)
-import Control.Monad.Base
-import Control.Monad.Error  hiding(forM_, mapM_)
-import Control.Monad.Trans.Control
+-- import Control.Exception
+import Control.Lens.Getter
+import Control.Lens.Lens
+import Control.Lens.Setter
+import Control.Lens.TH
+import Control.Monad.Reader hiding(join, mapM_, when)
 
--- import Data.Foldable
--- import Data.Functor
-import Data.IORef
+import Data.String.Utils
+import Data.Text.Lazy as Lazy (Text)
 
 import Graphics.Rendering.Pango.Enums
 import Graphics.UI.Gtk.Abstract.Container
-import Graphics.UI.Gtk.Abstract.Box
-import Graphics.UI.Gtk.Abstract.Object
 import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.Builder
-import Graphics.UI.Gtk.Display.Label
-import Graphics.UI.Gtk.Entry.Entry
-import Graphics.UI.Gtk.Gdk.EventM
+import qualified Graphics.UI.Gtk.Builder as Gtk
 import Graphics.UI.Gtk.General.General as GTK
-import Graphics.UI.Gtk.Layout.HBox
-import Graphics.UI.Gtk.Layout.VBox
+import Graphics.UI.Gtk.Misc.Adjustment
 import Graphics.UI.Gtk.Scrolling.ScrolledWindow
-import Graphics.UI.Gtk.WebKit.WebInspector
-import Graphics.UI.Gtk.WebKit.WebView hiding(webViewLoadUri)
+import Graphics.UI.Gtk.WebKit.WebView
+import Graphics.UI.Gtk.WebKit.DOM.Document
 import Graphics.UI.Gtk.Windows.Window
 
-import Prelude hiding(init, mapM_)
+import Network.URI as N
+
+import Prelude hiding(mapM_, read)
 
 import System.Glib.Attributes hiding(get, set)
 import qualified System.Glib.Attributes as G (get, set)
+-- import System.Glib.GError
 import System.Glib.Signals
 import System.Glib.Types
 -- }}}
 
 -- {{{ Types
-newtype StatusBar = StatusBar HBox
+data Axis     = Horizontal | Vertical deriving(Show)
+data Position = Absolute Double | Relative Double deriving(Show)
 
-instance GObjectClass StatusBar where
-    toGObject (StatusBar h) = toGObject h
-    unsafeCastGObject g     = StatusBar $ unsafeCastGObject g
-instance ObjectClass StatusBar
-instance WidgetClass StatusBar
+data GUI = GUI
+    { _mainWindow      :: Window
+    , _scrollWindow    :: ScrolledWindow  -- ^ 'ScrolledWindow' containing the webview
+    , _webView         :: WebView
+    , _promptBar       :: PromptBar
+    , _statusBar       :: StatusBar
+    , _notificationBar :: NotifBar.NotificationBar
+    , _builder         :: Gtk.Builder          -- ^ Builder object created from XML file
+    }
+
+makeLensesWith ?? ''GUI $ classyRules
+    & lensField .~ (\name -> Just (tail name ++ "L"))
+    & lensClass .~ (\name -> Just ("Has" ++ name, "_" ++ map toLower name))
+
+-- | A 'GUI' can be built from an XML file.
+instance Buildable GUI where
+    buildWith b = do
+        sWindow <- gSync $ Gtk.builderGetObject b castToScrolledWindow "webViewParent"
+        webView <- gSync webViewNew
+
+        gAsync $ containerAdd sWindow webView
+
+        GUI <$> gSync (Gtk.builderGetObject b castToWindow "mainWindow")
+            <*> pure sWindow
+            <*> pure webView
+            <*> buildWith b
+            <*> buildWith b
+            <*> buildWith b
+            <*> pure b
+
+instance HasNotificationBar GUI where _notificationbar = notificationBarL
+instance HasPromptBar GUI       where _promptbar       = promptBarL
+-- }}}
+
+get :: (MonadReader r m, MonadBase IO m, HasGUI r) => Lens' GUI a -> m a
+get l = askl (_gui.l)
 
 
-data GUI m = GUI {
-    _mainWindow         :: Window,
-    _inspectorWindow    :: Window,
-    _scrollWindow       :: ScrolledWindow,  -- ^ 'ScrolledWindow' containing the webview
-    _webView            :: WebView,
-    _promptBar          :: PromptBar m,
-    _statusBar          :: StatusBar,
-    _notificationBar    :: NotificationBar,
-    _builder            :: Builder          -- ^ Builder object created from XML file
-}
+-- {{{ Initialization
+initialize :: (MonadBase IO m, MonadThrow m, MonadPlus m) => FilePath -> m GUI
+initialize file = do
+    gui <- buildFrom file
 
-makeLenses ''GUI
+    let webView = gui^.webViewL
 
--- | 'MonadReader' for 'GUI'
-class (Monad m) => GUIReader n m | m -> n where
-    readGUI :: Simple Lens (GUI n) a -> m a
+    initializeWindow    $ gui^.mainWindowL
+    initializeWebView   webView
+    Prompt.initialize   $ gui^.promptBarL
+    NotifBar.initialize $ gui^.notificationBarL
 
--- | UI elements that can be built from a @GtkBuilder@ object (that is: an XML file)
-class Buildable a where
-    build :: (MonadBase IO m) => Builder -> m a
+    gAsync . widgetShowAll $ gui^.mainWindowL
+    runReaderT Prompt.hide (gui^.promptBarL)
 
-instance (Monad m) => Buildable (PromptBar m) where
-    build b = io $ do
-        l  <- builderGetObject b castToLabel "promptDescription"
-        e  <- builderGetObject b castToEntry "promptEntry"
-        b' <- builderGetObject b castToHBox  "promptBox"
-        oC <- newIORef . const $ return ()
-        oV <- newIORef . const $ return ()
+    gAsync $ windowSetDefault (gui^.mainWindowL) (Just $ gui^.webViewL)
 
-        return $ PromptBar b' l e oC oV
+    let closePrompt = widgetHide (gui^.promptBarL.boxL) >> widgetGrabFocus webView >> return ()
+    onEntryCancelled (gui^.promptBarL.entryL) $ const closePrompt
+    onEntryActivated (gui^.promptBarL.entryL) $ const closePrompt
 
-instance Buildable (WebView, ScrolledWindow) where
-    build b = io $ do
-        window  <- builderGetObject b castToScrolledWindow "webViewParent"
-        wv      <- webViewNew
-        containerAdd window wv
+    -- io $ scrolledWindowSetPolicy (gui^.scrollWindowL) PolicyNever PolicyNever
+    -- io $ G.set (gui^.scrollWindowL) [ scrolledWindowHscrollbarPolicy := PolicyNever, scrolledWindowVscrollbarPolicy := PolicyNever]
 
-        return (wv, window)
+    return gui
 
-instance Buildable (Window, VBox) where
-    build b = io $ do
-        w  <- builderGetObject b castToWindow "mainWindow"
-        b' <- builderGetObject b castToVBox "windowBox"
-        return (w, b')
+buildFrom :: (MonadBase IO m, MonadThrow m, Buildable t) => FilePath -> m t
+buildFrom uiFile = do
+    io . infoM "hbro.gui" $ "Building UI from: " ++ uiFile
 
-instance Buildable StatusBar where
-    build b = io $ StatusBar <$> builderGetObject b castToHBox "statusBox"
+    builder <- gSync Gtk.builderNew
 
-instance Buildable NotificationBar where
-    build b = io $ NotificationBar <$> builderGetObject b castToLabel "notificationLabel" <*> newIORef Nothing
+    {-result <- -}
+    gSync $ Gtk.builderAddFromFile builder uiFile
+    -- leftM throwError result
 
-instance (Monad m) => Buildable (GUI m) where
-    build b = do
-        (webView', sWindow') <- build b
-        (window', wBox')     <- build b
-        promptBar'           <- build b
-        statusBar'           <- build b
-        notificationBar'     <- build b
-        inspectorWindow'     <- initWebInspector webView' wBox'
+    buildWith builder
 
-        return $ GUI window' inspectorWindow' sWindow' webView' promptBar' statusBar' notificationBar' b
+-- TODO: catch IOException
+-- builderAddFromFile ::
+-- builderAddFromFile builder file = catchGErrorJustDomain (Right <$> Gtk.builderAddFromFile builder file) handler
+--   where
+--     handler :: Gtk.BuilderError -> String -> IO (Either String a)
+--     handler e message = return . Left $ "Error while building GUI from [" ++ file ++ "]: " ++ message
+
+initializeWindow :: (MonadBase IO m) => Window -> m ()
+initializeWindow window = gAsync $ do
+    widgetModifyBg window StateNormal (Color 0 0 5000)
+    void . on window deleteEvent $ gAsync GTK.mainQuit >> return False
+
+initializeWebView :: (MonadBase IO m) => WebView -> m ()
+initializeWebView webView = gAsync $ do
+    G.set webView [ widgetCanDefault := True ]
+    -- webViewSetMaintainsBackForwardList webView False
+    on webView closeWebView $ gAsync GTK.mainQuit >> return False
+    void . on webView consoleMessage $ \a b n c -> do
+        putStrLn "console message"
+        mapM_ putStrLn [a, b, show n, c]
+        return True
+    -- void . on webView resourceRequestStarting $ \frame resource request response -> do
+    --     uri <- webResourceGetUri resource
+    --     putStrLn $ "resource request starting: " ++ uri
+    --     -- print =<< webResourceGetData resource
+    --     putStrLn =<< (maybe (return "No request") (return . ("Request URI: " ++) . show <=< W.networkRequestGetUri) request)
+    --     putStrLn =<< (maybe (return "No response") (return . ("Response URI: " ++) . show <=< networkResponseGetUri) response)
+
+    --     -- case (endswith ".css" uri || uri `endswith` ".png" || uri `endswith` ".ico") of
+    --        -- True -> (putStrLn "OK")
+    --     (maybe (return ()) (`networkRequestSetUri` "about:blank") request)
+-- }}}
+
+-- {{{ Actions
+-- | Toggle a widget's visibility
+toggle :: (MonadBase IO m, WidgetClass a) => a -> m ()
+toggle widget = do
+    visibility <- gSync $ G.get widget widgetVisible
+    gAsync $ (widgetHide <| visibility |> widgetShow) widget
+
+canRender :: (MonadBase IO m, MonadReader t m, HasGUI t) => String -> m Bool
+canRender mimetype = gSync . (`webViewCanShowMimeType` mimetype) =<< get webViewL
+
+
+render :: (MonadReader t m, HasGUI t, MonadBase IO m) => Lazy.Text -> URI -> m ()
+render page uri = do
+    io . debugM "hbro.gui" $ "Rendering <" ++ show uri ++ ">"
+    -- loadString page uri =<< get' webViewL
+
+    -- io . debugM "hbro.gui" $ "Base URI: " ++ show (baseOf uri)
+
+    loadString page (baseOf uri) =<< get webViewL
+  where
+    baseOf uri' = uri' {
+        uriPath = (++ "/") . join "/" . Prelude.init . split "/" $ uriPath uri'
+    }
+
+scroll :: (MonadBase IO m, MonadReader t m, HasGUI t) => Axis -> Position -> m ()
+scroll axis percentage = scroll' axis percentage =<< get scrollWindowL
+
+-- General scrolling command
+scroll' :: (MonadBase IO m) => Axis -> Position -> ScrolledWindow -> m ()
+scroll' axis percentage scrollWindow = do
+     logDebug $ "Set scroll " ++ show axis ++ " = " ++ show percentage
+
+     adj     <- gSync . getAdjustment axis $ scrollWindow
+     page    <- gSync $ adjustmentGetPageSize adj
+     current <- gSync $ adjustmentGetValue adj
+     lower   <- gSync $ adjustmentGetLower adj
+     upper   <- gSync $ adjustmentGetUpper adj
+
+     let shift (Absolute x) = lower   + x/100 * (upper - page - lower)
+         shift (Relative x) = current + x/100 * page
+         limit x            = (x `max` lower) `min` (upper - page)
+
+     gAsync . adjustmentSetValue adj $ limit (shift percentage)
+
+
+getAdjustment :: (MonadBase IO m) => Axis -> ScrolledWindow -> m Adjustment
+getAdjustment Horizontal = gSync . scrolledWindowGetHAdjustment
+getAdjustment Vertical   = gSync . scrolledWindowGetVAdjustment
+
+
+-- TODO: see if the lens system can be leveraged to get/set this property
+-- sourceMode :: Lens
+
+isSourceMode :: (MonadBase IO m, MonadReader t m, HasGUI t) => m Bool
+isSourceMode = gSync . webViewGetViewSourceMode =<< get webViewL
+
+setSourceMode :: (MonadBase IO m, MonadReader t m, HasGUI t) => Bool -> m ()
+setSourceMode value = get webViewL >>= gAsync . (`webViewSetViewSourceMode` value) >> logDebug ("Set source mode = " ++ show value)
+
+-- | Toggle source display. This needs to be done *before* loading an URI.
+toggleSourceMode :: (MonadBase IO m, MonadReader t m, HasGUI t) => m ()
+toggleSourceMode = setSourceMode . not =<< isSourceMode
+
+
+zoomIn, zoomOut :: (MonadBase IO m, MonadReader t m, HasGUI t) => m ()
+zoomIn  = get webViewL >>= gAsync . webViewZoomIn >> logDebug "Zooming in."
+zoomOut = get webViewL >>= gAsync . webViewZoomOut >> logDebug "Zooming out."
+
+getDOM :: (MonadBase IO m, MonadReader t m, HasGUI t) => m (Maybe Document)
+getDOM = gSync . webViewGetDomDocument =<< get webViewL
+
+-- | Return the casted 'GObject' corresponding to the given name (set in the builder's XML file)
+getObject :: (MonadBase IO m, MonadReader t m, HasGUI t, GObjectClass a)
+          => (GObject -> a)   -- ^ @castTo@ function
+          -> String           -- ^ Widget name
+          -> m a
+getObject cast name = do
+    b <- get builderL
+    gSync $ Gtk.builderGetObject b cast name
 -- }}}
 
 
 -- {{{ Util
--- | Return the casted 'GObject' corresponding to the given name (set in the builder's XML file)
-getObject :: (MonadBase IO m, GUIReader n m, GObjectClass a) => (GObject -> a) -> String -> m a
-getObject cast name = do
-    b <- readGUI builder
-    io $ builderGetObject b cast name
-
--- | Toggle a widget's visibility (provided for convenience).
-toggleVisibility :: (MonadBase IO m, WidgetClass a) => a -> m ()
-toggleVisibility widget = io $ do
-    visibility <- G.get widget widgetVisible
-    visibility ? widgetHide widget ?? widgetShow widget
--- }}}
-
-
--- {{{ Initialization
-buildFrom :: (Monad n, MonadBase IO m) => FilePath -> m (GUI n)
-buildFrom uiFile = do
-    b <- io builderNew
-    io $ builderAddFromFile b uiFile
-    build b
-
-
-init :: (MonadBase IO m, MonadBaseControl IO m, GUIReader m m, NotificationReader m, PromptReader m m, Error e, Show e, MonadError e m) => m ()
-init = do
-    w  <- readGUI webView
-    mw <- readGUI mainWindow
-    initWindow       mw
-    initScrollWindow =<< readGUI scrollWindow
-    Prompt.init      =<< readGUI promptBar
-    WebView.init     w
-
-    io . windowSetDefault mw $ Just w
-
--- Validate/cancel prompt
-    e <- readGUI $ promptBar.(Prompt.entry)
-    io . void $ on e keyPressEvent (f w)
-
--- Show window
-    io . widgetShowAll =<< readGUI mainWindow
-    Prompt.hide
-
-    return ()
-  where
-    f w = do
-        key <- eventKeyName
-        when (key == "Return" || key == "Escape") $ io $ do
-            --runInIO clean
-            widgetGrabFocus w
-            return ()
-        return False
-
-
-initScrollWindow :: (MonadBase IO m) => ScrolledWindow -> m ()
-initScrollWindow window = io $ scrolledWindowSetPolicy window PolicyNever PolicyNever
-
-
-initWindow :: (MonadBase IO m) => Window -> m ()
-initWindow window = io $ do
-    windowSetDefaultSize window 1024 768
-    widgetModifyBg window StateNormal (Color 0 0 10000)
-    void $ onDestroy window GTK.mainQuit
-
-
-initWebInspector :: (MonadBase IO m) => WebView -> VBox -> m (Window)
-initWebInspector webView' windowBox = do
-    inspector <- io $ webViewGetInspector webView'
-    window'   <- io windowNew
-    io $ G.set window' [ windowTitle := "hbro | Web inspector" ]
-
-    io . void . on inspector inspectWebView $ \_ -> do
-        view <- webViewNew
-        containerAdd window' view
-        return view
-
-    io . void . on inspector showWindow $ do
-        widgetShowAll window'
-        return True
-
--- TODO: when does this signal happen ?!
-    --_ <- on inspector finished $ return ()
-
--- Attach inspector to browser's main window
-    _ <- io $ on inspector attachWindow $ do
-        webview <- webInspectorGetWebView inspector
-        case webview of
-            Just view -> do
-                widgetHide window'
-                containerRemove window' view
-                widgetSetSizeRequest view (-1) 250
-                boxPackEnd windowBox view PackNatural 0
-                widgetShow view
-                return True
-            _ -> return False
-
--- Detach inspector in a distinct window
-    _ <- io $ on inspector detachWindow $ do
-        webview <- webInspectorGetWebView inspector
-        _ <- case webview of
-            Just view -> do
-                containerRemove windowBox view
-                containerAdd window' view
-                widgetShowAll window'
-                return True
-            _ -> return False
-
-        widgetShowAll window'
-        return True
-
-    return window'
+logDebug{-, logInfo-} :: (MonadBase IO m) => String -> m ()
+logDebug = io . debugM "hbro.gui"
+-- logInfo  = io . infoM  "hbro.gui"
 -- }}}

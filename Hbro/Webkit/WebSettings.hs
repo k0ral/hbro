@@ -2,36 +2,60 @@
 module Hbro.Webkit.WebSettings where
 
 -- {{{ Imports
-import Hbro.Gui
+import qualified Hbro.Gui as Gui (get)
+import Hbro.Gui hiding(get)
 import Hbro.Util
 
-import Control.Monad
-import Control.Monad.Base
+import Control.Monad.Reader
 
 import Graphics.UI.Gtk.WebKit.WebSettings
 import Graphics.UI.Gtk.WebKit.WebView
 
-import System.Glib.Attributes as G
+import System.Glib.Attributes (Attr, AttrOp(..))
+import qualified System.Glib.Attributes as G
 -- }}}
 
 
-set :: (MonadBase IO m, GUIReader n m) => Attr WebSettings a -> a -> m ()
+set :: (MonadBase IO m, MonadReader t m, HasGUI t, Show a) => Attr WebSettings a -> a -> m ()
 set element newValue = modify_ element $ const newValue
 
-modify :: (MonadBase IO m, GUIReader n m) => Attr WebSettings a -> (a -> a) -> m a
+modify :: (MonadBase IO m, MonadReader t m, HasGUI t, Show a) => Attr WebSettings a -> (a -> a) -> m a
 modify element modifier = do
-    w <- readGUI webView
-    settings <- io $ webViewGetWebSettings w
-    oldValue <- io $ get settings element
-    io $ G.set settings [element := modifier oldValue]
-    io $ webViewSetWebSettings w settings
+    webView  <- Gui.get webViewL
+    settings <- gSync $ webViewGetWebSettings webView
+    oldValue <- gSync $ G.get settings element
+
+    gAsync $ G.set settings [element := modifier oldValue]
+    gAsync $ webViewSetWebSettings webView settings
+    io . infoM "hbro.settings" $ "Set " ++ show element ++ " = " ++ show (modifier oldValue)
     return oldValue
 
-modify_ :: (MonadBase IO m, GUIReader n m) => Attr WebSettings a -> (a -> a) -> m ()
+-- | Same as 'modify', but discards the result
+modify_ :: (MonadBase IO m, MonadReader t m, HasGUI t, Show a) => Attr WebSettings a -> (a -> a) -> m ()
 modify_ e m = void $ modify e m
 
-toggle :: (MonadBase IO m, GUIReader n m) => Attr WebSettings Bool -> m Bool
+toggle :: (MonadBase IO m, MonadReader t m, HasGUI t) => Attr WebSettings Bool -> m Bool
 toggle = (`modify` not)
 
-toggle_ :: (MonadBase IO m, GUIReader n m) => Attr WebSettings Bool -> m ()
+-- | Same as 'toggle', but discards the result
+toggle_ :: (MonadBase IO m, MonadReader t m, HasGUI t) => Attr WebSettings Bool -> m ()
 toggle_ = (`modify_` not)
+
+-- | Reset default settings
+resetAll :: (MonadBase IO m, MonadReader t m, HasGUI t) => m ()
+resetAll = do
+    set webSettingsMonospaceFontFamily               "inconsolata"
+    set webSettingsEnableDeveloperExtras             False
+    set webSettingsEnableHtml5Database               False
+    set webSettingsEnableHtml5LocalStorage           False
+    set webSettingsEnablePageCache                   False
+    set webSettingsEnablePlugins                     False
+    set webSettingsEnablePrivateBrowsing             False
+    set webSettingsEnableScripts                     False
+    set webSettingsEnableSpellChecking               False
+    set webSettingsEnableSpatialNavigation           False
+    set webSettingsEnableUniversalAccessFromFileUris True
+    set webSettingsEnableXssAuditor                  False
+    set webSettingsJSCanOpenWindowAuto               False
+    -- set webSettingsAutoLoadImages                    False
+    set webSettingsEnablePrivateBrowsing             True

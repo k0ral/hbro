@@ -1,64 +1,73 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, TupleSections #-}
 -- | Designed to be imported as @qualified@.
-module Hbro.IPC where
+module Hbro.IPC (
+      routine
+    , sendMessage
+) where
 
 -- {{{ Imports
--- import Hbro.Error
+import Hbro.Error
+import Hbro.IPC.Signals
 import Hbro.Util
 
-import Control.Lens hiding(Context)
-import Control.Monad.Base
--- import Control.Monad.Error hiding(mapM_)
--- import Control.Monad.Writer
+import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM.TMVar (putTMVar, takeTMVar)
+import Control.Lens hiding(Action, Context)
 
-import Data.ByteString.Char8 (pack, unpack)
---import Data.Foldable
-import Data.Functor
-import Data.Map (Map)
+import Data.ByteString.UTF8 (fromString, toString)
 
--- import Graphics.UI.Gtk.General.General
+import Prelude hiding(init, log, mapM_, read)
 
-import Prelude hiding(log, mapM_, read)
-
--- import System.Posix.Types
--- import System.Process
-import System.ZMQ3 hiding(close, context, init, message, receive, send, socket)
-import qualified System.ZMQ3 as ZMQ (receive, send)
+import System.ZMQ4.Monadic (ZMQ, Rep(..), Req(..), runZMQ)
+import qualified System.ZMQ4.Monadic as ZMQ
 -- }}}
 
--- {{{ Types
-data IPC = IPC {
-    _context  :: Context,
-    _receiver :: Socket Rep}
+-- | Designed to be run in a distinct thread
+routine :: String -> Signals -> ZMQ z ()
+routine uri signals = do
+    socket <- ZMQ.socket Rep
+    liftIO . infoM "hbro.ipc" $ "Opening IPC socket at: " ++ uri
+    ZMQ.bind socket uri
 
--- | 'MonadReader' for 'IPC'
-class IPCReader m where
-    readIPC :: Simple Lens IPC a -> m a
+    forever $ do
+      message <- receive socket
+      liftIO . debugM "hbro.ipc" $ "Received command: " ++ message
 
-makeLenses ''IPC
+      case words message of
+          []                -> send socket "ERROR Empty command"
+          command:arguments -> do
+              liftIO . atomically $ putTMVar nextCommand (Command command, arguments)
+              response' <- liftIO . atomically $ takeTMVar response
+              liftIO . debugM "hbro.ipc" $ "Sending response: " ++ show response'
+              send socket $ either ("ERROR " ++) id response'
+    where
+      nextCommand = signals^.nextCommandL
+      response    = signals^.responseL
 
-newtype CommandsMap m = CommandsMap { unwrap :: Map String ([String] -> m String) }
--- }}}
-
--- | Send message through given socket
-send :: (MonadBase IO m, Sender a) => Socket a -> String -> m ()
-send socket payload = io $ ZMQ.send socket [] (pack payload)
-
--- | Wait for a message to be received from given socket
-read :: (MonadBase IO m, Receiver a) => Socket a -> m String
-read socket = io $ unpack <$> ZMQ.receive socket
+-- {{{ Utils
+-- | Send message to given socket
+send :: (ZMQ.Sender a) => ZMQ.Socket z a -> String -> ZMQ z ()
+send socket payload = ZMQ.send socket [] (fromString payload)
 
 -- | Send a single command to the given socket (which must be 'Rep'), and return the answer
-sendCommand :: (MonadBase IO m, IPCReader m) => String -> String -> m String
-sendCommand socketURI command = do
-    theContext <- readIPC context
-    io $ withSocket theContext Req $ \socket -> do
-      connect socket socketURI
-      send socket command
-      read socket
+sendMessage :: (MonadBase IO m, MonadIO m)
+            => String   -- ^ Target socket URI
+            -> String   -- ^ Message
+            -> m String
+sendMessage socketURI message = runZMQ $ do
+    socket <- ZMQ.socket Req
+    ZMQ.bind socket socketURI
+    liftIO . debugM "hbro.ipc" $ "Sending message to IPC socket at: " ++ socketURI
+    send socket message
+    receive socket
 
--- | Same as 'sendCommand', but for all running instances of the browser.
-{-sendCommandToAll :: (MonadBase IO m, ConfigReader m m, IPCReader m) => String -> m [String]
-sendCommandToAll command = do
-    dir  <- readConfig socketDir
-    getAllProcessIDs >>= mapM ((`sendCommand` command) . (`socketPath` dir))-}
+-- | Wait for a message to be received from given socket
+receive :: (ZMQ.Receiver a) => ZMQ.Socket z a -> ZMQ z String
+receive socket = toString <$> ZMQ.receive socket
+
+-- | Same as 'sendMessage', but for all running instances of the browser.
+-- sendMessageToAll :: (MonadBase IO m, MonadReader t m, HasConfig t) => String -> m [String]
+-- sendMessageToAll message = do
+--     dir  <- readConfig socketDir
+--     getAllProcessIDs >>= mapM ((`sendMessage` message) . (`socketPath` dir))
+-- }}}

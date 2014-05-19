@@ -1,5 +1,8 @@
 <interface>
     <object class="GtkWindow" id="mainWindow">
+        <property name="default-height">768</property>
+        <property name="default-width">1024</property>
+
         <child><object class="GtkVBox" id="windowBox">
             <property name="homogeneous">False</property>
             <property name="spacing">0</property>

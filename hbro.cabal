@@ -1,8 +1,8 @@
 Name:                hbro
-Version:             1.1.2.0
+Version:             1.2.0.0
 Synopsis:            Minimal KISS compliant browser
 -- Description:
-Homepage:            http://projects.haskell.org/hbro/
+Homepage:            https://bitbucket.org/k0ral/hbro
 Category:            Browser,Web
 
 License:             OtherLicense
@@ -17,14 +17,15 @@ Extra-source-files:  README.rst
 Data-files:          examples/ui.xml
 
 Source-repository head
-    Type:     git
-    Location: git@github.com:k0ral/hbro.git
+    Type:     hg
+    Location: https://bitbucket.org/k0ral/hbro
 Source-repository head
-    Type:     git
-    Location: git@twyk.org/haskell-browser.git
+    Type:     hg
+    Location: http://hgweb.twyk.org/hbro
 
 Library
     Build-depends:
+        async,
         base == 4.*,
         bytestring,
         cond,
@@ -32,21 +33,35 @@ Library
         data-default,
         directory,
         dyre >= 0.8.8,
+        errors,
+        exceptions,
         filepath,
         glib,
-        gtk >= 0.12.3,
+        gtk3 >= 0.12.3,
+        hslogger,
+        -- http-conduit,
+        -- http-conduit-browser,
+        -- http-types,
         lens,
-        monad-control,
-        mtl,
+        lifted-async,
+        lifted-base,
+        MissingH,
+        mtl >= 2.0.0.0,
         network,
         pango,
         process,
+        safe,
+        semigroups,
+        stm,
+        text,
+        -- text-icu,
         transformers,
         transformers-base,
         unix,
-        webkit,
+        utf8-string,
+        webkitgtk3 >= 0.12.3,
         xdg-basedir,
-        zeromq3-haskell >= 0.2
+        zeromq4-haskell
     Exposed-modules:
         Hbro,
         Hbro.Boot,
@@ -54,27 +69,51 @@ Library
         Hbro.Config,
         Hbro.Core,
         Hbro.Error,
+        Hbro.Gdk.KeyVal,
         Hbro.Gui,
+        Hbro.Gui.Buildable,
+        Hbro.Gui.NotificationBar,
+        Hbro.Gui.PromptBar,
+        Hbro.Gui.PromptBar.Hooks,
+        Hbro.Gui.PromptBar.Signals,
+        Hbro.Gui.StatusBar,
+        Hbro.Hooks,
         Hbro.IPC,
+        Hbro.IPC.Hooks,
+        Hbro.K,
         Hbro.Keys,
-        Hbro.Network,
-        Hbro.Notification,
+        Hbro.Keys.Model,
+        Hbro.Keys.Monadic,
+        Hbro.Keys.Signals,
         Hbro.Options,
-        Hbro.Prompt,
+        Hbro.Signals,
         Hbro.Util,
-        Hbro.Gtk.ScrolledWindow,
-        Hbro.Webkit.WebSettings,
-        Hbro.Webkit.WebView
+        Hbro.Webkit.Lifted,
+        Hbro.Webkit.WebSettings
+        Hbro.WebView.Hooks,
+        Hbro.WebView.Signals,
+        Network.URI.Monadic
+    Other-modules:
+        -- Hbro.CFunctions,
+        Hbro.Dyre,
+        Hbro.IPC.Signals,
+        Hbro.Logger,
+        Paths_hbro
     Extensions:
         ConstraintKinds,
+        DeriveDataTypeable,
         FlexibleContexts,
+        FlexibleInstances,
         FunctionalDependencies,
         GeneralizedNewtypeDeriving,
         MultiParamTypeClasses,
         RankNTypes
-
-    Other-modules: Hbro.Dyre, Paths_hbro
-    Ghc-options: -Wall
+    Build-tools: hsc2hs
+    -- C-sources: cbits/cbits.c
+    -- Include-dirs: include
+    -- Includes: include/cbits.h
+    -- Install-includes: include/cbits.h
+    Ghc-options: -Wall -fno-warn-unused-do-bind -threaded
 
 Flag threaded
     Description: Build with -threaded
@@ -82,10 +121,8 @@ Flag threaded
 
 Executable hbro
     Build-depends:
-        hbro >= 1.1.1.0,
-        base == 4.*,
-        glib,
-        gtk
+        hbro >= 1.2.0.0,
+        base == 4.*
     Main-is: Main.hs
     Hs-Source-Dirs: Hbro
     Ghc-options: -Wall
