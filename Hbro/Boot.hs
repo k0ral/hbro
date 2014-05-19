@@ -64,30 +64,31 @@ hbro setup = do
 
     when (opts^.Options.help)      $ putStrLn Options.usage >> exitSuccess
     when (opts^.Options.version)   $ putStrLn (showVersion version) >> exitSuccess
-    when (opts^.Options.verbose)   . putStrLn $ "Commandline options: " ++ show opts
     when (opts^.Options.recompile) $ Dyre.recompile >>= maybe exitSuccess (\e -> putStrLn e >> exitFailure)
 
     Dyre.wrap hbro' opts (setup, opts)
 
 
 hbro' :: (K (), CliOptions) -> IO ()
-hbro' (customSetup, options) = do
+hbro' (customSetup, opts) = do
     void $ installHandler sigINT (Catch onInterrupt) Nothing
 
-    config <- runReaderT initConfig options
-    gui    <- runReaderT initGUI options
+    when (opts^.Options.verbose) . putStrLn $ "Commandline options: " ++ show opts
 
-    (result, logs) <- withIPC options $ \ipc -> runK options config gui ipc $ main customSetup
+    config <- runReaderT initConfig opts
+    gui    <- runReaderT initGUI opts
+
+    (result, logs) <- withIPC opts $ \ipc -> runK opts config gui ipc $ main customSetup
 
     either print return result
-    unless (options^.Options.quiet) . unless (null logs) $ putStrLn logs
-    unless (options^.Options.quiet) $ putStrLn "Exiting..."
+    unless (opts^.Options.quiet) . unless (null logs) $ putStrLn logs
+    unless (opts^.Options.quiet) $ putStrLn "Exiting..."
 
 -- {{{ Initialization
 initConfig :: (MonadBase IO m, OptionsReader m) => m (Config K)
 initConfig = do
     options <- readOptions id
-    return $ id
+    return . id
           . (options^.Options.quiet   ? set verbosity Quiet   ?? id)
           . (options^.Options.verbose ? set verbosity Verbose ?? id)
           $ def

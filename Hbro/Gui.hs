@@ -137,7 +137,7 @@ instance (Monad m) => Buildable (GUI m) where
 
 
 -- {{{ Util
--- | Return the casted GObject corresponding to the given name (set in the builder's XML file)
+-- | Return the casted 'GObject' corresponding to the given name (set in the builder's XML file)
 getObject :: (MonadBase IO m, GUIReader n m, GObjectClass a) => (GObject -> a) -> String -> m a
 getObject cast name = do
     b <- readGUI builder
@@ -195,7 +195,7 @@ initScrollWindow window = io $ scrolledWindowSetPolicy window PolicyNever Policy
 
 initWindow :: (MonadBase IO m) => Window -> m ()
 initWindow window = io $ do
-    windowSetDefaultSize window 800 600
+    windowSetDefaultSize window 1024 768
     widgetModifyBg window StateNormal (Color 0 0 10000)
     void $ onDestroy window GTK.mainQuit
 

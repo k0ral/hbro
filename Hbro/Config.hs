@@ -51,8 +51,9 @@ data Config m = Config {
 makeLenses ''Config
 
 instance Show (Config m) where
-    show c = "Home page        = " ++ (show $ c^.homePage)
-        ++ "\nVerbosity        = " ++ (show $ c^.verbosity)
+    show c = unlines [
+        "Home page        = " ++ (show $ c^.homePage),
+        "Verbosity        = " ++ (show $ c^.verbosity)]
 
 
 -- | 'MonadReader' for 'Config'
