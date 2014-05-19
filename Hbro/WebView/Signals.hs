@@ -186,6 +186,9 @@ attachNavigationRequest webView (signal1, signal2) = gSync . on webView W.naviga
             (WebNavigationReasonReload, _) -> io $ do
                 debugM "hbro.signals" $ "Navigation request [" ++ show reason ++ "] to <" ++ show uri ++ ">"
                 webPolicyDecisionUse decision
+            (WebNavigationReasonFormSubmitted, _) -> io $ do
+                debugM "hbro.signals" $ "Form submitted to <" ++ show uri ++ ">"
+                webPolicyDecisionUse decision
             _ -> io $ do
                 debugM "hbro.signals" $ "Navigation request [" ++ show reason ++ "] to <" ++ show uri ++ ">"
                 atomically . putTMVar signal2 $ LoadRequested uri
