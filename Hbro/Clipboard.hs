@@ -24,7 +24,7 @@ write = write' selectionPrimary
 write' :: (MonadBase IO m) => SelectionTag -> String -> m ()
 write' tag text = do
     io . debugM "hbro.clipboard" $ "Writing to clipboard: " ++ text
-    gSync $ clipboardGet tag >>= (`clipboardSetText` text)
+    gSync (clipboardGet tag) >>= gAsync . (`clipboardSetText` text)
 
 
 -- | Read clipboard's content. 'selectionPrimary' is inspected first; if empty, 'selectionClipboard' is returned.
