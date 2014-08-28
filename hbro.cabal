@@ -25,43 +25,41 @@ Source-repository head
 
 Library
     Build-depends:
-        async,
         base == 4.*,
         bytestring,
+        classy-prelude,
         cond,
         containers,
         data-default,
-        directory,
         dyre >= 0.8.8,
         errors,
-        exceptions,
-        filepath,
         glib,
-        gtk3 >= 0.12.3,
+        gtk3 >= 0.13,
         hslogger,
         -- http-conduit,
         -- http-conduit-browser,
         -- http-types,
+        integer-simple,
         lens,
         lifted-async,
         lifted-base,
-        mtl >= 2.0.0.0,
-        network,
-        old-locale,
+        mtl >= 2.2.1,
+        monad-control,
+        network-uri,
         pango,
+        parsec,
         process,
         safe,
         semigroups,
         stm,
+        system-fileio,
         text,
         -- text-icu,
         time,
         transformers,
         transformers-base,
         unix,
-        utf8-string,
-        webkitgtk3 >= 0.12.3,
-        xdg-basedir,
+        webkitgtk3 >= 0.13,
         zeromq4-haskell
     Exposed-modules:
         Hbro,
@@ -86,19 +84,20 @@ Library
         Hbro.Keys.Model,
         Hbro.Keys.Monadic,
         Hbro.Keys.Signals,
+        Hbro.Logger,
         Hbro.Options,
+        Hbro.Prelude,
         Hbro.Signals,
-        Hbro.Util,
-        Hbro.Webkit.Lifted,
         Hbro.Webkit.WebSettings
         Hbro.WebView.Hooks,
         Hbro.WebView.Signals,
         Network.URI.Monadic
     Other-modules:
+        Graphics.UI.Gtk.WebKit.Lifted,
+        Graphics.UI.Gtk.WebKit.Lifted.WebView,
         -- Hbro.CFunctions,
         Hbro.Dyre,
         Hbro.IPC.Signals,
-        Hbro.Logger,
         Paths_hbro
     Extensions:
         ConstraintKinds,
@@ -108,12 +107,15 @@ Library
         FunctionalDependencies,
         GeneralizedNewtypeDeriving,
         MultiParamTypeClasses,
+        NoImplicitPrelude,
+        OverloadedStrings,
         RankNTypes
-    Build-tools: hsc2hs
+    -- Build-tools: hsc2hs
     -- C-sources: cbits/cbits.c
     -- Include-dirs: include
     -- Includes: include/cbits.h
     -- Install-includes: include/cbits.h
+    Hs-Source-Dirs: library
     Ghc-options: -Wall -fno-warn-unused-do-bind -threaded
 
 Flag threaded
@@ -125,7 +127,7 @@ Executable hbro
         hbro >= 1.2.0.0,
         base == 4.*
     Main-is: Main.hs
-    Hs-Source-Dirs: Hbro
+    Hs-Source-Dirs: executable
     Ghc-options: -Wall
     if flag(threaded)
         Ghc-options: -threaded
