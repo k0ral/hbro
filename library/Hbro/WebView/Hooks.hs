@@ -24,13 +24,13 @@ module Hbro.WebView.Hooks (
 ) where
 
 -- {{{ Imports
-import Hbro.Prelude
-import Hbro.WebView.Signals
+import           Hbro.Prelude
+import           Hbro.WebView.Signals
 
-import Control.Lens.Lens
-import Control.Lens.Setter hiding(set)
-import Control.Lens.TH
-import Control.Monad.Reader
+import           Control.Lens.Lens
+import           Control.Lens.Setter  hiding (set)
+import           Control.Lens.TH
+import           Control.Monad.Reader
 -- }}}
 
 

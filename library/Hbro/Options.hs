@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, ViewPatterns #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns    #-}
 -- | Commandline options tools.
 module Hbro.Options (
 -- * Types
@@ -15,29 +16,29 @@ module Hbro.Options (
 ) where
 
 -- {{{ Imports
-import qualified Hbro.Dyre as Dyre
-import Hbro.Error
-import Hbro.Logger as Logger
-import Hbro.Prelude
+import qualified Hbro.Dyre             as Dyre
+import           Hbro.Error
+import           Hbro.Logger           as Logger
+import           Hbro.Prelude
 
-import Control.Lens.Getter
-import Control.Lens.Lens
-import Control.Lens.Setter
-import Control.Lens.TH
+import           Control.Lens.Getter
+import           Control.Lens.Lens
+import           Control.Lens.Setter
+import           Control.Lens.TH
 
-import Data.Version
+import           Data.Version
 
-import Filesystem
+import           Filesystem
 
-import Network.URI.Monadic
+import           Network.URI.Monadic
 
-import Paths_hbro
+import           Paths_hbro
 
-import System.Console.GetOpt
-import System.Posix.Process
-import qualified System.ZMQ4 as ZMQ (version)
+import           System.Console.GetOpt
+import           System.Posix.Process
+import qualified System.ZMQ4           as ZMQ (version)
 
-import Text.Read hiding(get, lift)
+import           Text.Read             hiding (get, lift)
 -- }}}
 
 -- {{{ Types

@@ -15,34 +15,34 @@ module Hbro.Hooks
 ) where
 
 -- {{{ Imports
-import Hbro.Error
-import qualified Hbro.Keys as Keys
-import qualified Hbro.Keys.Signals as Keys
-import qualified Hbro.IPC.Hooks as IPC
-import Hbro.Signals hiding(initialize)
-import Hbro.Gui.PromptBar.Signals hiding(Signals)
-import Hbro.Gui.PromptBar.Hooks
-import qualified Hbro.Gui.PromptBar.Hooks as Prompt
-import Hbro.Logger hiding(initialize)
-import Hbro.Prelude
-import Hbro.WebView.Hooks hiding(Hooks)
-import qualified Hbro.WebView.Hooks as WebView (Hooks, initHooks)
-import Hbro.WebView.Signals hiding(Signals)
+import           Hbro.Error
+import           Hbro.Gui.PromptBar.Hooks
+import qualified Hbro.Gui.PromptBar.Hooks   as Prompt
+import           Hbro.Gui.PromptBar.Signals hiding (Signals)
+import qualified Hbro.IPC.Hooks             as IPC
+import qualified Hbro.Keys                  as Keys
+import qualified Hbro.Keys.Signals          as Keys
+import           Hbro.Logger                hiding (initialize)
+import           Hbro.Prelude
+import           Hbro.Signals               hiding (initialize)
+import           Hbro.WebView.Hooks         hiding (Hooks)
+import qualified Hbro.WebView.Hooks         as WebView (Hooks, initHooks)
+import           Hbro.WebView.Signals       hiding (Signals)
 
-import Control.Lens.Getter
-import Control.Lens.Lens
-import Control.Lens.Setter
-import Control.Lens.TH
-import Control.Monad.Reader
+import           Control.Lens.Getter
+import           Control.Lens.Lens
+import           Control.Lens.Setter
+import           Control.Lens.TH
+import           Control.Monad.Reader
 -- }}}
 
 
 -- {{{ Hooks
 data Hooks m = Hooks
-    { _webViewHooks     :: WebView.Hooks m
-    , _keyHooks         :: Keys.Hooks m
-    , _ipcHooks         :: TVar (IPC.Hooks m)
-    , _promptHooks      :: PromptHooks m
+    { _webViewHooks :: WebView.Hooks m
+    , _keyHooks     :: Keys.Hooks m
+    , _ipcHooks     :: TVar (IPC.Hooks m)
+    , _promptHooks  :: PromptHooks m
     }
 
 makeLensesWith ?? ''Hooks $ lensRules

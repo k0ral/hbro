@@ -2,12 +2,12 @@
 module Hbro.Clipboard where
 
 -- {{{ Imports
-import Hbro.Error
-import Hbro.Logger
-import Hbro.Prelude
+import           Hbro.Error
+import           Hbro.Logger
+import           Hbro.Prelude
 
-import Graphics.UI.Gtk.General.Clipboard
-import Graphics.UI.Gtk.General.Selection
+import           Graphics.UI.Gtk.General.Clipboard
+import           Graphics.UI.Gtk.General.Selection
 -- }}}
 
 -- | Write given 'Text' to the selection-primary clipboard

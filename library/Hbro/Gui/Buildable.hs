@@ -1,9 +1,9 @@
 module Hbro.Gui.Buildable where
 
 -- {{{ Imports
-import Hbro.Prelude
+import           Hbro.Prelude
 
-import Graphics.UI.Gtk.Builder
+import           Graphics.UI.Gtk.Builder
 -- }}}
 
 -- | UI elements that can be built from a @GtkBuilder@ object (that is: an XML file)

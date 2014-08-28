@@ -7,12 +7,12 @@ module Network.URI.Monadic
     ) where
 
 -- {{{ Imports
-import Hbro.Prelude
+import           Hbro.Prelude
 
-import Control.Monad.Except (MonadError(..), throwError)
+import           Control.Monad.Except (MonadError (..), throwError)
 
-import Network.URI as X hiding(parseURIReference, parseURI)
-import qualified Network.URI as N
+import           Network.URI          as X hiding (parseURI, parseURIReference)
+import qualified Network.URI          as N
 -- }}}
 
 -- | Error message

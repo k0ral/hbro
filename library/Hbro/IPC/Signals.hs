@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, TupleSections #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections   #-}
 -- | Designed to be imported as @qualified@.
 module Hbro.IPC.Signals
     ( Argument
@@ -12,9 +13,9 @@ module Hbro.IPC.Signals
 ) where
 
 -- {{{ Imports
-import Hbro.Prelude
+import           Hbro.Prelude
 
-import Control.Lens hiding(Action, Context)
+import           Control.Lens hiding (Action, Context)
 -- }}}
 
 

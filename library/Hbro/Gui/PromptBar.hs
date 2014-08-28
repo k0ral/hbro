@@ -1,4 +1,6 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleInstances, TemplateHaskell #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE TemplateHaskell    #-}
 -- | Designed to be imported as @qualified@.
 module Hbro.Gui.PromptBar (
 -- * Types
@@ -22,29 +24,29 @@ module Hbro.Gui.PromptBar (
 ) where
 
 -- {{{ Imports
-import Hbro.Error
-import Hbro.Gui.Buildable
-import Hbro.Gui.PromptBar.Signals
-import Hbro.Gui.PromptBar.Hooks hiding(clean, set)
-import qualified Hbro.Gui.PromptBar.Hooks as Hooks
-import Hbro.Logger hiding(initialize)
-import Hbro.Prelude
+import           Hbro.Error
+import           Hbro.Gui.Buildable
+import           Hbro.Gui.PromptBar.Hooks        hiding (clean, set)
+import qualified Hbro.Gui.PromptBar.Hooks        as Hooks
+import           Hbro.Gui.PromptBar.Signals
+import           Hbro.Logger                     hiding (initialize)
+import           Hbro.Prelude
 
-import Control.Lens.Getter
-import Control.Lens.Setter
-import Control.Lens.Lens
-import Control.Lens.TH
-import Control.Monad.Reader hiding(when)
+import           Control.Lens.Getter
+import           Control.Lens.Lens
+import           Control.Lens.Setter
+import           Control.Lens.TH
+import           Control.Monad.Reader            hiding (when)
 
-import Graphics.Rendering.Pango.Enums
-import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.Builder
-import Graphics.UI.Gtk.Display.Label
-import Graphics.UI.Gtk.Entry.Editable
-import Graphics.UI.Gtk.Entry.Entry
-import Graphics.UI.Gtk.Layout.HBox
+import           Graphics.Rendering.Pango.Enums
+import           Graphics.UI.Gtk.Abstract.Widget
+import           Graphics.UI.Gtk.Builder
+import           Graphics.UI.Gtk.Display.Label
+import           Graphics.UI.Gtk.Entry.Editable
+import           Graphics.UI.Gtk.Entry.Entry
+import           Graphics.UI.Gtk.Layout.HBox
 
-import Network.URI.Monadic
+import           Network.URI.Monadic
 -- }}}
 
 -- {{{ Types

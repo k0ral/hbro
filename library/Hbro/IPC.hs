@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, TupleSections #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections   #-}
 -- | Designed to be imported as @qualified@.
 module Hbro.IPC
     ( routine
@@ -6,13 +7,13 @@ module Hbro.IPC
     ) where
 
 -- {{{ Imports
-import Hbro.IPC.Signals
-import Hbro.Logger
-import Hbro.Prelude
+import           Hbro.IPC.Signals
+import           Hbro.Logger
+import           Hbro.Prelude
 
-import Control.Lens hiding(Action, Context)
+import           Control.Lens        hiding (Action, Context)
 
-import System.ZMQ4.Monadic (ZMQ, Rep(..), Req(..), runZMQ)
+import           System.ZMQ4.Monadic (Rep (..), Req (..), ZMQ, runZMQ)
 import qualified System.ZMQ4.Monadic as ZMQ
 -- }}}
 

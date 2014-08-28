@@ -1,6 +1,6 @@
 module Main where
 
-import Hbro
+import           Hbro
 
 -- Default main function provided as example
 main :: IO ()

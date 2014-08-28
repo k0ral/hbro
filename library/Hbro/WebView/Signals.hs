@@ -2,33 +2,36 @@
 module Hbro.WebView.Signals where
 
 -- {{{ Imports
-import Hbro.Error
-import Hbro.Gdk.KeyVal
-import Hbro.Keys as Keys hiding(Hooks)
-import Hbro.Keys.Model ((.|))
-import Hbro.Keys.Signals as Keys
-import Hbro.Logger
-import Hbro.Prelude hiding(on)
+import           Hbro.Error
+import           Hbro.Gdk.KeyVal
+import           Hbro.Keys                                  as Keys hiding
+                                                                     (Hooks)
+import           Hbro.Keys.Model                            ((.|))
+import           Hbro.Keys.Signals                          as Keys
+import           Hbro.Logger
+import           Hbro.Prelude                               hiding (on)
 
-import Graphics.UI.Gtk.WebKit.Lifted as Lifted
+import           Graphics.UI.Gtk.WebKit.Lifted              as Lifted
 
-import Control.Lens.Lens
-import Control.Lens.Getter
-import Control.Lens.Setter
-import Control.Lens.TH
+import           Control.Lens.Getter
+import           Control.Lens.Lens
+import           Control.Lens.Setter
+import           Control.Lens.TH
 
-import Data.Set as S hiding(map)
+import           Data.Set                                   as S hiding (map)
 
-import Graphics.UI.Gtk.Abstract.Widget hiding(KeyVal)
-import Graphics.UI.Gtk.Gdk.EventM as Gdk
-import Graphics.UI.Gtk.WebKit.Download as W hiding(Download, downloadGetUri, downloadGetSuggestedFilename)
-import Graphics.UI.Gtk.WebKit.WebNavigationAction
-import Graphics.UI.Gtk.WebKit.WebPolicyDecision
-import Graphics.UI.Gtk.WebKit.WebView as W hiding(LoadFinished)
+import           Graphics.UI.Gtk.Abstract.Widget            hiding (KeyVal)
+import           Graphics.UI.Gtk.Gdk.EventM                 as Gdk
+import           Graphics.UI.Gtk.WebKit.Download            as W hiding
+                                                                  (Download, downloadGetSuggestedFilename, downloadGetUri)
+import           Graphics.UI.Gtk.WebKit.WebNavigationAction
+import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
+import           Graphics.UI.Gtk.WebKit.WebView             as W hiding
+                                                                  (LoadFinished)
 
-import Network.URI
+import           Network.URI
 
-import System.Glib.Signals hiding(Signal)
+import           System.Glib.Signals                        hiding (Signal)
 -- }}}
 
 
@@ -63,17 +66,17 @@ instance Describable TitleChanged where describe _ = "TitleChanged"
 
 
 data Signals = Signals
-    { _download          :: TMVar Download
-    , _keyPressed        :: TMVar KeyPressed
-    , _linkClicked       :: TMVar LinkClicked
-    , _linkHovered       :: TMVar LinkHovered
-    , _loadRequested     :: TMVar LoadRequested
-    , _loadStarted       :: TMVar LoadStarted
-    , _loadFinished      :: TMVar LoadFinished
+    { _download       :: TMVar Download
+    , _keyPressed     :: TMVar KeyPressed
+    , _linkClicked    :: TMVar LinkClicked
+    , _linkHovered    :: TMVar LinkHovered
+    , _loadRequested  :: TMVar LoadRequested
+    , _loadStarted    :: TMVar LoadStarted
+    , _loadFinished   :: TMVar LoadFinished
     -- _newWebView        :: TMVar URI,
-    , _newWindow         :: TMVar NewWindow
-    , _resourceOpened    :: TMVar ResourceOpened
-    , _titleChanged      :: TMVar TitleChanged
+    , _newWindow      :: TMVar NewWindow
+    , _resourceOpened :: TMVar ResourceOpened
+    , _titleChanged   :: TMVar TitleChanged
     }
 
 

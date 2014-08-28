@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, TypeFamilies #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies    #-}
 module Hbro.K (
     KData,
     K,
@@ -8,49 +9,49 @@ module Hbro.K (
 ) where
 
 -- {{{
-import Hbro.Clipboard as Clipboard
-import Hbro.Config as Config
-import Hbro.Core
-import Hbro.Error
-import Hbro.Gdk.KeyVal
-import Hbro.Gui as Gui
-import Hbro.Gui.NotificationBar
-import Hbro.Gui.PromptBar as Prompt
+import           Hbro.Clipboard                 as Clipboard
+import           Hbro.Config                    as Config
+import           Hbro.Core
+import           Hbro.Error
+import           Hbro.Gdk.KeyVal
+import           Hbro.Gui                       as Gui
+import           Hbro.Gui.NotificationBar
+import           Hbro.Gui.PromptBar             as Prompt
 -- import Hbro.IPC as IPC (Command(..))
-import Hbro.IPC.Hooks as IPC
-import Hbro.IPC.Signals as IPC
-import Hbro.Keys as Keys
-import Hbro.Keys.Model ((.|))
-import Hbro.Keys.Monadic as Keys
-import Hbro.Hooks as Hooks
-import Hbro.Signals as Signals
-import Hbro.Gui.PromptBar.Hooks
-import Hbro.Prelude
-import Hbro.WebView.Hooks as WebView
-import Hbro.WebView.Signals as WebView
+import           Hbro.Gui.PromptBar.Hooks
+import           Hbro.Hooks                     as Hooks
+import           Hbro.IPC.Hooks                 as IPC
+import           Hbro.IPC.Signals               as IPC
+import           Hbro.Keys                      as Keys
+import           Hbro.Keys.Model                ((.|))
+import           Hbro.Keys.Monadic              as Keys
+import           Hbro.Prelude
+import           Hbro.Signals                   as Signals
+import           Hbro.WebView.Hooks             as WebView
+import           Hbro.WebView.Signals           as WebView
 
 -- import Control.Lens.Getter
-import Control.Lens.Lens
-import Control.Lens.Setter
-import Control.Lens.TH
-import Control.Monad.Reader
+import           Control.Lens.Lens
+import           Control.Lens.Setter
+import           Control.Lens.TH
+import           Control.Monad.Reader
 
-import Data.Map as M hiding(foldl, map)
+import           Data.Map                       as M hiding (foldl, map)
 
-import Graphics.UI.Gtk.Gdk.EventM as Gdk
-import Graphics.UI.Gtk.Windows.Window
-import Graphics.UI.Gtk.WebKit.WebView
+import           Graphics.UI.Gtk.Gdk.EventM     as Gdk
+import           Graphics.UI.Gtk.WebKit.WebView
+import           Graphics.UI.Gtk.Windows.Window
 
-import Network.URI.Monadic
+import           Network.URI.Monadic
 
-import qualified System.Glib.Attributes as G
+import qualified System.Glib.Attributes         as G
 -- }}}
 
 data KData = KData
-    { _config      :: TVar Config
-    , _gui         :: GUI
-    , _hooks       :: Hooks.Hooks KE
-    , _signals     :: Signals.Signals
+    { _config  :: TVar Config
+    , _gui     :: GUI
+    , _hooks   :: Hooks.Hooks KE
+    , _signals :: Signals.Signals
     }
 
 type K  = ReaderT KData IO

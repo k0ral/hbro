@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, TupleSections #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections   #-}
 -- | Key bindings model.
 -- Designed to be imported as @qualified@.
 module Hbro.Keys.Model (
@@ -30,19 +31,19 @@ module Hbro.Keys.Model (
 ) where
 
 -- {{{ Imports
-import Hbro.Prelude hiding(lookup)
+import           Hbro.Prelude        hiding (lookup)
 
-import Control.Lens ()
-import Control.Lens.Getter
-import Control.Lens.Lens
-import Control.Lens.Setter
-import Control.Lens.TH
+import           Control.Lens        ()
+import           Control.Lens.Getter
+import           Control.Lens.Lens
+import           Control.Lens.Setter
+import           Control.Lens.TH
 
-import Data.List.NonEmpty (NonEmpty(..), nonEmpty)
-import qualified Data.List.NonEmpty as NE (fromList, toList)
-import qualified Data.Map as M
+import           Data.List.NonEmpty  (NonEmpty (..), nonEmpty)
+import qualified Data.List.NonEmpty  as NE (fromList, toList)
+import qualified Data.Map            as M
 
-import qualified Prelude (lookup)
+import qualified Prelude             (lookup)
 -- }}}
 
 -- {{{ Key strokes model

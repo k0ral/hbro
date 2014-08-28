@@ -10,15 +10,15 @@ module Graphics.UI.Gtk.WebKit.Lifted (
 ) where
 
 -- {{{ Imports
-import Hbro.Error
-import Hbro.Prelude
+import           Hbro.Error
+import           Hbro.Prelude
 
 -- import Graphics.UI.Gtk.General.General as GTK
-import qualified Graphics.UI.Gtk.WebKit.Download as W
-import Graphics.UI.Gtk.WebKit.NetworkRequest (NetworkRequest)
+import qualified Graphics.UI.Gtk.WebKit.Download       as W
+import           Graphics.UI.Gtk.WebKit.NetworkRequest (NetworkRequest)
 import qualified Graphics.UI.Gtk.WebKit.NetworkRequest as W
 
-import Network.URI.Monadic
+import           Network.URI.Monadic
 -- }}}
 
 -- | Error message

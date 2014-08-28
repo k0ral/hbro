@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, TupleSections, ViewPatterns #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections   #-}
 -- | Key bindings model.
 -- Designed to be imported as @qualified@.
 module Hbro.Keys (
@@ -25,24 +26,24 @@ module Hbro.Keys (
     ) where
 
 -- {{{ Imports
-import Hbro.Gdk.KeyVal
-import Hbro.Keys.Model ((.|), modifiersL, keyL)
-import qualified Hbro.Keys.Model as Model
-import Hbro.Prelude
+import           Hbro.Gdk.KeyVal
+import           Hbro.Keys.Model            (keyL, modifiersL, (.|))
+import qualified Hbro.Keys.Model            as Model
+import           Hbro.Prelude
 
-import Control.Lens.Getter
-import Control.Lens.Lens
-import Control.Lens.Setter
-import Control.Lens.TH
-import Control.Monad.Reader hiding(forM_, guard, mapM_)
+import           Control.Lens.Getter
+import           Control.Lens.Lens
+import           Control.Lens.Setter
+import           Control.Lens.TH
+import           Control.Monad.Reader       hiding (forM_, guard, mapM_)
 
-import Data.List.NonEmpty (NonEmpty(..))
-import qualified Data.Set as Set
+import           Data.List.NonEmpty         (NonEmpty (..))
+import qualified Data.Set                   as Set
 
 import qualified Graphics.UI.Gtk.Gdk.EventM as Gdk
 
-import Text.Parsec
-import Text.Parsec.Text
+import           Text.Parsec
+import           Text.Parsec.Text
 -- }}}
 
 -- {{{ Modifiers

@@ -18,18 +18,18 @@ module Hbro.Gui.PromptBar.Signals (
 
 -- {{{ Imports
 -- import Hbro.Error
-import Hbro.Gdk.KeyVal
-import Hbro.Logger
-import Hbro.Prelude hiding(on)
+import           Hbro.Gdk.KeyVal
+import           Hbro.Logger
+import           Hbro.Prelude                    hiding (on)
 
-import Control.Lens
+import           Control.Lens
 
-import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.Entry.Editable
-import Graphics.UI.Gtk.Entry.Entry
-import Graphics.UI.Gtk.Gdk.EventM as Gdk
+import           Graphics.UI.Gtk.Abstract.Widget
+import           Graphics.UI.Gtk.Entry.Editable
+import           Graphics.UI.Gtk.Entry.Entry
+import           Graphics.UI.Gtk.Gdk.EventM      as Gdk
 
-import System.Glib.Signals
+import           System.Glib.Signals
 -- }}}
 
 
@@ -68,9 +68,9 @@ data Activated = Activated Text
 instance Describable Activated where describe _ = "PromptActivated"
 
 data Signals = Signals
-    { _cancelled   :: TMVar Cancelled
-    , _changed     :: TMVar Changed
-    , _validated   :: TMVar Activated
+    { _cancelled :: TMVar Cancelled
+    , _changed   :: TMVar Changed
+    , _validated :: TMVar Activated
     }
 
 makeLensesWith ?? ''Signals $ lensRules

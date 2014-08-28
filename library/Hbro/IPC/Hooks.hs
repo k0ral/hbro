@@ -2,14 +2,14 @@
 module Hbro.IPC.Hooks where
 
 -- {{{ Imports
-import Hbro.Error
-import Hbro.IPC.Signals
-import Hbro.Prelude
+import           Hbro.Error
+import           Hbro.IPC.Signals
+import           Hbro.Prelude
 
-import Control.Lens hiding(Action)
-import Control.Monad.Reader
+import           Control.Lens         hiding (Action)
+import           Control.Monad.Reader
 
-import Data.Map as M
+import           Data.Map             as M
 -- }}}
 
 -- {{{ Types

@@ -1,12 +1,12 @@
 module Hbro.Keys.Monadic where
 
 -- {{{ Imports
-import Hbro.Keys
-import qualified Hbro.Keys.Model as Keys
-import Hbro.Prelude
+import           Hbro.Keys
+import qualified Hbro.Keys.Model      as Keys
+import           Hbro.Prelude
 
-import Control.Lens.Type
-import Control.Monad.Reader
+import           Control.Lens.Type
+import           Control.Monad.Reader
 
 -- import Data.List.NonEmpty as NE
 -- import Data.Map as M

@@ -12,14 +12,14 @@ module Hbro.Gui.PromptBar.Hooks
 
 -- {{{ Imports
 -- import Hbro.Error
-import Hbro.Gui.PromptBar.Signals
-import Hbro.Prelude
+import           Hbro.Gui.PromptBar.Signals
+import           Hbro.Prelude
 
-import Control.Lens.Lens
-import Control.Lens.Getter
-import Control.Lens.Setter hiding(set)
-import Control.Lens.TH
-import Control.Monad.Reader hiding(when)
+import           Control.Lens.Getter
+import           Control.Lens.Lens
+import           Control.Lens.Setter        hiding (set)
+import           Control.Lens.TH
+import           Control.Monad.Reader       hiding (when)
 -- }}}
 
 -- | No exported constructor, please use 'initHooks'

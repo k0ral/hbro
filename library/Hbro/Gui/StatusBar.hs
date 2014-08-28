@@ -1,14 +1,14 @@
 module Hbro.Gui.StatusBar where
 
 -- {{{ Imports
-import Hbro.Gui.Buildable
-import Hbro.Prelude
+import           Hbro.Gui.Buildable
+import           Hbro.Prelude
 
-import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.Builder
-import Graphics.UI.Gtk.Layout.HBox
+import           Graphics.UI.Gtk.Abstract.Widget
+import           Graphics.UI.Gtk.Builder
+import           Graphics.UI.Gtk.Layout.HBox
 
-import System.Glib.Types
+import           System.Glib.Types
 -- }}}
 
 -- | Status bar is just a horizontal layout that can host widgets.

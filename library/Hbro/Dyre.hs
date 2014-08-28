@@ -6,12 +6,12 @@ module Hbro.Dyre
     ) where
 
 -- {{{ Imports
-import Hbro.Logger
-import Hbro.Prelude
+import           Hbro.Logger
+import           Hbro.Prelude
 
-import Config.Dyre
-import Config.Dyre.Compile
-import Config.Dyre.Paths
+import           Config.Dyre
+import           Config.Dyre.Compile
+import           Config.Dyre.Paths
 -- }}}
 
 -- | How dynamic reconfiguration process should behave.

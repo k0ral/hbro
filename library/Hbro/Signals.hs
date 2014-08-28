@@ -11,14 +11,14 @@ module Hbro.Signals (
 
 -- {{{ Imports
 -- import Hbro.Error
-import Hbro.Gui hiding(initialize)
-import Hbro.Gui.PromptBar (entryL)
-import qualified Hbro.IPC.Signals as IPC
+import           Hbro.Gui                   hiding (initialize)
+import           Hbro.Gui.PromptBar         (entryL)
 import qualified Hbro.Gui.PromptBar.Signals as Prompt
-import Hbro.Prelude
-import qualified Hbro.WebView.Signals as WebView
+import qualified Hbro.IPC.Signals           as IPC
+import           Hbro.Prelude
+import qualified Hbro.WebView.Signals       as WebView
 
-import Control.Lens hiding((??))
+import           Control.Lens               hiding ((??))
 -- }}}
 
 -- {{{ Signals

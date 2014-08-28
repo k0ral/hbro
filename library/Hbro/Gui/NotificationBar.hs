@@ -8,22 +8,23 @@ module Hbro.Gui.NotificationBar (
 
 -- {{{ Imports
 -- import Hbro.Error
-import Hbro.Gui.Buildable
-import Hbro.Logger hiding(initialize)
-import Hbro.Prelude
+import           Hbro.Gui.Buildable
+import           Hbro.Logger                     hiding (initialize)
+import           Hbro.Prelude
 
-import Control.Lens
-import Control.Monad.Reader
+import           Control.Lens
+import           Control.Monad.Reader
 
-import Graphics.Rendering.Pango.Enums
-import Graphics.UI.Gtk.Abstract.Widget
-import Graphics.UI.Gtk.Builder
-import Graphics.UI.Gtk.Display.Label
+import           Graphics.Rendering.Pango.Enums
+import           Graphics.UI.Gtk.Abstract.Widget
+import           Graphics.UI.Gtk.Builder
+import           Graphics.UI.Gtk.Display.Label
 
-import System.Glib.Types
-import System.Log.Formatter
-import System.Log.Handler.Simple
-import System.Log.Logger (addHandler, rootLoggerName, updateGlobalLogger)
+import           System.Glib.Types
+import           System.Log.Formatter
+import           System.Log.Handler.Simple
+import           System.Log.Logger               (addHandler, rootLoggerName,
+                                                  updateGlobalLogger)
 -- }}}
 
 -- TODO: color notifications depending on their level

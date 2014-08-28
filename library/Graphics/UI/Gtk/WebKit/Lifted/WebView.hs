@@ -11,14 +11,17 @@ module Graphics.UI.Gtk.WebKit.Lifted.WebView
     ) where
 
 -- {{{ Imports
-import Hbro.Error
-import Hbro.Prelude
+import           Hbro.Error
+import           Hbro.Prelude
 
-import Graphics.UI.Gtk.Gdk.Pixbuf
-import Graphics.UI.Gtk.WebKit.WebView as Export hiding(webViewGetUri, webViewGetIconUri, webViewGetTitle, webViewTryGetFaviconPixbuf)
+import           Graphics.UI.Gtk.Gdk.Pixbuf
+import           Graphics.UI.Gtk.WebKit.WebView as Export hiding
+                                                           (webViewGetIconUri,
+                                                           webViewGetTitle,
+                                                           webViewGetUri, webViewTryGetFaviconPixbuf)
 import qualified Graphics.UI.Gtk.WebKit.WebView as W
 
-import Network.URI.Monadic
+import           Network.URI.Monadic
 -- }}}
 
 -- | Error message

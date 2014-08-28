@@ -9,17 +9,18 @@ module Hbro.Logger
 ) where
 
 -- {{{ Imports
-import Hbro.Prelude
+import           Hbro.Prelude
 
-import Control.Concurrent (myThreadId)
+import           Control.Concurrent        (myThreadId)
 
-import Data.Text (justifyLeft, replace)
+import           Data.Text                 (justifyLeft, replace)
 
-import System.Log as X (Priority(..))
-import System.Log.Formatter
-import System.Log.Handler.Simple
-import System.Log.Logger (Logger, rootLoggerName, setLevel, setHandlers, updateGlobalLogger)
-import qualified System.Log.Logger as L
+import           System.Log                as X (Priority (..))
+import           System.Log.Formatter
+import           System.Log.Handler.Simple
+import           System.Log.Logger         (Logger, rootLoggerName, setHandlers,
+                                            setLevel, updateGlobalLogger)
+import qualified System.Log.Logger         as L
 -- }}}
 
 initialize :: (BaseIO m) => Priority -> m ()

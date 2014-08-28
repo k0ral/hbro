@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, ViewPatterns #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns    #-}
 module Hbro.Gui (
 -- * Types
       GUI
@@ -27,44 +28,46 @@ module Hbro.Gui (
 ) where
 
 -- {{{ Imports
-import Graphics.UI.Gtk.WebKit.Lifted.WebView
+import           Graphics.UI.Gtk.WebKit.Lifted.WebView
 
-import Hbro.Error as Hbro
-import Hbro.Gui.Buildable
-import Hbro.Gui.NotificationBar (HasNotificationBar(..))
-import qualified Hbro.Gui.NotificationBar as NotifBar
-import Hbro.Gui.PromptBar (PromptBar, HasPromptBar(..))
-import qualified Hbro.Gui.PromptBar as Prompt
-import Hbro.Gui.PromptBar.Signals as Prompt
-import Hbro.Gui.StatusBar
-import Hbro.Logger hiding(initialize)
-import Hbro.Prelude hiding(on)
+import           Hbro.Error                               as Hbro
+import           Hbro.Gui.Buildable
+import           Hbro.Gui.NotificationBar                 (HasNotificationBar (..))
+import qualified Hbro.Gui.NotificationBar                 as NotifBar
+import           Hbro.Gui.PromptBar                       (HasPromptBar (..),
+                                                           PromptBar)
+import qualified Hbro.Gui.PromptBar                       as Prompt
+import           Hbro.Gui.PromptBar.Signals               as Prompt
+import           Hbro.Gui.StatusBar
+import           Hbro.Logger                              hiding (initialize)
+import           Hbro.Prelude                             hiding (on)
 
-import Control.Lens.Getter
-import Control.Lens.Lens
-import Control.Lens.Setter
-import Control.Lens.TH
-import Control.Monad.Reader hiding(join, mapM_, when)
+import           Control.Lens.Getter
+import           Control.Lens.Lens
+import           Control.Lens.Setter
+import           Control.Lens.TH
+import           Control.Monad.Reader                     hiding (join, mapM_,
+                                                           when)
 
-import Data.Text (splitOn)
+import           Data.Text                                (splitOn)
 
-import Graphics.Rendering.Pango.Enums
-import Graphics.UI.Gtk.Abstract.Container
-import Graphics.UI.Gtk.Abstract.Widget
-import qualified Graphics.UI.Gtk.Builder as Gtk
-import Graphics.UI.Gtk.General.General as GTK
-import Graphics.UI.Gtk.Misc.Adjustment
-import Graphics.UI.Gtk.Scrolling.ScrolledWindow
-import Graphics.UI.Gtk.WebKit.DOM.Document
-import Graphics.UI.Gtk.Windows.Window
+import           Graphics.Rendering.Pango.Enums
+import           Graphics.UI.Gtk.Abstract.Container
+import           Graphics.UI.Gtk.Abstract.Widget
+import qualified Graphics.UI.Gtk.Builder                  as Gtk
+import           Graphics.UI.Gtk.General.General          as GTK
+import           Graphics.UI.Gtk.Misc.Adjustment
+import           Graphics.UI.Gtk.Scrolling.ScrolledWindow
+import           Graphics.UI.Gtk.WebKit.DOM.Document
+import           Graphics.UI.Gtk.Windows.Window
 
-import Network.URI as N
+import           Network.URI                              as N
 
-import System.Glib.Attributes hiding(get, set)
-import qualified System.Glib.Attributes as G (get, set)
+import           System.Glib.Attributes                   hiding (get, set)
+import qualified System.Glib.Attributes                   as G (get, set)
 -- import System.Glib.GError
-import System.Glib.Signals
-import System.Glib.Types
+import           System.Glib.Signals
+import           System.Glib.Types
 -- }}}
 
 -- {{{ Types

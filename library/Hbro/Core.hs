@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, TypeFamilies #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies    #-}
 module Hbro.Core (
 -- * Types
       CaseSensitivity(..)
@@ -28,22 +29,22 @@ module Hbro.Core (
     ) where
 
 -- {{{ Imports
-import Graphics.UI.Gtk.WebKit.Lifted.WebView
+import           Graphics.UI.Gtk.WebKit.Lifted.WebView
 
-import Hbro.Config as Config
-import Hbro.Error
-import Hbro.Gui as Gui
-import Hbro.Logger hiding(initialize)
-import Hbro.Prelude as H
+import           Hbro.Config                           as Config
+import           Hbro.Error
+import           Hbro.Gui                              as Gui
+import           Hbro.Logger                           hiding (initialize)
+import           Hbro.Prelude                          as H
 
-import Control.Monad.Reader hiding(guard, unless)
+import           Control.Monad.Reader                  hiding (guard, unless)
 
-import Graphics.UI.Gtk.Gdk.Pixbuf (Pixbuf)
-import Graphics.UI.Gtk.General.General
-import Graphics.UI.Gtk.WebKit.WebDataSource
-import Graphics.UI.Gtk.WebKit.WebFrame
+import           Graphics.UI.Gtk.Gdk.Pixbuf            (Pixbuf)
+import           Graphics.UI.Gtk.General.General
+import           Graphics.UI.Gtk.WebKit.WebDataSource
+import           Graphics.UI.Gtk.WebKit.WebFrame
 
-import Network.URI.Monadic
+import           Network.URI.Monadic
 -- }}}
 
 -- {{{ Types

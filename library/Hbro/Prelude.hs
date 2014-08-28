@@ -41,33 +41,37 @@ module Hbro.Prelude
 ) where
 
 -- {{{ Imports
-import ClassyPrelude as X hiding(Builder(..), log, toList)
+import           ClassyPrelude                   as X hiding (Builder (..), log,
+                                                       toList)
 
-import Control.Applicative as X (Alternative(..), WrappedMonad)
-import Control.Arrow as X (Kleisli(..), left, right)
-import Control.Concurrent.Async.Lifted
-import Control.Conditional as X (ToBool(..), (<|), (|>), (<<|), (|>>))
-import Control.Lens
-import Control.Monad.Base as X (MonadBase(..))
-import Control.Monad.Trans.Control as X
-import Control.Monad.Reader
+import           Control.Applicative             as X (Alternative (..),
+                                                       WrappedMonad)
+import           Control.Arrow                   as X (Kleisli (..), left,
+                                                       right)
+import           Control.Concurrent.Async.Lifted
+import           Control.Conditional             as X (ToBool (..), (<<|), (<|),
+                                                       (|>), (|>>))
+import           Control.Lens
+import           Control.Monad.Base              as X (MonadBase (..))
+import           Control.Monad.Reader
+import           Control.Monad.Trans.Control     as X
 
-import Data.Default as X
-import Data.Foldable as X (asum)
-import Data.Functor as X
-import Data.List as X (tail)
-import Data.List.NonEmpty (NonEmpty(..))
-import Data.Maybe as X (fromJust)
+import           Data.Default                    as X
+import           Data.Foldable                   as X (asum)
+import           Data.Functor                    as X
+import           Data.List                       as X (tail)
+import           Data.List.NonEmpty              (NonEmpty (..))
+import           Data.Maybe                      as X (fromJust)
 
-import Graphics.Rendering.Pango.Enums
-import Graphics.UI.Gtk.General.General
+import           Graphics.Rendering.Pango.Enums
+import           Graphics.UI.Gtk.General.General
 
-import Safe as X (initSafe, tailSafe)
+import           Safe                            as X (initSafe, tailSafe)
 
-import System.Log.Logger
+import           System.Log.Logger
 -- import System.Posix.Process
 -- import System.Posix.Types
-import System.Process
+import           System.Process
 -- }}}
 
 -- | We often want to use a single object where a list is expected.

@@ -1,6 +1,6 @@
 module Hbro.Signals.NotificationBar where
 
-import Hbro.Prelude
+import           Hbro.Prelude
 
 
 data Signals = Signals {

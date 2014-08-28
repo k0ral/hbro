@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, UndecidableInstances #-}
+{-# LANGUAGE TemplateHaskell      #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- | General configuration parameters.
 -- The recommended way to import this module is:
 -- @
@@ -16,14 +17,14 @@ module Hbro.Config (
 ) where
 
 -- {{{ Imports
-import Hbro.Prelude
+import           Hbro.Prelude
 
-import Control.Lens hiding(set)
-import qualified Control.Lens as L (set)
-import Control.Monad.Reader
+import           Control.Lens         hiding (set)
+import qualified Control.Lens         as L (set)
+import           Control.Monad.Reader
 
-import Network.URI (URI)
-import qualified Network.URI as N
+import           Network.URI          (URI)
+import qualified Network.URI          as N
 -- }}}
 
 -- | Custom settings provided by the user

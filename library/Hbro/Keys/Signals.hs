@@ -1,15 +1,15 @@
 module Hbro.Keys.Signals where
 
 -- {{{ Imports
-import Hbro.Error
+import           Hbro.Error
 -- import Hbro.Gdk.KeyVal
-import Hbro.Keys as Keys
-import Hbro.Keys.Model hiding(KeyStroke)
-import Hbro.Logger
-import Hbro.Prelude
+import           Hbro.Keys            as Keys
+import           Hbro.Keys.Model      hiding (KeyStroke)
+import           Hbro.Logger
+import           Hbro.Prelude
 
-import Control.Lens.Getter
-import Control.Monad.Reader hiding(forM_)
+import           Control.Lens.Getter
+import           Control.Monad.Reader hiding (forM_)
 -- }}}
 
 data KeyPressed = KeyPressed KeyStroke

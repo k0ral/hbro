@@ -1,32 +1,33 @@
 module Hbro.Boot (hbro) where
 
 -- {{{ Imports
-import Hbro.Config as Config
-import Hbro.Core as Core
-import Hbro.Dyre as Dyre
-import Hbro.Error
-import Hbro.Gui as Gui
-import Hbro.Hooks as Hooks
-import Hbro.IPC as IPC (routine)
-import Hbro.K as K
-import Hbro.Options as Options
-import Hbro.Signals as Signals
-import Hbro.Logger
-import Hbro.Prelude
-import Hbro.Webkit.WebSettings as Settings
+import           Hbro.Config                     as Config
+import           Hbro.Core                       as Core
+import           Hbro.Dyre                       as Dyre
+import           Hbro.Error
+import           Hbro.Gui                        as Gui
+import           Hbro.Hooks                      as Hooks
+import           Hbro.IPC                        as IPC (routine)
+import           Hbro.K                          as K
+import           Hbro.Logger
+import           Hbro.Options                    as Options
+import           Hbro.Prelude
+import           Hbro.Signals                    as Signals
+import           Hbro.Webkit.WebSettings         as Settings
 
-import Control.Concurrent.Async.Lifted
-import Control.Lens hiding((??))
-import Control.Monad.Reader hiding(guard, mapM_, msum, when)
+import           Control.Concurrent.Async.Lifted
+import           Control.Lens                    hiding ((??))
+import           Control.Monad.Reader            hiding (guard, mapM_, msum,
+                                                  when)
 
-import Filesystem
+import           Filesystem
 
-import Graphics.UI.Gtk.General.General as Gtk
+import           Graphics.UI.Gtk.General.General as Gtk
 
-import Paths_hbro
+import           Paths_hbro
 
-import System.Posix.Signals
-import System.ZMQ4.Monadic (runZMQ)
+import           System.Posix.Signals
+import           System.ZMQ4.Monadic             (runZMQ)
 -- }}}
 
 -- | Main function to call in the configuration file (cf file @Hbro/Main.hs@).

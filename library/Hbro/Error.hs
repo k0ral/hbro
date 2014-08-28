@@ -1,12 +1,13 @@
 module Hbro.Error ( module X, module Hbro.Error) where
 
 -- {{{ Imports
-import Hbro.Logger
-import Hbro.Prelude
+import           Hbro.Logger
+import           Hbro.Prelude
 
-import Control.Error.Util as X (note, hush)
-import Control.Monad.Except as X (MonadError(..), ExceptT, runExceptT, withExceptT)
-import Control.Monad.Trans.Maybe as X
+import           Control.Error.Util        as X (hush, note)
+import           Control.Monad.Except      as X (ExceptT, MonadError (..),
+                                                 runExceptT, withExceptT)
+import           Control.Monad.Trans.Maybe as X
 -- }}}
 
 -- | Convert a 'Maybe' value into a 'MonadError' monad.
