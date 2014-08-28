@@ -52,6 +52,12 @@ Configuration system : Dyre_
 Suggestions about better alternatives for any of these points (except the programming language) are welcome.
 
 
+Installation
+------------
+
+At the moment, *hbro* depends on the *integer-simple* package, which means you won't be able to build it using a standard GHC that uses the *integer-gmp* package. This distinction is `documented here`_, and the reason for this constraint is `explained there`_.
+
+
 Configuration
 -------------
 
@@ -95,7 +101,6 @@ Known bugs and limitations
 
 Many problems/limitations are inherited from the *Haskell* bindings webkitgtk3_ and gtk3_. Until fixed in upstream, nothing can be done on *hbro* to work around them. Here's a summary of them:
 
-- **segmentation faults when using HTTPS**;
 - **segmentation faults when loading some webpages while javascript/flash is enabled**;
 - vertical scrollbar cannot be hidden;
 - no proxy configuration;
@@ -126,3 +131,5 @@ License
 .. _http-conduit: https://hackage.haskell.org/package/http-conduit
 .. _webkitgtk3: http://hackage.haskell.org/package/webkitgtk3
 .. _gtk3: http://hackage.haskell.org/package/gtk3
+.. _documented here: https://ghc.haskell.org/trac/ghc/wiki/Commentary/Libraries/Integer
+.. _explained there: http://sourceforge.net/p/gtk2hs/mailman/gtk2hs-users/thread/20140515065151.GA8342%40mystik/

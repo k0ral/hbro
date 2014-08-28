@@ -1,7 +1,7 @@
 Name:                hbro
 Version:             1.2.0.0
-Synopsis:            Minimal KISS compliant browser
--- Description:
+Synopsis:            Minimal KISS-compliant browser
+Description:         Cf README
 Homepage:            https://bitbucket.org/k0ral/hbro
 Category:            Browser,Web
 
@@ -16,6 +16,9 @@ Build-type:          Simple
 Extra-source-files:  README.rst
 Data-files:          examples/ui.xml
 
+Source-repository head
+    Type:     git
+    Location: https://github.com/k0ral/hbro.git
 Source-repository head
     Type:     hg
     Location: https://bitbucket.org/k0ral/hbro
