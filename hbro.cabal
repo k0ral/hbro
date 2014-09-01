@@ -49,6 +49,7 @@ Library
         mtl >= 2.2.1,
         monad-control,
         network-uri,
+        optparse-applicative,
         pango,
         parsec,
         process,
@@ -88,7 +89,6 @@ Library
         Hbro.Keys.Monadic,
         Hbro.Keys.Signals,
         Hbro.Logger,
-        Hbro.Options,
         Hbro.Prelude,
         Hbro.Signals,
         Hbro.Webkit.WebSettings
@@ -101,6 +101,7 @@ Library
         -- Hbro.CFunctions,
         Hbro.Dyre,
         Hbro.IPC.Signals,
+        Hbro.Options,
         Paths_hbro
     Extensions:
         ConstraintKinds,
@@ -112,7 +113,8 @@ Library
         MultiParamTypeClasses,
         NoImplicitPrelude,
         OverloadedStrings,
-        RankNTypes
+        RankNTypes,
+        ViewPatterns
     -- Build-tools: hsc2hs
     -- C-sources: cbits/cbits.c
     -- Include-dirs: include

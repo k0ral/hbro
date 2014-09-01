@@ -9,35 +9,46 @@ import           Hbro.Gui                        as Gui
 import           Hbro.Hooks                      as Hooks
 import           Hbro.IPC                        as IPC (routine)
 import           Hbro.K                          as K
-import           Hbro.Logger
+import           Hbro.Logger                     as Logger
 import           Hbro.Options                    as Options
 import           Hbro.Prelude
 import           Hbro.Signals                    as Signals
 import           Hbro.Webkit.WebSettings         as Settings
 
 import           Control.Concurrent.Async.Lifted
-import           Control.Lens                    hiding ((??))
+import           Control.Lens                    hiding ((<|), (??), (|>))
 import           Control.Monad.Reader            hiding (guard, mapM_, msum,
                                                   when)
+
+import           Data.Version                    hiding (Version)
 
 import           Filesystem
 
 import           Graphics.UI.Gtk.General.General as Gtk
 
+import           Network.URI.Monadic
+
 import           Paths_hbro
 
+import           System.Posix.Process
 import           System.Posix.Signals
+import qualified System.ZMQ4                     as ZMQ (version)
 import           System.ZMQ4.Monadic             (runZMQ)
 -- }}}
 
 -- | Main function to call in the configuration file (cf file @Hbro/Main.hs@).
 hbro :: K () -> IO ()
-hbro setup = void . runMaybeT $ do
+hbro setup = do
     options <- parseOptions
-
-    Dyre.wrap (options^.dyreModeL)
-              (\x -> withAsyncBound guiThread (mainThread x))
-              (setup, options)
+    case options of
+        Left Rebuild -> Dyre.recompile >>= mapM_ putStrLn
+        Left Version -> do
+            (a, b, c) <- io ZMQ.version
+            putStrLn $ "hbro: v" ++ pack (showVersion version)
+            putStrLn $ "0MQ library: v" ++ intercalate "." (map tshow [a, b, c])
+        Right runOptions -> Dyre.wrap (runOptions^.dyreModeL)
+                                      (\x -> withAsyncBound guiThread (mainThread x))
+                                      (setup, runOptions)
 
 -- | Gtk main loop thread.
 guiThread :: IO ()
@@ -53,6 +64,8 @@ guiThread = do
 
 mainThread :: (ControlIO m) => (K (), CliOptions) -> Async (StM IO ()) -> m ()
 mainThread (customSetup, options) uiThread = logErrors_ $ do
+    Logger.initialize $ options^.logLevelL
+
     -- Signals
     signals <- Signals.initialize
     hooks   <- Hooks.initialize
@@ -66,7 +79,7 @@ mainThread (customSetup, options) uiThread = logErrors_ $ do
     globalStatus <- K.init gui hooks signals
 
     -- IPC
-    socketURI <- getSocketURI options
+    theSocketURI <- getSocketURI options
 
     io . (`runReaderT` globalStatus) . runExceptT $ do
         resetKeyBindings
@@ -75,13 +88,14 @@ mainThread (customSetup, options) uiThread = logErrors_ $ do
 
         debugM "hbro.boot" . ("Start-up configuration: \n" ++) . describe =<< Config.get id
 
-        logErrors_ $ maybe goHome load (options^.startURIL)
+        logErrors_ $ maybe goHome (load <=< getStartURI) (options^.startURIL)
 
     io . withAsyncList (Hooks.routines globalStatus signals hooks) $ \_ -> do
-      withAsync (runZMQ $ IPC.routine socketURI (signals^._ipcSignals)) $ \_ ->
+      withAsync (runZMQ $ IPC.routine theSocketURI (signals^._ipcSignals)) $ \_ ->
         wait uiThread
 
     debugM "hbro.main" "All threads correctly exited."
+
 
 -- | Return the list of available UI files (from configuration and package)
 getUIFiles :: (BaseIO m) => CliOptions -> m [FilePath]
@@ -89,3 +103,23 @@ getUIFiles options = do
     fileFromConfig  <- getAppConfigDirectory "hbro" >/> "ui.xml"
     fileFromPackage <- fpFromText . pack <$> (io $ getDataFileName "examples/ui.xml")
     return $ catMaybes [options^.uiFileL, Just fileFromConfig, Just fileFromPackage]
+
+-- | Return socket URI used by this instance
+getSocketURI :: (BaseIO m) => CliOptions -> m Text
+getSocketURI options = maybe getDefaultSocketURI (return . normalize) $ options^.socketPathL
+  where
+    normalize = ("ipc://" ++) . fpToText
+    getDefaultSocketURI = do
+      dir <- fpToText <$> (io $ getAppCacheDirectory "hbro")
+      pid <- io getProcessID
+      return $ "ipc://" ++ dir ++ "/hbro." ++ tshow pid
+
+-- | Parse URI passed in commandline, check whether it is a file path or an internet URI
+-- and return the corresponding normalized URI (that is: prefixed with "file://" or "http://")
+getStartURI :: (BaseIO m, MonadError Text m) => URI -> m URI
+getStartURI uri = do
+    fileURI    <- io . isFile . fpFromText $ tshow uri
+    workingDir <- io getWorkingDirectory
+
+    parseURIReference ("file://" ++ fpToText workingDir ++ "/" ++ tshow uri) <| fileURI |> return uri
+    -- maybe abort return =<< logErrors (parseURIReference fileURI')

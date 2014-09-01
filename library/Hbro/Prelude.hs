@@ -45,7 +45,7 @@ import           ClassyPrelude                   as X hiding (Builder (..), log,
                                                        toList)
 
 import           Control.Applicative             as X (Alternative (..),
-                                                       WrappedMonad)
+                                                       WrappedMonad, optional)
 import           Control.Arrow                   as X (Kleisli (..), left,
                                                        right)
 import           Control.Concurrent.Async.Lifted
