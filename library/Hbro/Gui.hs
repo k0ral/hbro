@@ -44,7 +44,6 @@ import           Hbro.Prelude                             hiding (on)
 
 import           Control.Lens.Getter
 import           Control.Lens.Lens
-import           Control.Lens.Setter
 import           Control.Lens.TH
 import           Control.Monad.Reader                     hiding (join, mapM_,
                                                            when)
@@ -74,19 +73,17 @@ import           System.Glib.Types
 data Axis     = Horizontal | Vertical deriving(Show)
 data Position = Absolute Double | Relative Double deriving(Show)
 
-data GUI = GUI
-    { _mainWindow      :: Window
-    , _scrollWindow    :: ScrolledWindow  -- ^ 'ScrolledWindow' containing the webview
-    , _webView         :: WebView
-    , _promptBar       :: PromptBar
-    , _statusBar       :: StatusBar
-    , _notificationBar :: NotifBar.NotificationBar
-    , _builder         :: Gtk.Builder          -- ^ Builder object created from XML file
+declareClassy [d|
+  data GUI = GUI
+    { mainWindowL      :: Window
+    , scrollWindowL    :: ScrolledWindow  -- ^ 'ScrolledWindow' containing the webview
+    , webViewL         :: WebView
+    , promptBarL       :: PromptBar
+    , statusBarL       :: StatusBar
+    , notificationBarL :: NotifBar.NotificationBar
+    , builderL         :: Gtk.Builder          -- ^ Builder object created from XML file
     }
-
-makeLensesWith ?? ''GUI $ classyRules
-    & lensField .~ (\name -> Just (tail name ++ "L"))
-    & lensClass .~ (\name -> Just ("Has" ++ name, "_" ++ toLower name))
+  |]
 
 -- | A 'GUI' can be built from an XML file.
 instance Buildable GUI where
@@ -104,12 +101,12 @@ instance Buildable GUI where
             <*> buildWith b
             <*> pure b
 
-instance HasNotificationBar GUI where _notificationbar = notificationBarL
-instance HasPromptBar GUI       where _promptbar       = promptBarL
+instance HasNotificationBar GUI where notificationBar = notificationBarL
+instance HasPromptBar GUI       where promptBar       = promptBarL
 -- }}}
 
 get :: (MonadReader r m, BaseIO m, HasGUI r) => Lens' GUI a -> m a
-get l = askL (_gui.l)
+get l = askL (gUI.l)
 
 
 -- {{{ Initialization

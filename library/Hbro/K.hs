@@ -30,9 +30,6 @@ import           Hbro.Signals                   as Signals
 import           Hbro.WebView.Hooks             as WebView
 import           Hbro.WebView.Signals           as WebView
 
--- import Control.Lens.Getter
-import           Control.Lens.Lens
-import           Control.Lens.Setter
 import           Control.Lens.TH
 import           Control.Monad.Reader
 
@@ -47,27 +44,25 @@ import           Network.URI.Monadic
 import qualified System.Glib.Attributes         as G
 -- }}}
 
-data KData = KData
-    { _config  :: TVar Config
-    , _gui     :: GUI
-    , _hooks   :: Hooks.Hooks KE
-    , _signals :: Signals.Signals
+declareLenses [d|
+  data KData = KData
+    { configL  :: TVar Config
+    , guiL     :: GUI
+    , hooksL   :: Hooks.Hooks KE
+    , signalsL :: Signals.Signals
     }
 
-type K  = ReaderT KData IO
-type KE = ExceptT Text K
-
-makeLensesWith ?? ''KData $ lensRules
-    & lensField .~ (\name -> Just (tailSafe name ++ "L"))
-
+  type K  = ReaderT KData IO
+  type KE = ExceptT Text K
+  |]
 
 instance HasConfig KData           where _config          = configL
-instance HasGUI KData              where _gui             = guiL
+instance HasGUI KData              where gUI             = guiL
 instance Keys.HasHooks KE KData    where _hooks           = hooksL.keyHooksL
 instance HasPromptHooks KE KData   where _promptHooks     = hooksL.promptHooksL
 instance WebView.HasHooks KE KData where _hooks           = hooksL.webViewHooksL
-instance HasNotificationBar KData  where _notificationbar = guiL.notificationBarL
-instance HasPromptBar KData        where _promptbar       = guiL.promptBarL
+instance HasNotificationBar KData  where notificationBar = guiL.notificationBarL
+instance HasPromptBar KData        where promptBar       = guiL.promptBarL
 
 
 init :: (BaseIO m) => GUI -> Hooks.Hooks KE -> Signals.Signals -> m KData

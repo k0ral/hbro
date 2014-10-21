@@ -30,23 +30,20 @@ import qualified Hbro.WebView.Hooks         as WebView (Hooks, initHooks)
 import           Hbro.WebView.Signals       hiding (Signals)
 
 import           Control.Lens.Getter
-import           Control.Lens.Lens
-import           Control.Lens.Setter
 import           Control.Lens.TH
 import           Control.Monad.Reader
 -- }}}
 
 
 -- {{{ Hooks
-data Hooks m = Hooks
-    { _webViewHooks :: WebView.Hooks m
-    , _keyHooks     :: Keys.Hooks m
-    , _ipcHooks     :: TVar (IPC.Hooks m)
-    , _promptHooks  :: PromptHooks m
+declareLenses [d|
+  data Hooks m = Hooks
+    { webViewHooksL :: WebView.Hooks m
+    , keyHooksL     :: Keys.Hooks m
+    , ipcHooksL     :: TVar (IPC.Hooks m)
+    , promptHooksL  :: PromptHooks m
     }
-
-makeLensesWith ?? ''Hooks $ lensRules
-    & lensField .~ (\name -> Just (tail name ++ "L"))
+  |]
 
 initialize :: (Functor n, BaseIO m, Default (Keys.Status n), Default (LinkClickedHook n),
               Default (LoadRequestedHook n), Default (NewWindowHook n),

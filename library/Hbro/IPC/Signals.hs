@@ -30,13 +30,12 @@ type Argument = Text
 type Response = Either Text Text
 -- type Queue    = [(Command, [Argument])]
 
-data Signals = Signals
-    { _nextCommand :: TMVar (Command, [Argument])
-    , _response    :: TMVar Response
+declareLenses [d|
+  data Signals = Signals
+    { nextCommandL :: TMVar (Command, [Argument])
+    , responseL    :: TMVar Response
     }
-
-makeLensesWith ?? ''Signals $ lensRules
-    & lensField .~ (\name -> Just (tailSafe name ++ "L"))
+  |]
 -- }}}
 
 initSignals :: (BaseIO m) => m Signals

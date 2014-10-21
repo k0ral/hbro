@@ -17,20 +17,18 @@ import           Hbro.Prelude
 
 import           Control.Lens.Getter
 import           Control.Lens.Lens
-import           Control.Lens.Setter        hiding (set)
 import           Control.Lens.TH
 import           Control.Monad.Reader       hiding (when)
 -- }}}
 
 -- | No exported constructor, please use 'initHooks'
-data PromptHooks m = PromptHooks
-    { _onCancelled :: TMVar (Cancelled -> m ())
-    , _onChanged   :: TMVar (Changed   -> m ())
-    , _onValidated :: TMVar (Activated -> m ())
+declareLenses [d|
+  data PromptHooks m = PromptHooks
+    { onCancelledL :: TMVar (Cancelled -> m ())
+    , onChangedL   :: TMVar (Changed   -> m ())
+    , onValidatedL :: TMVar (Activated -> m ())
     }
-
-makeLensesWith ?? ''PromptHooks $ lensRules
-    & lensField .~ (\name -> Just (tail name ++ "L"))
+  |]
 
 class HasPromptHooks n a | a -> n where _promptHooks :: Lens' a (PromptHooks n)
 instance HasPromptHooks n (PromptHooks n) where _promptHooks = id

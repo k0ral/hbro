@@ -28,21 +28,17 @@ import qualified Network.URI          as N
 -- }}}
 
 -- | Custom settings provided by the user
-data Config = Config
-    { _homePage :: URI
+declareLenses [d|
+  data Config = Config
+    { homePageL :: URI
     }
-
-makeLensesWith ?? ''Config $ lensRules
-    & lensField .~ (\name -> Just (tailSafe name ++ "L"))
-
+  |]
 
 instance Describable Config where
     describe c = "Home page = " ++ (tshow $ c^.homePageL)
 
 instance Default Config where
-    def = Config
-        { _homePage = fromJust . N.parseURI $ "https://duckduckgo.com/"
-        }
+    def = Config $ fromJust . N.parseURI $ "https://duckduckgo.com/"
 
 class HasConfig t where _config :: Lens' t (TVar Config)
 

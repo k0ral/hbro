@@ -33,8 +33,6 @@ import           Hbro.Logger                     hiding (initialize)
 import           Hbro.Prelude
 
 import           Control.Lens.Getter
-import           Control.Lens.Lens
-import           Control.Lens.Setter
 import           Control.Lens.TH
 import           Control.Monad.Reader            hiding (when)
 
@@ -51,15 +49,13 @@ import           Network.URI.Monadic
 
 -- {{{ Types
 -- | No exported constructor, please use 'buildWith'
-data PromptBar = PromptBar
-    { _box         :: HBox
-    , _description :: Label
-    , _entry       :: Entry
+declareClassy [d|
+  data PromptBar = PromptBar
+    { boxL         :: HBox
+    , descriptionL :: Label
+    , entryL       :: Entry
     }
-
-makeLensesWith ?? ''PromptBar $ classyRules
-    & lensField .~ (\name -> Just (tail name ++ "L"))
-    & lensClass .~ (\name -> Just ("Has" ++ name, "_" ++ toLower name))
+  |]
 
 -- | A 'PromptBar' can be built from an XML file.
 instance Buildable PromptBar where
@@ -96,7 +92,7 @@ open :: (BaseIO m, MonadReader t m, HasPromptBar t)
      -> m ()
 open a b = do
     debugM "hbro.promptbar" "Opening prompt."
-    void . open' a b =<< askL _promptbar
+    void . open' a b =<< askL promptBar
 
 open' :: (BaseIO m) => Text -> Text -> PromptBar -> m PromptBar
 open' newDescription defaultText =
@@ -107,14 +103,14 @@ open' newDescription defaultText =
         >=> withM_ entryL (gAsync . (`editableSetPosition` (-1)))
 
 unhide, hide :: (BaseIO m, MonadReader t m, HasPromptBar t) => m ()
-unhide = gAsync . widgetShow =<< askL (_promptbar.boxL)
-hide   = gAsync . widgetHide =<< askL (_promptbar.boxL)
+unhide = gAsync . widgetShow =<< askL (promptBar.boxL)
+hide   = gAsync . widgetHide =<< askL (promptBar.boxL)
 
 -- | Close prompt, that is: clean its content, signals and callbacks
 clean :: (BaseIO m, MonadReader t m, HasPromptBar t, HasPromptHooks n t) => m ()
 clean = do
-    gAsync . (`widgetRestoreText` StateNormal)           =<< askL (_promptbar.entryL)
-    gAsync . (\e -> widgetModifyText e StateNormal gray) =<< askL (_promptbar.entryL)
+    gAsync . (`widgetRestoreText` StateNormal)           =<< askL (promptBar.entryL)
+    gAsync . (\e -> widgetModifyText e StateNormal gray) =<< askL (promptBar.entryL)
 
     hide
     Hooks.clean
@@ -167,8 +163,8 @@ promptURI description startValue = do
 checkURI :: (BaseIO m, MonadReader t m, HasPromptBar t) => Changed -> m ()
 checkURI (Changed v) = do
     debugM "hbro.prompt" $ "Is URI ? " ++ tshow (isURIReference $ unpack v)
-    (gAsync . \e -> widgetModifyText e StateNormal (green <| isURIReference (unpack v) |> red)) =<< askL (_promptbar.entryL)
+    (gAsync . \e -> widgetModifyText e StateNormal (green <| isURIReference (unpack v) |> red)) =<< askL (promptBar.entryL)
 
 
 getEntryValue :: (BaseIO m, MonadReader t m, HasPromptBar t) => m Text
-getEntryValue = gSync . entryGetText =<< askL (_promptbar.entryL)
+getEntryValue = gSync . entryGetText =<< askL (promptBar.entryL)

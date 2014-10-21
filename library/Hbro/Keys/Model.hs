@@ -35,7 +35,6 @@ import           Hbro.Prelude        hiding (lookup)
 
 import           Control.Lens        ()
 import           Control.Lens.Getter
-import           Control.Lens.Lens
 import           Control.Lens.Setter
 import           Control.Lens.TH
 
@@ -48,13 +47,12 @@ import qualified Prelude             (lookup)
 
 -- {{{ Key strokes model
 -- | A single keystroke is a (possibly empty) set of (unorderered and unique) modifiers, and a single key.
-data KeyStroke modifier key = KeyStroke
-    { _modifiers :: Set modifier
-    , _key       :: key
+declareLenses [d|
+  data KeyStroke modifier key = KeyStroke
+    { modifiersL :: Set modifier
+    , keyL       :: key
     } deriving (Eq, Ord)
-
-makeLensesWith ?? ''KeyStroke $ lensRules
-    & lensField .~ (\name -> Just (tailSafe name ++ "L"))
+  |]
 
 (.|) :: (ToSet modifier m) => m -> key -> KeyStroke modifier key
 (.|) m k = KeyStroke (toSet m) k
@@ -127,14 +125,13 @@ insert binding theMode = M.insertWith (flip merge) theMode (toBranch binding)
 -- }}}
 
 -- | Global state including any necessary information to handle key bindings
-data Status keystroke mode action = Status
-    { _mode       :: mode                                -- ^ Current mode
-    , _keyStrokes :: [keystroke]                         -- ^ Previous keystrokes
-    , _bindings   :: ModalBindings mode keystroke action -- ^ Current bindings
+declareLenses [d|
+  data Status keystroke mode action = Status
+    { modeL       :: mode                                -- ^ Current mode
+    , keyStrokesL :: [keystroke]                         -- ^ Previous keystrokes
+    , bindingsL   :: ModalBindings mode keystroke action -- ^ Current bindings
     }
-
-makeLensesWith ?? ''Status $ lensRules
-    & lensField .~ (\name -> Just (tail name ++ "L"))
+  |]
 
 instance (Default mode) => Default (Status keystroke mode action) where
     def = Status def [] M.empty

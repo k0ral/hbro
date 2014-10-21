@@ -33,7 +33,6 @@ import           Hbro.Prelude
 
 import           Control.Lens.Getter
 import           Control.Lens.Lens
-import           Control.Lens.Setter
 import           Control.Lens.TH
 import           Control.Monad.Reader       hiding (forM_, guard, mapM_)
 
@@ -99,13 +98,13 @@ keyStroke = do
 -- type Binding m  = Model.Binding  Hbro.Keys.Stroke (m ())
 type Bindings m = Model.Bindings KeyStroke (m ())
 type Status m   = Model.Status KeyStroke Mode (m ())
-data Hooks m    = Hooks
-    { _status       :: TVar (Status m)
-    , _onKeyPressed :: TMVar ([KeyStroke] -> m ())
-    }
 
-makeLensesWith ?? ''Hooks $ lensRules
-    & lensField .~ (\name -> Just (tail name ++ "L"))
+declareLenses [d|
+  data Hooks m    = Hooks
+    { statusL       :: TVar (Status m)
+    , onKeyPressedL :: TMVar ([KeyStroke] -> m ())
+    }
+  |]
 
 class HasHooks m t | t -> m where _hooks :: Lens' t (Hooks m)
 

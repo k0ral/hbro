@@ -67,14 +67,13 @@ instance Describable Changed where describe _ = "PromptChanged"
 data Activated = Activated Text
 instance Describable Activated where describe _ = "PromptActivated"
 
-data Signals = Signals
-    { _cancelled :: TMVar Cancelled
-    , _changed   :: TMVar Changed
-    , _validated :: TMVar Activated
+declareLenses [d|
+  data Signals = Signals
+    { cancelledL :: TMVar Cancelled
+    , changedL   :: TMVar Changed
+    , validatedL :: TMVar Activated
     }
-
-makeLensesWith ?? ''Signals $ lensRules
-    & lensField .~ (\name -> Just (tail name ++ "L"))
+  |]
 -- }}}
 
 initSignals :: (BaseIO m) => m Signals

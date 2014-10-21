@@ -32,11 +32,9 @@ import           System.Log.Logger               (addHandler, rootLoggerName,
 -- TODO: make it possible to change the log level
 
 -- {{{ Types
-newtype NotificationBar = NotificationBar { _label :: Label }
-
-makeLensesWith ?? ''NotificationBar $ classyRules
-    & lensField .~ (\name -> Just (tailSafe name ++ "L"))
-    & lensClass .~ (\name -> Just ("Has" ++ name, "_" ++ toLower name))
+declareClassy [d|
+  data NotificationBar = NotificationBar { labelL :: Label }
+  |]
 
 -- | A 'NotificationBar' can be built from an XML file.
 instance Buildable NotificationBar where
@@ -51,7 +49,7 @@ instance WidgetClass NotificationBar
 -- }}}
 
 get' :: (MonadReader r m, BaseIO m, HasNotificationBar r) => Lens' NotificationBar a -> m a
-get' l = askL $ _notificationbar.l
+get' l = askL $ notificationBar.l
 
 -- modify' :: (MonadReader r m, BaseIO m, HasNotificationBar r) => (Status -> Status) -> m ()
 -- modify' f = io . atomically . (`modifyTVar` f) =<< asks (view _notificationBar)

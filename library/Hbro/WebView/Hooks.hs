@@ -28,7 +28,6 @@ import           Hbro.Prelude
 import           Hbro.WebView.Signals
 
 import           Control.Lens.Lens
-import           Control.Lens.Setter  hiding (set)
 import           Control.Lens.TH
 import           Control.Monad.Reader
 -- }}}
@@ -41,22 +40,19 @@ newtype NewWindowHook m      = NewWindowHook (NewWindow -> m ())
 newtype ResourceOpenedHook m = ResourceOpenedHook (ResourceOpened -> m ResourceAction)
 newtype TitleChangedHook m   = TitleChangedHook (TitleChanged -> m ())
 
-
-data Hooks m = Hooks
-    { _onDownload       :: TMVar (Download -> m ())
-    , _onLinkClicked    :: TMVar (LinkClicked -> m ())
-    , _onLinkHovered    :: TMVar (LinkHovered -> m ())
-    , _onLoadRequested  :: TMVar (LoadRequested -> m ())
-    , _onLoadStarted    :: TMVar (LoadStarted -> m ())
-    , _onLoadFinished   :: TMVar (LoadFinished -> m ())
-    , _onNewWindow      :: TMVar (NewWindow -> m ())
-    , _onResourceOpened :: TMVar (ResourceOpened -> m ())
-    , _onTitleChanged   :: TMVar (TitleChanged -> m ())
+declareLenses [d|
+  data Hooks m = Hooks
+    { onDownloadL       :: TMVar (Download -> m ())
+    , onLinkClickedL    :: TMVar (LinkClicked -> m ())
+    , onLinkHoveredL    :: TMVar (LinkHovered -> m ())
+    , onLoadRequestedL  :: TMVar (LoadRequested -> m ())
+    , onLoadStartedL    :: TMVar (LoadStarted -> m ())
+    , onLoadFinishedL   :: TMVar (LoadFinished -> m ())
+    , onNewWindowL      :: TMVar (NewWindow -> m ())
+    , onResourceOpenedL :: TMVar (ResourceOpened -> m ())
+    , onTitleChangedL   :: TMVar (TitleChanged -> m ())
     }
-
-makeLensesWith ?? ''Hooks $ lensRules
-    & lensField .~ (\name -> Just (tail name ++ "L"))
-    -- & lensClass .~ (\name -> Just ("Has" ++ name, map toLower name))
+  |]
 
 class HasHooks n t | t -> n where _hooks :: Lens' t (Hooks n)
 

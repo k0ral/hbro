@@ -14,8 +14,6 @@ import           Hbro.Prelude                               hiding (on)
 import           Graphics.UI.Gtk.WebKit.Lifted              as Lifted
 
 import           Control.Lens.Getter
-import           Control.Lens.Lens
-import           Control.Lens.Setter
 import           Control.Lens.TH
 
 import           Data.Set                                   as S hiding (map)
@@ -65,23 +63,21 @@ data TitleChanged   = TitleChanged Text
 instance Describable TitleChanged where describe _ = "TitleChanged"
 
 
-data Signals = Signals
-    { _download       :: TMVar Download
-    , _keyPressed     :: TMVar KeyPressed
-    , _linkClicked    :: TMVar LinkClicked
-    , _linkHovered    :: TMVar LinkHovered
-    , _loadRequested  :: TMVar LoadRequested
-    , _loadStarted    :: TMVar LoadStarted
-    , _loadFinished   :: TMVar LoadFinished
-    -- _newWebView        :: TMVar URI,
-    , _newWindow      :: TMVar NewWindow
-    , _resourceOpened :: TMVar ResourceOpened
-    , _titleChanged   :: TMVar TitleChanged
+declareLenses [d|
+  data Signals = Signals
+    { downloadL       :: TMVar Download
+    , keyPressedL     :: TMVar KeyPressed
+    , linkClickedL    :: TMVar LinkClicked
+    , linkHoveredL    :: TMVar LinkHovered
+    , loadRequestedL  :: TMVar LoadRequested
+    , loadStartedL    :: TMVar LoadStarted
+    , loadFinishedL   :: TMVar LoadFinished
+    -- newWebViewL        :: TMVar URI,
+    , newWindowL      :: TMVar NewWindow
+    , resourceOpenedL :: TMVar ResourceOpened
+    , titleChangedL   :: TMVar TitleChanged
     }
-
-
-makeLensesWith ?? ''Signals $ lensRules
-    &  lensField .~ (\name -> Just (tailSafe name ++ "L"))
+  |]
 
 initSignals :: (BaseIO m) => m Signals
 initSignals = io (Signals <$> newEmptyTMVarIO

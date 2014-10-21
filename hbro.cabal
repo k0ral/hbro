@@ -43,7 +43,7 @@ Library
         -- http-conduit-browser,
         -- http-types,
         integer-simple,
-        lens,
+        lens >= 4.4,
         lifted-async,
         lifted-base,
         mtl >= 2.2.1,

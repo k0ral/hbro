@@ -19,8 +19,6 @@ import           Hbro.Logger                 as Logger
 import           Hbro.Prelude                hiding ((<>))
 
 import           Control.Lens.Getter
-import           Control.Lens.Lens
-import           Control.Lens.Setter
 import           Control.Lens.TH
 
 import           Network.URI
@@ -35,17 +33,16 @@ import           Options.Applicative.Types
 data Command = Rebuild | Version
 
 -- | Available options
-data CliOptions = CliOptions
-    { _startURI   :: Maybe URI
-    , _socketPath :: Maybe FilePath
-    , _uiFile     :: Maybe FilePath
-    , _dyreMode   :: Dyre.Mode
-    , _dyreDebug  :: Bool
-    , _logLevel   :: Priority
+declareLenses [d|
+  data CliOptions = CliOptions
+    { startURIL   :: Maybe URI
+    , socketPathL :: Maybe FilePath
+    , uiFileL     :: Maybe FilePath
+    , dyreModeL   :: Dyre.Mode
+    , dyreDebugL  :: Bool
+    , logLevelL   :: Priority
     } deriving(Eq)
-
-makeLensesWith ?? ''CliOptions $ lensRules
-    & lensField .~ (\name -> Just (tail name ++ "L"))
+  |]
 
 instance Describable CliOptions where
     describe opts = unwords $ catMaybes
@@ -59,13 +56,12 @@ instance Describable CliOptions where
 
 instance Default CliOptions where
     def = CliOptions
-        { _startURI   = Nothing
-        , _socketPath = Nothing
-        , _uiFile     = Nothing
-        , _dyreMode   = def
-        , _dyreDebug  = False
-        , _logLevel   = INFO
-        }
+            {- startURI   -} Nothing
+            {- socketPath -} Nothing
+            {- uiFile     -} Nothing
+            {- dyreMode   -} def
+            {- dyreDebug  -} False
+            {- logLevel   -} INFO
 
 -- * High level
 parseOptions :: (BaseIO m) => m (Either Command CliOptions)
