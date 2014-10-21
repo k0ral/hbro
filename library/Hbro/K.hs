@@ -31,7 +31,6 @@ import           Hbro.WebView.Hooks             as WebView
 import           Hbro.WebView.Signals           as WebView
 
 import           Control.Lens.TH
-import           Control.Monad.Reader
 
 import           Data.Map                       as M hiding (foldl, map)
 

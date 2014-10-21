@@ -13,7 +13,6 @@ module Graphics.UI.Gtk.WebKit.Lifted (
 import           Hbro.Error
 import           Hbro.Prelude
 
--- import Graphics.UI.Gtk.General.General as GTK
 import qualified Graphics.UI.Gtk.WebKit.Download       as W
 import           Graphics.UI.Gtk.WebKit.NetworkRequest (NetworkRequest)
 import qualified Graphics.UI.Gtk.WebKit.NetworkRequest as W

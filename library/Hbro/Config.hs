@@ -21,7 +21,6 @@ import           Hbro.Prelude
 
 import           Control.Lens         hiding (set)
 import qualified Control.Lens         as L (set)
-import           Control.Monad.Reader
 
 import           Network.URI          (URI)
 import qualified Network.URI          as N

@@ -45,8 +45,6 @@ import           Hbro.Prelude                             hiding (on)
 import           Control.Lens.Getter
 import           Control.Lens.Lens
 import           Control.Lens.TH
-import           Control.Monad.Reader                     hiding (join, mapM_,
-                                                           when)
 
 import           Data.Text                                (splitOn)
 

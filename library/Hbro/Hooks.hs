@@ -31,7 +31,6 @@ import           Hbro.WebView.Signals       hiding (Signals)
 
 import           Control.Lens.Getter
 import           Control.Lens.TH
-import           Control.Monad.Reader
 -- }}}
 
 

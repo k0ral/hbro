@@ -18,7 +18,6 @@ import           Hbro.Prelude
 import           Control.Lens.Getter
 import           Control.Lens.Lens
 import           Control.Lens.TH
-import           Control.Monad.Reader       hiding (when)
 -- }}}
 
 -- | No exported constructor, please use 'initHooks'

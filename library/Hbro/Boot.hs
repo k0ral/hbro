@@ -17,8 +17,6 @@ import           Hbro.Webkit.WebSettings         as Settings
 
 import           Control.Concurrent.Async.Lifted
 import           Control.Lens                    hiding ((<|), (??), (|>))
-import           Control.Monad.Reader            hiding (guard, mapM_, msum,
-                                                  when)
 
 import           Data.Version                    hiding (Version)
 

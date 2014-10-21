@@ -34,7 +34,6 @@ import           Hbro.Prelude
 import           Control.Lens.Getter
 import           Control.Lens.Lens
 import           Control.Lens.TH
-import           Control.Monad.Reader       hiding (forM_, guard, mapM_)
 
 import           Data.List.NonEmpty         (NonEmpty (..))
 import qualified Data.Set                   as Set

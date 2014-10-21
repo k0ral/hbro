@@ -13,7 +13,6 @@ import           Hbro.Logger                     hiding (initialize)
 import           Hbro.Prelude
 
 import           Control.Lens
-import           Control.Monad.Reader
 
 import           Graphics.Rendering.Pango.Enums
 import           Graphics.UI.Gtk.Abstract.Widget

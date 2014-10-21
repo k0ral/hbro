@@ -29,7 +29,6 @@ import           Hbro.WebView.Signals
 
 import           Control.Lens.Lens
 import           Control.Lens.TH
-import           Control.Monad.Reader
 -- }}}
 
 

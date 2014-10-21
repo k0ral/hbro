@@ -7,8 +7,6 @@ import qualified Hbro.Gui                           as Gui (get)
 import           Hbro.Logger
 import           Hbro.Prelude
 
-import           Control.Monad.Reader
-
 import           Graphics.UI.Gtk.WebKit.WebSettings
 import           Graphics.UI.Gtk.WebKit.WebView
 

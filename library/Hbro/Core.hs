@@ -37,8 +37,6 @@ import           Hbro.Gui                              as Gui
 import           Hbro.Logger                           hiding (initialize)
 import           Hbro.Prelude                          as H
 
-import           Control.Monad.Reader                  hiding (guard, unless)
-
 import           Graphics.UI.Gtk.Gdk.Pixbuf            (Pixbuf)
 import           Graphics.UI.Gtk.General.General
 import           Graphics.UI.Gtk.WebKit.WebDataSource

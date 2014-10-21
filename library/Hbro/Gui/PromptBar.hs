@@ -34,7 +34,6 @@ import           Hbro.Prelude
 
 import           Control.Lens.Getter
 import           Control.Lens.TH
-import           Control.Monad.Reader            hiding (when)
 
 import           Graphics.Rendering.Pango.Enums
 import           Graphics.UI.Gtk.Abstract.Widget
