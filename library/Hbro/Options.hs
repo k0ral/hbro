@@ -23,7 +23,7 @@ import           Control.Lens.TH
 
 import           Network.URI
 
-import           Options.Applicative.Builder hiding ((&))
+import           Options.Applicative.Builder
 import           Options.Applicative.Extra
 import           Options.Applicative.Types
 -- }}}
@@ -70,11 +70,11 @@ parseOptions = io $ customExecParser (prefs noBacktrack) (info parser $ progDesc
 -- * Low level
 -- ** URI options
 startURI :: Parser URI
-startURI = nullOption $ long "uri" <> short 'u' <> metavar "START-URI" <> eitherReader (note "Invalid URI" . parseURIReference) <> help "URI to load at start-up."
+startURI = option (eitherReader $ note "Invalid URI" . parseURIReference) $ long "uri" <> short 'u' <> metavar "START-URI" <> help "URI to load at start-up."
 
 socketURI, uiURI :: Parser FilePath
-socketURI = nullOption $ long "socket" <> short 'S' <> metavar "SOCKET-URI" <> eitherReader (Right . fromString) <> help "URI to open IPC's listening socket."
-uiURI     = nullOption $ long "ui" <> short 'U' <> metavar "UI-FILE" <> eitherReader (Right . fromString) <> help "Path to UI descriptor (XML file)"
+socketURI = option (eitherReader $ Right . fromString) $ long "socket" <> short 'S' <> metavar "SOCKET-URI" <> help "URI to open IPC's listening socket."
+uiURI     = option (eitherReader $ Right . fromString) $ long "ui" <> short 'U' <> metavar "UI-FILE" <> help "Path to UI descriptor (XML file)"
 
 -- ** Dyre options
 vanillaFlag, forceReconfFlag, denyReconfFlag :: Parser Dyre.Mode
@@ -92,7 +92,7 @@ dyreMasterBinary = strOption $ long "dyre-master-binary" <> metavar "PATH" <> hi
 verboseFlag, quietFlag, logLevel :: Parser Priority
 verboseFlag = flag INFO DEBUG $ long "verbose" <> short 'v' <> help "Set log level to DEBUG."
 quietFlag   = flag INFO ERROR $ long "quiet" <> short 'q' <> help "Set log level to ERROR."
-logLevel    = option $ long "log-level" <> short 'l' <> metavar "LOG-LEVEL" <> value INFO <> completeWith ["DEBUG", "INFO", "NOTICE", "WARNING", "ERROR", "CRITICAL", "ALERT", "EMERGENCY"] <> help "Set log level. Available values: DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY."
+logLevel    = option auto $ long "log-level" <> short 'l' <> metavar "LOG-LEVEL" <> value INFO <> completeWith ["DEBUG", "INFO", "NOTICE", "WARNING", "ERROR", "CRITICAL", "ALERT", "EMERGENCY"] <> help "Set log level. Available values: DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY."
 
 -- ** Commands
 rebuildOptions, versionOptions :: Parser Command
