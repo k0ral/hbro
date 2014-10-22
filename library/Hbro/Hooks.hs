@@ -79,9 +79,9 @@ routines globalContext signals hooks =
 
 
 dequeueRoutine :: (ControlIO m, Describable s)
-               => a -> TMVar s -> TMVar (s -> ExceptT Text (ReaderT a m) ()) -> m ()
+               => a -> TQueue s -> TMVar (s -> ExceptT Text (ReaderT a m) ()) -> m ()
 dequeueRoutine globalContext signal hook = forever $ do
-    arguments <- atomically $ takeTMVar signal
+    arguments <- atomically $ readTQueue signal
     debugM "hbro.hooks" $ "Signal acknowledged [" ++ describe arguments ++ "]."
 
     (`runReaderT` globalContext) . logErrors' $ do

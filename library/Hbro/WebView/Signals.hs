@@ -65,31 +65,31 @@ instance Describable TitleChanged where describe _ = "TitleChanged"
 
 declareLenses [d|
   data Signals = Signals
-    { downloadL       :: TMVar Download
-    , keyPressedL     :: TMVar KeyPressed
-    , linkClickedL    :: TMVar LinkClicked
-    , linkHoveredL    :: TMVar LinkHovered
-    , loadRequestedL  :: TMVar LoadRequested
-    , loadStartedL    :: TMVar LoadStarted
-    , loadFinishedL   :: TMVar LoadFinished
-    -- newWebViewL        :: TMVar URI,
-    , newWindowL      :: TMVar NewWindow
-    , resourceOpenedL :: TMVar ResourceOpened
-    , titleChangedL   :: TMVar TitleChanged
+    { downloadL       :: TQueue Download
+    , keyPressedL     :: TQueue KeyPressed
+    , linkClickedL    :: TQueue LinkClicked
+    , linkHoveredL    :: TQueue LinkHovered
+    , loadRequestedL  :: TQueue LoadRequested
+    , loadStartedL    :: TQueue LoadStarted
+    , loadFinishedL   :: TQueue LoadFinished
+    -- newWebViewL        :: TQueue URI,
+    , newWindowL      :: TQueue NewWindow
+    , resourceOpenedL :: TQueue ResourceOpened
+    , titleChangedL   :: TQueue TitleChanged
     }
   |]
 
 initSignals :: (BaseIO m) => m Signals
-initSignals = io (Signals <$> newEmptyTMVarIO
-                          <*> newEmptyTMVarIO
-                          <*> newEmptyTMVarIO
-                          <*> newEmptyTMVarIO
-                          <*> newEmptyTMVarIO
-                          <*> newEmptyTMVarIO
-                          <*> newEmptyTMVarIO
-                          <*> newEmptyTMVarIO
-                          <*> newEmptyTMVarIO
-                          <*> newEmptyTMVarIO)
+initSignals = io (Signals <$> newTQueueIO
+                          <*> newTQueueIO
+                          <*> newTQueueIO
+                          <*> newTQueueIO
+                          <*> newTQueueIO
+                          <*> newTQueueIO
+                          <*> newTQueueIO
+                          <*> newTQueueIO
+                          <*> newTQueueIO
+                          <*> newTQueueIO)
 
 -- | Sequentially bind all signals.
 attach :: (BaseIO m) => WebView -> Signals -> m ()
@@ -107,7 +107,7 @@ attach webView signals = sequence_
     ]
 
 
-attachDownload :: (BaseIO m) => WebView -> TMVar Download -> m (ConnectId WebView)
+attachDownload :: (BaseIO m) => WebView -> TQueue Download -> m (ConnectId WebView)
 attachDownload webView signal = gSync . on webView downloadRequested $ \d -> do
     logErrors $ do
         amount <- io $ downloadGetTotalSize d
@@ -116,22 +116,22 @@ attachDownload webView signal = gSync . on webView downloadRequested $ \d -> do
 
         debugM "hbro.signals" $ "Requested download <" ++ tshow uri ++ ">"
 
-        atomically . tryPutTMVar signal $ Download uri name (Just amount)
+        atomically . writeTQueue signal $ Download uri name (Just amount)
     return False
 
 
-attachLinkHovered :: (BaseIO m) => WebView -> TMVar LinkHovered -> m (ConnectId WebView)
+attachLinkHovered :: (BaseIO m) => WebView -> TQueue LinkHovered -> m (ConnectId WebView)
 attachLinkHovered webView signal = gSync . on webView hoveringOverLink $ \title uri -> void . runMaybeT $ do
     debugM "hbro.signals" $ "Link hovered <" ++ tshow uri ++ ">"
     u <- MaybeT . return $ parseURI . unpack =<< uri
 
-    atomically . tryPutTMVar signal $ LinkHovered u title
+    atomically . writeTQueue signal $ LinkHovered u title
 
 
 -- Triggered in 2 cases:
 --  1/ Javascript window.open()
 --  2/ Context menu "Open in new window"
-attachNewWebView :: (BaseIO m) => WebView -> TMVar NewWindow -> m (ConnectId WebView)
+attachNewWebView :: (BaseIO m) => WebView -> TQueue NewWindow -> m (ConnectId WebView)
 attachNewWebView webView signal = gSync . on webView createWebView $ \_frame -> do
     webView' <- webViewNew
 
@@ -140,7 +140,7 @@ attachNewWebView webView signal = gSync . on webView createWebView $ \_frame -> 
         logErrors $ do
             uri <- networkRequestGetUri request
             debugM "hbro.signals" $ "New window <" ++ tshow uri ++ ">"
-            atomically . tryPutTMVar signal $ NewWindow uri
+            atomically . writeTQueue signal $ NewWindow uri
 
         webPolicyDecisionIgnore decision
         return True
@@ -148,19 +148,19 @@ attachNewWebView webView signal = gSync . on webView createWebView $ \_frame -> 
     return webView'
 
 
-attachLoadStarted :: (BaseIO m) => WebView -> TMVar LoadStarted -> m (ConnectId WebView)
+attachLoadStarted :: (BaseIO m) => WebView -> TQueue LoadStarted -> m (ConnectId WebView)
 attachLoadStarted webView signal = gSync . on webView loadStarted $ \_frame -> do
     debugM "hbro.signals" "Load started"
-    void . atomically $ tryPutTMVar signal LoadStarted
+    atomically $ writeTQueue signal LoadStarted
 
 
-attachLoadFinished :: (BaseIO m) => WebView -> TMVar LoadFinished -> m (ConnectId WebView)
+attachLoadFinished :: (BaseIO m) => WebView -> TQueue LoadFinished -> m (ConnectId WebView)
 attachLoadFinished webView signal = gSync . on webView loadFinished $ \_frame -> do
     debugM "hbro.signals" "Load finished"
-    void . atomically $ tryPutTMVar signal LoadFinished
+    atomically $ writeTQueue signal LoadFinished
 
 
-attachNavigationRequest :: (BaseIO m) => WebView -> (TMVar LinkClicked, TMVar LoadRequested) -> m (ConnectId WebView)
+attachNavigationRequest :: (BaseIO m) => WebView -> (TQueue LinkClicked, TQueue LoadRequested) -> m (ConnectId WebView)
 attachNavigationRequest webView (signal1, signal2) = gSync . on webView navigationPolicyDecisionRequested $ \_frame request action decision -> do
     reason <- webNavigationActionGetReason action
     button <- toMouseButton <$> webNavigationActionGetButton action
@@ -175,7 +175,7 @@ attachNavigationRequest webView (signal1, signal2) = gSync . on webView navigati
         case (reason, button) of
             (WebNavigationReasonLinkClicked, Just b) -> io $ do
                 debugM "hbro.signals" $ "Link clicked <" ++ tshow uri ++ ">"
-                atomically . tryPutTMVar signal1 $ LinkClicked uri b
+                atomically . writeTQueue signal1 $ LinkClicked uri b
                 webPolicyDecisionIgnore decision
             (WebNavigationReasonOther, _) -> io $ do
                 debugM "hbro.signals" $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
@@ -191,7 +191,7 @@ attachNavigationRequest webView (signal1, signal2) = gSync . on webView navigati
                 webPolicyDecisionUse decision
             _ -> io $ do
                 debugM "hbro.signals" $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
-                void . atomically . tryPutTMVar signal2 $ LoadRequested uri
+                atomically . writeTQueue signal2 $ LoadRequested uri
                 webPolicyDecisionIgnore decision
       `catchError` \e -> io $ do
         errorM "hbro.signals" $ tshow e
@@ -205,35 +205,35 @@ attachNavigationRequest webView (signal1, signal2) = gSync . on webView navigati
     toMouseButton _ = Nothing
 
 
-attachNewWindow :: (BaseIO m) => WebView -> TMVar NewWindow -> m (ConnectId WebView)
+attachNewWindow :: (BaseIO m) => WebView -> TQueue NewWindow -> m (ConnectId WebView)
 attachNewWindow webView signal = gSync . on webView newWindowPolicyDecisionRequested $ \_frame request _action decision -> do
     logErrors $ do
         uri <- networkRequestGetUri request
         debugM "hbro.signals" $ "New window request <" ++ tshow uri ++ ">"
-        atomically . tryPutTMVar signal $ NewWindow uri
+        atomically . writeTQueue signal $ NewWindow uri
 
     webPolicyDecisionIgnore decision
     return True
 
 
-attachResourceOpened :: (BaseIO m) => WebView -> TMVar ResourceOpened -> m (ConnectId WebView)
+attachResourceOpened :: (BaseIO m) => WebView -> TQueue ResourceOpened -> m (ConnectId WebView)
 attachResourceOpened webView signal = gSync . on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> do
     logErrors $ do
         uri <- networkRequestGetUri request
         debugM "hbro.signals" $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" ++ tshow uri ++ ">"
-        atomically . tryPutTMVar signal $ ResourceOpened uri mimetype
+        atomically . writeTQueue signal $ ResourceOpened uri mimetype
 
     webPolicyDecisionUse decision
     return True
 
 
-attachTitleChanged :: (BaseIO m) => WebView -> TMVar TitleChanged -> m (ConnectId WebView)
+attachTitleChanged :: (BaseIO m) => WebView -> TQueue TitleChanged -> m (ConnectId WebView)
 attachTitleChanged webView signal = gSync . on webView W.titleChanged $ \_frame title -> do
     debugM "hbro.signals" $ "Title changed to: " ++ title
-    void . atomically . tryPutTMVar signal $ TitleChanged title
+    atomically . writeTQueue signal $ TitleChanged title
 
 
-attachKeyPressed :: (BaseIO m) => WebView -> TMVar KeyPressed -> m (ConnectId WebView)
+attachKeyPressed :: (BaseIO m) => WebView -> TQueue KeyPressed -> m (ConnectId WebView)
 attachKeyPressed webView signal = gSync . on webView keyPressEvent $ do
     modifiers <- S.delete _Shift . S.fromList . map Keys.Modifier <$> Gdk.eventModifier
     key       <- KeyVal <$> Gdk.eventKeyVal
@@ -244,6 +244,6 @@ attachKeyPressed webView signal = gSync . on webView keyPressEvent $ do
         let theStroke = modifiers .| key
         debugM "hbro.signals" $ "Pressed: " ++ describe theStroke
 
-        atomically . tryPutTMVar signal $ KeyPressed theStroke
+        atomically . writeTQueue signal $ KeyPressed theStroke
 
     return False

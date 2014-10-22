@@ -69,20 +69,20 @@ instance Describable Activated where describe _ = "PromptActivated"
 
 declareLenses [d|
   data Signals = Signals
-    { cancelledL :: TMVar Cancelled
-    , changedL   :: TMVar Changed
-    , validatedL :: TMVar Activated
+    { cancelledL :: TQueue Cancelled
+    , changedL   :: TQueue Changed
+    , validatedL :: TQueue Activated
     }
   |]
 -- }}}
 
 initSignals :: (BaseIO m) => m Signals
-initSignals = io (Signals <$> newEmptyTMVarIO <*> newEmptyTMVarIO <*> newEmptyTMVarIO)
+initSignals = io (Signals <$> newTQueueIO <*> newTQueueIO <*> newTQueueIO)
 
 
 attach :: (BaseIO m, EditableClass t, EntryClass t) => t -> Signals -> m ()
 attach entry signals = void $ sequence
-    [ onEntryCancelled entry $ void . atomically . tryPutTMVar (signals^.cancelledL)
-    , onEntryChanged   entry $ void . atomically . tryPutTMVar (signals^.changedL)
-    , onEntryActivated entry $ void . atomically . tryPutTMVar (signals^.validatedL)
+    [ onEntryCancelled entry $ atomically . writeTQueue (signals^.cancelledL)
+    , onEntryChanged   entry $ atomically . writeTQueue (signals^.changedL)
+    , onEntryActivated entry $ atomically . writeTQueue (signals^.validatedL)
     ]

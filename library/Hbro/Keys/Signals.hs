@@ -15,10 +15,10 @@ import           Control.Monad.Reader hiding (forM_)
 data KeyPressed = KeyPressed KeyStroke
 
 
-dequeue :: (BaseIO m) => a -> TMVar KeyPressed -> Keys.Hooks (ExceptT Text (ReaderT a m)) -> m ()
+dequeue :: (BaseIO m) => a -> TQueue KeyPressed -> Keys.Hooks (ExceptT Text (ReaderT a m)) -> m ()
 dequeue globalContext signal hooks = forever $ do
     -- debugM "hbro.hooks" "Listening for key-pressed signal..."
-    (KeyPressed stroke) <- atomically $ takeTMVar signal
+    (KeyPressed stroke) <- atomically $ readTQueue signal
     theStatus           <- atomically $ readTVar (hooks^.statusL)
 
     let newStatus    = press stroke theStatus
