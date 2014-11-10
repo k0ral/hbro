@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 module Hbro.Gui.PromptBar.Signals (
 -- * Utils
     onEntryCancelled,
@@ -17,7 +18,7 @@ module Hbro.Gui.PromptBar.Signals (
 ) where
 
 -- {{{ Imports
--- import Hbro.Error
+import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Logger
 import           Hbro.Prelude                    hiding (on)
@@ -29,60 +30,63 @@ import           Graphics.UI.Gtk.Entry.Editable
 import           Graphics.UI.Gtk.Entry.Entry
 import           Graphics.UI.Gtk.Gdk.EventM      as Gdk
 
-import           System.Glib.Signals
+import           System.Glib.Signals             hiding(Signal)
 -- }}}
 
 
 -- {{{ Utils
-onEntryCancelled :: (BaseIO m, EntryClass t) => t -> (Cancelled -> IO ()) -> m (ConnectId t)
+onEntryCancelled :: (BaseIO m, EntryClass t) => t -> (Text -> IO ()) -> m (ConnectId t)
 onEntryCancelled theEntry f = gSync . on theEntry keyPressEvent $ do
     key <- KeyVal <$> eventKeyVal
     io . when (key == _Escape) $ do
         value <- entryGetText theEntry
         debugM "hbro.prompt" $ "Prompt cancelled with value: " ++ value
-        f (Cancelled value)
+        f value
     return False
 
-onEntryChanged :: (BaseIO m, EditableClass t, EntryClass t) => t -> (Changed -> IO ()) -> m (ConnectId t)
+onEntryChanged :: (BaseIO m, EditableClass t, EntryClass t) => t -> (Text -> IO ()) -> m (ConnectId t)
 onEntryChanged theEntry f = gSync . on theEntry editableChanged $ do
     value <- entryGetText theEntry
     debugM "hbro.prompt" $ "Prompt value changed to: " ++ value
-    f (Changed value)
+    f value
 
 
-onEntryActivated :: (BaseIO m, EntryClass t) => t -> (Activated -> IO ()) -> m (ConnectId t)
+onEntryActivated :: (BaseIO m, EntryClass t) => t -> (Text -> IO ()) -> m (ConnectId t)
 onEntryActivated theEntry f = gSync . on theEntry entryActivated $ do
     value <- entryGetText theEntry
     debugM "hbro.prompt" $ "Prompt activated with value: " ++ value
-    f (Activated value)
+    f value
 -- }}}
 
 -- {{{ Types
-data Cancelled = Cancelled Text
-instance Describable Cancelled where describe _ = "PromptCancelled"
+data Cancelled = Cancelled deriving(Show)
+instance Event Cancelled where
+  type Input Cancelled = Text
 
-data Changed   = Changed Text
-instance Describable Changed where describe _ = "PromptChanged"
+data Changed   = Changed deriving(Show)
+instance Event Changed where
+  type Input Changed = Text
 
-data Activated = Activated Text
-instance Describable Activated where describe _ = "PromptActivated"
+data Activated = Activated deriving(Show)
+instance Event Activated where
+  type Input Activated = Text
 
 declareLenses [d|
   data Signals = Signals
-    { cancelledL :: TQueue Cancelled
-    , changedL   :: TQueue Changed
-    , validatedL :: TQueue Activated
+    { cancelledL :: Signal Cancelled
+    , changedL   :: Signal Changed
+    , validatedL :: Signal Activated
     }
   |]
 -- }}}
 
 initSignals :: (BaseIO m) => m Signals
-initSignals = io (Signals <$> newTQueueIO <*> newTQueueIO <*> newTQueueIO)
+initSignals = Signals <$> newSignal Cancelled <*> newSignal Changed <*> newSignal Activated
 
 
 attach :: (BaseIO m, EditableClass t, EntryClass t) => t -> Signals -> m ()
 attach entry signals = void $ sequence
-    [ onEntryCancelled entry $ atomically . writeTQueue (signals^.cancelledL)
-    , onEntryChanged   entry $ atomically . writeTQueue (signals^.changedL)
-    , onEntryActivated entry $ atomically . writeTQueue (signals^.validatedL)
+    [ onEntryCancelled entry . emit $ signals^.cancelledL
+    , onEntryChanged   entry . emit $ signals^.changedL
+    , onEntryActivated entry . emit $ signals^.validatedL
     ]

@@ -2,9 +2,9 @@
 module Hbro.Signals (
 -- * Signals
       Signals
-    , _ipcSignals
-    , _promptSignals
-    , _webViewSignals
+    , ipcSignalsL
+    , promptSignalsL
+    , webViewSignalsL
     , initialize
     , attachGuiSignals
 ) where
@@ -22,12 +22,12 @@ import           Control.Lens               hiding ((??))
 -- }}}
 
 -- {{{ Signals
-data Signals = Signals {
-    __ipcSignals     :: IPC.Signals,
-    __promptSignals  :: Prompt.Signals,
-    __webViewSignals :: WebView.Signals }
-
-makeLenses ''Signals
+declareLenses [d|
+  data Signals = Signals {
+    ipcSignalsL     :: IPC.Signals,
+    promptSignalsL  :: Prompt.Signals,
+    webViewSignalsL :: WebView.Signals }
+  |]
 
 initialize :: (BaseIO m) => m Signals
 initialize = Signals <$> IPC.initSignals
@@ -36,6 +36,6 @@ initialize = Signals <$> IPC.initSignals
 
 attachGuiSignals :: (BaseIO m) => GUI -> Signals -> m ()
 attachGuiSignals gui signals = do
-    WebView.attach    (gui^.webViewL)          (signals^._webViewSignals)
-    Prompt.attach     (gui^.promptBarL.entryL) (signals^._promptSignals)
+    WebView.attach    (gui^.webViewL)          (signals^.webViewSignalsL)
+    Prompt.attach     (gui^.promptBarL.entryL) (signals^.promptSignalsL)
 -- }}}

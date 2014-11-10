@@ -13,6 +13,7 @@ import           Hbro.Clipboard                 as Clipboard
 import           Hbro.Config                    as Config
 import           Hbro.Core
 import           Hbro.Error
+import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Gui                       as Gui
 import           Hbro.Gui.NotificationBar
@@ -74,25 +75,25 @@ getHooks = askL hooksL
 -- instance Default (Signals.DownloadHook KE) where
     -- def = Signals.DownloadHook . const . const . const $ return ()
 
-instance Default (Hooks.LinkClickedHook KE) where
-    def = Hooks.LinkClickedHook f
-            where f (LinkClicked uri Gdk.MiddleButton) = spawn "hbro" ["-u", show uri]
-                  f (LinkClicked uri _               ) = load uri
+instance Default (Hook KE LinkClicked) where
+    def = Hook f
+            where f (uri, Gdk.MiddleButton) = spawn "hbro" ["-u", show uri]
+                  f (uri, _               ) = load uri
 
-instance Default (Hooks.LoadRequestedHook KE) where
-    def = Hooks.LoadRequestedHook $ \(LoadRequested uri) -> load uri
+instance Default (Hook KE LoadRequested) where
+    def = Hook load
 
-instance Default (Hooks.NewWindowHook KE) where
-    def = Hooks.NewWindowHook $ \(NewWindow uri) -> spawn "hbro" ["-u", show uri]
+instance Default (Hook KE NewWindow) where
+    def = Hook $ \uri -> spawn "hbro" ["-u", show uri]
 
 -- /!\ NetworkRequest's Haskell binding is missing the function "webkit_network_request_get_message", which makes it rather useless...
 -- | Display content if webview can show the given MIME type, otherwise download it.
-instance Default (Hooks.ResourceOpenedHook KE) where
-    def = Hooks.ResourceOpenedHook $ \(ResourceOpened _uri mimetype) -> do
-        return Hooks.Load <<| canRender mimetype |>> return Hooks.Download'
+-- instance Default (Hook KE ResourceOpened) where
+--     def = Hook $ \(_uri, mimetype) -> do
+--         return Hooks.Load <<| canRender mimetype |>> return Hooks.Download'
 
-instance Default (Hooks.TitleChangedHook KE) where
-    def = Hooks.TitleChangedHook (\(TitleChanged title) -> gAsync . (`G.set` [ windowTitle G.:= ("hbro | " ++ title)]) =<< Gui.get mainWindowL)
+instance Default (Hook KE TitleChanged) where
+    def = Hook $ \title -> gAsync . (`G.set` [ windowTitle G.:= ("hbro | " ++ title)]) =<< Gui.get mainWindowL
 
 
 -- | List of default supported requests.
@@ -146,9 +147,9 @@ resetKeyBindings = do
     Keys.bind (_Control .| _o)      $ promptURI "Open URI" "" >>= load
     Keys.bind (_Alt     .| _o)      $ getCurrentURI >>= \uri -> promptURI "Open URI " (tshow uri) >>= load
 -- Search
-    Keys.bind _slash                $ void $ prompt' "Search " "" $ searchText_ CaseInsensitive Forward Wrap
+    Keys.bind _slash                $ void $ prompt' "Search " "" . Hook $ searchText_ CaseInsensitive Forward Wrap
     Keys.bind (_Control .| _f)      $ prompt "Search " "" >>= searchText_ CaseInsensitive Forward Wrap
-    Keys.bind _question             $ void $ prompt' "Search " "" $ searchText_ CaseInsensitive Backward Wrap
+    Keys.bind _question             $ void $ prompt' "Search " "" . Hook $ searchText_ CaseInsensitive Backward Wrap
     Keys.bind (_Control .| _n)      $ searchText_ CaseInsensitive Forward  Wrap =<< Prompt.getEntryValue
     Keys.bind (_Control .| _p)      $ searchText_ CaseInsensitive Backward Wrap =<< Prompt.getEntryValue
     Keys.bind (_Control .| _h)      $ gAsync . webViewUnMarkTextMatches =<< Gui.get webViewL

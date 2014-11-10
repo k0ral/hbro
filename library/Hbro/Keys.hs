@@ -109,8 +109,8 @@ class HasHooks m t | t -> m where _hooks :: Lens' t (Hooks m)
 
 instance HasHooks m (Hooks m) where _hooks = id
 
-initializeHooks :: IO (Hooks m)
-initializeHooks = Hooks <$> newTVarIO def <*> newEmptyTMVarIO
+initializeHooks :: (BaseIO m) => m (Hooks n)
+initializeHooks = Hooks <$> io (newTVarIO def) <*> io (newEmptyTMVarIO)
 
 set :: (BaseIO m, MonadReader r m, HasHooks n r) => Lens' (Hooks n) (TMVar a) -> a -> m ()
 set l v = atomically . (`writeTMVar` v) =<< askL (_hooks.l)

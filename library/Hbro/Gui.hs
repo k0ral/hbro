@@ -56,6 +56,8 @@ import           Graphics.UI.Gtk.General.General          as GTK
 import           Graphics.UI.Gtk.Misc.Adjustment
 import           Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import           Graphics.UI.Gtk.WebKit.DOM.Document
+import           Graphics.UI.Gtk.WebKit.NetworkRequest
+import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import           Graphics.UI.Gtk.Windows.Window
 
 import           Network.URI                              as N
@@ -166,6 +168,17 @@ initializeWebView webView = gAsync $ do
         putStrLn "console message"
         mapM_ putStrLn [a, b, tshow n, c]
         return True
+
+    void . on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> do
+      uri <- (networkRequestGetUri request :: IO (Maybe Text))
+      debugM "hbro.gui" $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" ++ tshow uri ++ ">"
+      renderable <- webViewCanShowMimeType webView mimetype
+      case (uri, renderable) of
+        (Just uri, True) -> webPolicyDecisionUse decision
+        (Just uri, _) -> webPolicyDecisionDownload decision
+        _ -> webPolicyDecisionIgnore decision
+      return True
+
     -- void . on webView resourceRequestStarting $ \frame resource request response -> do
     --     uri <- webResourceGetUri resource
     --     putStrLn $ "resource request starting: " ++ uri

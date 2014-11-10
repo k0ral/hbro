@@ -72,6 +72,7 @@ Library
         Hbro.Config,
         Hbro.Core,
         Hbro.Error,
+        Hbro.Event,
         Hbro.Gdk.KeyVal,
         Hbro.Gui,
         Hbro.Gui.Buildable,

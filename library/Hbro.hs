@@ -5,6 +5,7 @@ import           Hbro.Boot          as X
 -- import Hbro.Config
 import           Hbro.Core          as X
 import           Hbro.Error         as X
+import           Hbro.Event         as X
 import           Hbro.Gdk.KeyVal    as X
 -- import Hbro.Gui
 import           Hbro.Gui.Buildable as X

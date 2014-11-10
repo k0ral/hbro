@@ -25,6 +25,7 @@ module Hbro.Gui.PromptBar (
 
 -- {{{ Imports
 import           Hbro.Error
+import           Hbro.Event
 import           Hbro.Gui.Buildable
 import           Hbro.Gui.PromptBar.Hooks        hiding (clean, set)
 import qualified Hbro.Gui.PromptBar.Hooks        as Hooks
@@ -121,7 +122,7 @@ prompt :: (BaseIO m, MonadError Text m, MonadReader t m, HasPromptBar t, HasProm
      => Text                       -- ^ Prompt description
      -> Text                       -- ^ Initial value
      -> m Text
-prompt a b = prompt' a b (const $ return ())
+prompt a b = prompt' a b nullHook
 
 
 -- | Open prompt bar with given description and default value,
@@ -129,16 +130,16 @@ prompt a b = prompt' a b (const $ return ())
 prompt' :: (BaseIO m, MonadError Text m, MonadReader t m, HasPromptBar t, HasPromptHooks n t, BaseIO n)
         => Text             -- ^ Prompt description
         -> Text             -- ^ Pre-fill value
-        -> (Text -> n ())   -- ^ Callback triggered each time prompt value changes
+        -> Hook n Changed   -- ^ Callback triggered each time prompt value changes
         -> m Text
 prompt' description startValue f = do
     clean
     open description startValue
     result <- newEmptyMVar
 
-    Hooks.set onChangedL $ \(Changed x) -> f x
-    Hooks.set onCancelledL $ \_ -> putMVar result Nothing
-    Hooks.set onValidatedL $ \(Activated x) -> putMVar result (Just x)
+    Hooks.set onChangedL f
+    Hooks.set onCancelledL . Hook $ \_ -> putMVar result Nothing
+    Hooks.set onValidatedL . Hook $ putMVar result . Just
     takeMVar result <!> promptInterrupted
 
 
@@ -148,19 +149,19 @@ promptURI :: (BaseIO m, BaseIO n, MonadError Text m, MonadError Text n, MonadRea
 promptURI description startValue = do
     clean
     open description startValue
-    checkURI (Changed startValue)
+    checkURI startValue
 
     result <- newEmptyMVar
 
-    Hooks.set onChangedL checkURI
-    Hooks.set onCancelledL $ \_ -> putMVar result Nothing
-    Hooks.set onValidatedL $ \(Activated uri) -> putMVar result (Just uri)
+    Hooks.set onChangedL $ Hook checkURI
+    Hooks.set onCancelledL . Hook $ \_ -> putMVar result Nothing
+    Hooks.set onValidatedL . Hook $ putMVar result . Just
 
     parseURIReference =<< takeMVar result <!> promptInterrupted
 
 
-checkURI :: (BaseIO m, MonadReader t m, HasPromptBar t) => Changed -> m ()
-checkURI (Changed v) = do
+checkURI :: (BaseIO m, MonadReader t m, HasPromptBar t) => Text -> m ()
+checkURI v = do
     debugM "hbro.prompt" $ "Is URI ? " ++ tshow (isURIReference $ unpack v)
     (gAsync . \e -> widgetModifyText e StateNormal (green <| isURIReference (unpack v) |> red)) =<< askL (promptBar.entryL)
 

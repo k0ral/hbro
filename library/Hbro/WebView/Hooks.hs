@@ -15,7 +15,7 @@ module Hbro.WebView.Hooks (
     , onLoadStartedL
     , onLoadFinishedL
     , onNewWindowL
-    , onResourceOpenedL
+    -- , onResourceOpenedL
     , onTitleChangedL
     , HasHooks(..)
 -- * Functions
@@ -24,6 +24,7 @@ module Hbro.WebView.Hooks (
 ) where
 
 -- {{{ Imports
+import           Hbro.Event
 import           Hbro.Prelude
 import           Hbro.WebView.Signals
 
@@ -41,15 +42,15 @@ newtype TitleChangedHook m   = TitleChangedHook (TitleChanged -> m ())
 
 declareLenses [d|
   data Hooks m = Hooks
-    { onDownloadL       :: TMVar (Download -> m ())
-    , onLinkClickedL    :: TMVar (LinkClicked -> m ())
-    , onLinkHoveredL    :: TMVar (LinkHovered -> m ())
-    , onLoadRequestedL  :: TMVar (LoadRequested -> m ())
-    , onLoadStartedL    :: TMVar (LoadStarted -> m ())
-    , onLoadFinishedL   :: TMVar (LoadFinished -> m ())
-    , onNewWindowL      :: TMVar (NewWindow -> m ())
-    , onResourceOpenedL :: TMVar (ResourceOpened -> m ())
-    , onTitleChangedL   :: TMVar (TitleChanged -> m ())
+    { onDownloadL       :: TMVar (Hook m Download)
+    , onLinkClickedL    :: TMVar (Hook m LinkClicked)
+    , onLinkHoveredL    :: TMVar (Hook m LinkHovered)
+    , onLoadRequestedL  :: TMVar (Hook m LoadRequested)
+    , onLoadStartedL    :: TMVar (Hook m LoadStarted)
+    , onLoadFinishedL   :: TMVar (Hook m LoadFinished)
+    , onNewWindowL      :: TMVar (Hook m NewWindow)
+    -- , onResourceOpenedL :: TMVar (Hook m ResourceOpened)
+    , onTitleChangedL   :: TMVar (Hook m TitleChanged)
     }
   |]
 
@@ -59,20 +60,15 @@ set :: (BaseIO m, MonadReader r m, HasHooks n r) => Lens' (Hooks n) (TMVar a) ->
 set l v = atomically . (`writeTMVar` v) =<< askL (_hooks.l)
 
 
-initHooks :: (Functor n, BaseIO m, Default (LinkClickedHook n), Default (LoadRequestedHook n), Default (NewWindowHook n), Default (ResourceOpenedHook n), Default (TitleChangedHook n))
+initHooks :: (Functor n, BaseIO m, Default (Hook n LinkClicked), Default (Hook n LoadRequested), Default (Hook n NewWindow), -- Default (Hook n ResourceOpened),
+              Default (Hook n TitleChanged))
           => m (Hooks n)
 initHooks = io (Hooks <$> newEmptyTMVarIO
-                      <*> newTMVarIO lc
+                      <*> newTMVarIO def
                       <*> newEmptyTMVarIO
-                      <*> newTMVarIO lr
+                      <*> newTMVarIO def
                       <*> newEmptyTMVarIO
                       <*> newEmptyTMVarIO
-                      <*> newTMVarIO nw
-                      <*> newTMVarIO (void . ro)
-                      <*> newTMVarIO tc)
-  where
-      LinkClickedHook    lc = def
-      LoadRequestedHook  lr = def
-      NewWindowHook      nw = def
-      ResourceOpenedHook ro = def
-      TitleChangedHook   tc = def
+                      <*> newTMVarIO def
+                      -- <*> newTMVarIO def
+                      <*> newTMVarIO def)

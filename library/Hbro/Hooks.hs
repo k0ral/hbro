@@ -1,11 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Hbro.Hooks
     ( ResourceAction(..)
-    , LinkClickedHook(..)
-    , LoadRequestedHook(..)
-    , NewWindowHook(..)
-    , ResourceOpenedHook(..)
-    , TitleChangedHook(..)
     , Hooks
     , keyHooksL
     , promptHooksL
@@ -16,6 +11,7 @@ module Hbro.Hooks
 
 -- {{{ Imports
 import           Hbro.Error
+import           Hbro.Event
 import           Hbro.Gui.PromptBar.Hooks
 import qualified Hbro.Gui.PromptBar.Hooks   as Prompt
 import           Hbro.Gui.PromptBar.Signals hiding (Signals)
@@ -29,6 +25,7 @@ import           Hbro.WebView.Hooks         hiding (Hooks)
 import qualified Hbro.WebView.Hooks         as WebView (Hooks, initHooks)
 import           Hbro.WebView.Signals       hiding (Signals)
 
+import           Control.Concurrent.Async.Lifted
 import           Control.Lens.Getter
 import           Control.Lens.TH
 -- }}}
@@ -44,47 +41,45 @@ declareLenses [d|
     }
   |]
 
-initialize :: (Functor n, BaseIO m, Default (Keys.Status n), Default (LinkClickedHook n),
-              Default (LoadRequestedHook n), Default (NewWindowHook n),
-              Default (ResourceOpenedHook n), Default (TitleChangedHook n),
-              Default (IPC.Hooks n))
-          => m (Hooks n)
-initialize = io (Hooks <$> WebView.initHooks
-                      <*> Keys.initializeHooks
-                      <*> newTVarIO def
-                      <*> Prompt.initHooks)
+initialize :: (Functor n, BaseIO m, Default (Keys.Status n), Default (Hook n LinkClicked),
+              Default (Hook n LoadRequested), Default (Hook n NewWindow),
+              Default (Hook n TitleChanged), Default (IPC.Hooks n))
+           => m (Hooks n)
+initialize = Hooks <$> WebView.initHooks
+                   <*> Keys.initializeHooks
+                   <*> (io $ newTVarIO def)
+                   <*> Prompt.initHooks
 
 routines :: (ControlIO m) => a -> Signals -> Hooks (ExceptT Text (ReaderT a m)) -> [m ()]
 routines globalContext signals hooks =
 -- WebView
-    [ dequeueRoutine globalContext      (signals^._webViewSignals.downloadL)       $ hooks^.webViewHooksL.onDownloadL
-    , dequeueRoutine globalContext      (signals^._webViewSignals.linkHoveredL)    $ hooks^.webViewHooksL.onLinkHoveredL
-    , dequeueRoutine globalContext      (signals^._webViewSignals.linkClickedL)    $ hooks^.webViewHooksL.onLinkClickedL
-    , dequeueRoutine globalContext      (signals^._webViewSignals.loadFinishedL)   $ hooks^.webViewHooksL.onLoadFinishedL
-    , dequeueRoutine globalContext      (signals^._webViewSignals.loadRequestedL)  $ hooks^.webViewHooksL.onLoadRequestedL
-    , dequeueRoutine globalContext      (signals^._webViewSignals.loadStartedL)    $ hooks^.webViewHooksL.onLoadStartedL
-    , dequeueRoutine globalContext      (signals^._webViewSignals.newWindowL)      $ hooks^.webViewHooksL.onNewWindowL
-    , dequeueRoutine globalContext      (signals^._webViewSignals.resourceOpenedL) $ hooks^.webViewHooksL.onResourceOpenedL
-    , dequeueRoutine globalContext      (signals^._webViewSignals.titleChangedL)   $ hooks^.webViewHooksL.onTitleChangedL
+    [ dequeueRoutine globalContext      (webView^.downloadL)       $ hooks^.webViewHooksL.onDownloadL
+    , dequeueRoutine globalContext      (webView^.linkHoveredL)    $ hooks^.webViewHooksL.onLinkHoveredL
+    , dequeueRoutine globalContext      (webView^.linkClickedL)    $ hooks^.webViewHooksL.onLinkClickedL
+    , dequeueRoutine globalContext      (webView^.loadFinishedL)   $ hooks^.webViewHooksL.onLoadFinishedL
+    , dequeueRoutine globalContext      (webView^.loadRequestedL)  $ hooks^.webViewHooksL.onLoadRequestedL
+    , dequeueRoutine globalContext      (webView^.loadStartedL)    $ hooks^.webViewHooksL.onLoadStartedL
+    , dequeueRoutine globalContext      (webView^.newWindowL)      $ hooks^.webViewHooksL.onNewWindowL
+    -- , dequeueRoutine globalContext      (webView^.resourceOpenedL) $ hooks^.webViewHooksL.onResourceOpenedL
+    , dequeueRoutine globalContext      (webView^.titleChangedL)   $ hooks^.webViewHooksL.onTitleChangedL
 -- Keys
-    , Keys.dequeue globalContext  (signals^._webViewSignals.keyPressedL) $ hooks^.keyHooksL
+    , Keys.dequeue globalContext  (webView^.keyPressedL) $ hooks^.keyHooksL
 -- IPC
-    , IPC.dequeue globalContext   (signals^._ipcSignals) $ hooks^.ipcHooksL
+    , IPC.dequeue globalContext   (signals^.ipcSignalsL) $ hooks^.ipcHooksL
 -- Prompt
-    , dequeueRoutine globalContext      (signals^._promptSignals.cancelledL) $ hooks^.promptHooksL.onCancelledL
-    , dequeueRoutine globalContext      (signals^._promptSignals.changedL)   $ hooks^.promptHooksL.onChangedL
-    , dequeueRoutine globalContext      (signals^._promptSignals.validatedL) $ hooks^.promptHooksL.onValidatedL
+    , dequeueRoutine globalContext      (prompt^.cancelledL) $ hooks^.promptHooksL.onCancelledL
+    , dequeueRoutine globalContext      (prompt^.changedL)   $ hooks^.promptHooksL.onChangedL
+    , dequeueRoutine globalContext      (prompt^.validatedL) $ hooks^.promptHooksL.onValidatedL
     ]
-  -- where dequeueRoutine globalContext = dequeueRoutine globalContext
+  where webView = signals^.webViewSignalsL
+        prompt  = signals^.promptSignalsL
 
-
-dequeueRoutine :: (ControlIO m, Describable s)
-               => a -> TQueue s -> TMVar (s -> ExceptT Text (ReaderT a m) ()) -> m ()
+dequeueRoutine :: (ControlIO m, Event e)
+               => a -> Signal e -> TMVar (Hook (ExceptT Text (ReaderT a m)) e) -> m ()
 dequeueRoutine globalContext signal hook = forever $ do
-    arguments <- atomically $ readTQueue signal
-    debugM "hbro.hooks" $ "Signal acknowledged [" ++ describe arguments ++ "]."
+    input <- waitFor signal
+    debugM "hbro.hooks" $ "Signal acknowledged [" ++ describe signal ++ "]."
 
     (`runReaderT` globalContext) . logErrors' $ do
-        f <- (atomically $ tryReadTMVar hook) <!> ("Undefined hook: " ++ describe arguments)
-        handleIO (throwError . tshow) $ f arguments
--- }}}
+        (Hook f) <- (atomically $ tryReadTMVar hook) <!> ("Undefined hook: " ++ describe signal)
+        async . handleIO (throwError . tshow) $ f input

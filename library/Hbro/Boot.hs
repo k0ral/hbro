@@ -89,7 +89,7 @@ mainThread (customSetup, options) uiThread = logErrors_ $ do
         logErrors_ $ maybe goHome (load <=< getStartURI) (options^.startURIL)
 
     io . withAsyncList (Hooks.routines globalStatus signals hooks) $ \_ -> do
-      withAsync (runZMQ $ IPC.routine theSocketURI (signals^._ipcSignals)) $ \_ ->
+      withAsync (runZMQ $ IPC.routine theSocketURI (signals^.ipcSignalsL)) $ \_ ->
         wait uiThread
 
     debugM "hbro.main" "All threads correctly exited."

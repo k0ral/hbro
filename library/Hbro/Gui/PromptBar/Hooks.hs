@@ -12,6 +12,7 @@ module Hbro.Gui.PromptBar.Hooks
 
 -- {{{ Imports
 -- import Hbro.Error
+import           Hbro.Event
 import           Hbro.Gui.PromptBar.Signals
 import           Hbro.Prelude
 
@@ -23,9 +24,9 @@ import           Control.Lens.TH
 -- | No exported constructor, please use 'initHooks'
 declareLenses [d|
   data PromptHooks m = PromptHooks
-    { onCancelledL :: TMVar (Cancelled -> m ())
-    , onChangedL   :: TMVar (Changed   -> m ())
-    , onValidatedL :: TMVar (Activated -> m ())
+    { onCancelledL :: TMVar (Hook m Cancelled)
+    , onChangedL   :: TMVar (Hook m Changed)
+    , onValidatedL :: TMVar (Hook m Activated)
     }
   |]
 
@@ -44,7 +45,7 @@ clean = do
         tryTakeTMVar $ hooks^.onValidatedL
 
 
-set :: (BaseIO m, MonadReader t m, HasPromptHooks n t) => Lens' (PromptHooks n) (TMVar (x -> n ())) -> (x -> n ()) -> m ()
+set :: (BaseIO m, MonadReader t m, HasPromptHooks n t) => Lens' (PromptHooks n) (TMVar (Hook n x)) -> (Hook n x) -> m ()
 set l f = do
     hook' <- askL $ _promptHooks.l
     atomically $ writeTMVar hook' f
