@@ -39,12 +39,12 @@ logHandler = GenericHandler
     }
 
 logFormatter :: String -> LogFormatter a
-logFormatter string handler (prio, message) loggername = varFormatter
+logFormatter string handler (prio, message) = varFormatter
     [ ("my_prio", return $ formatPriority prio)
     , ("my_time", formatTime defaultTimeLocale "%F %T" <$> getCurrentTime)
     , ("my_tid",  unpack . justifyLeft 5 ' ' . replace "ThreadId " "#" . tshow <$> myThreadId)
     ]
-    string handler (prio, message) loggername
+    string handler (prio, message)
 
 formatPriority :: Priority -> String
 formatPriority WARNING   = "WARN "

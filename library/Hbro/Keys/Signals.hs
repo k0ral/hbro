@@ -11,7 +11,6 @@ import           Hbro.Logger
 import           Hbro.Prelude
 
 import           Control.Lens.Getter
-import           Control.Monad.Reader hiding (forM_)
 -- }}}
 
 data KeyPressed = KeyPressed deriving(Show)

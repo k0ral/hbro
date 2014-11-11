@@ -55,7 +55,7 @@ declareLenses [d|
   |]
 
 (.|) :: (ToSet modifier m) => m -> key -> KeyStroke modifier key
-(.|) m k = KeyStroke (toSet m) k
+(.|) m = KeyStroke (toSet m)
 -- }}}
 
 -- {{{ Binding model
@@ -79,12 +79,12 @@ type ModalBindings mode keystroke action = Map mode (Bindings keystroke action)
 
 -- | Make a branch out of a single binding
 toBranch :: Ord a => (NonEmpty a, b) -> BranchedTree a b
-toBranch  ((h:|[]),   a) = [ (h, Leaf a) ]
-toBranch  ((h:|h':t), a) = [ (h, Branch $ toBranch' ((h':|t), a)) ]
+toBranch  (h:|[],   a) = [ (h, Leaf a) ]
+toBranch  (h:|h':t, a) = [ (h, Branch $ toBranch' (h':|t, a)) ]
 
 toBranch' :: (NonEmpty b, l) -> NonEmpty (b, Tree b l)
-toBranch' ((h:|[]),   a) = (h, Leaf a) :| []
-toBranch' ((h:|h':t), a) = (h, Branch $ toBranch' ((h':|t), a)) :| []
+toBranch' (h:|[],   a) = (h, Leaf a) :| []
+toBranch' (h:|h':t, a) = (h, Branch $ toBranch' (h':|t, a)) :| []
 
 -- | Merge 2 trees. In case of conflicts, prefer the rightmost operand.
 merge :: Ord a => BranchedTree a b -> BranchedTree a b -> BranchedTree a b
@@ -144,7 +144,7 @@ bind' theMode theStrokes action (Status a b c) = Status a b $ insert (theStrokes
 -- | Same as 'bind' with default mode.
 bind :: (Ord mode, Default mode, Ord keystroke, ToNonEmpty keystroke s)
       => s -> action -> Status keystroke mode action -> Status keystroke mode action
-bind s f = bind' def s f
+bind = bind' def
 
 setMode :: mode -> Status keystroke mode action -> Status keystroke mode action
 setMode newMode = set modeL newMode . set keyStrokesL []

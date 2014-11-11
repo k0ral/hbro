@@ -34,7 +34,7 @@ declareLenses [d|
   |]
 
 instance Describable Config where
-    describe c = "Home page = " ++ (tshow $ c^.homePageL)
+    describe c = "Home page = " ++ tshow (c^.homePageL)
 
 instance Default Config where
     def = Config $ fromJust . N.parseURI $ "https://duckduckgo.com/"

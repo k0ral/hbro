@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 module Hbro.IPC.Hooks where
 
 -- {{{ Imports
@@ -7,13 +6,12 @@ import           Hbro.IPC.Signals
 import           Hbro.Prelude
 
 import           Control.Lens         hiding (Action)
-import           Control.Monad.Reader
 
 import           Data.Map             as M
 -- }}}
 
 -- {{{ Types
-type Action m   = [Argument] -> (m Response)       -- ^ Actions may depend on arguments
+type Action m   = [Argument] -> m Response         -- ^ Actions may depend on arguments
 newtype Hooks m = Hooks (Map Command (Action m))   -- ^ Map commands to actions
 -- }}}
 

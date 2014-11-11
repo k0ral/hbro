@@ -125,7 +125,7 @@ attachDownload webView signal = gSync . on webView downloadRequested $ \d -> do
 
         debugM "hbro.signals" $ "Requested download <" ++ tshow uri ++ ">"
 
-        emit signal (uri, name, (Just amount))
+        emit signal (uri, name, Just amount)
     return False
 
 

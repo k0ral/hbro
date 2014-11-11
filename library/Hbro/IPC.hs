@@ -1,4 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections   #-}
 -- | Designed to be imported as @qualified@.
 module Hbro.IPC

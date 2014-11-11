@@ -91,6 +91,7 @@ instance ToNonEmpty s (NonEmpty s) where toNonEmpty = id
 
 -- | Like 'Show', for 'Text'
 class Describable a where describe :: a -> Text
+instance Describable () where describe = const "()"
 
 -- | Mix of 'MonadBase IO' and 'MonadIO'
 type BaseIO m = (MonadBase IO m, MonadIO m)
@@ -146,7 +147,7 @@ writeTMVar var val = do
 
 -- | Recursive 'withAsync'
 withAsyncList :: (ControlIO m) => [m a] -> ([Async (StM m a)] -> m b) -> m b
-withAsyncList a f = withAsyncList' a [] f
+withAsyncList a = withAsyncList' a []
 
 -- | Same as 'withAsyncList', but discards the result
 withAsyncList_ :: (ControlIO m) => [m a] -> ([Async (StM m a)] -> m b) -> m ()

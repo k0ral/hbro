@@ -106,40 +106,40 @@ instance Default (IPC.Hooks KE) where
         ("GET_LOAD_PROGRESS",   \_arguments -> Right . tshow <$> getLoadProgress),
     -- Trigger actions
         ("LOAD_URI",            \arguments -> case arguments of
-            uri:_ -> parseURIReference uri >>= load >> (return $ Right "OK")
+            uri:_ -> parseURIReference uri >>= load >> return (Right "OK")
             _     -> return . Left $ "Argument needed."),
-        ("STOP_LOADING",        \_arguments -> stopLoading       >> (return $ Right "OK")),
-        ("RELOAD",              \_arguments -> reload            >> (return $ Right "OK")),
-        ("RELOAD_BYPASS_CACHE", \_arguments -> reloadBypassCache >> (return $ Right "OK")),
-        ("GO_BACK",             \_arguments -> goBack            >> (return $ Right "OK")),
-        ("GO_FORWARD",          \_arguments -> goForward         >> (return $ Right "OK")),
-        ("ZOOM_IN",             \_arguments -> zoomIn            >> (return $ Right "OK")),
-        ("ZOOM_OUT",            \_arguments -> zoomOut           >> (return $ Right "OK"))]
+        ("STOP_LOADING",        \_arguments -> stopLoading       >> return (Right "OK")),
+        ("RELOAD",              \_arguments -> reload            >> return (Right "OK")),
+        ("RELOAD_BYPASS_CACHE", \_arguments -> reloadBypassCache >> return (Right "OK")),
+        ("GO_BACK",             \_arguments -> goBack            >> return (Right "OK")),
+        ("GO_FORWARD",          \_arguments -> goForward         >> return (Right "OK")),
+        ("ZOOM_IN",             \_arguments -> zoomIn            >> return (Right "OK")),
+        ("ZOOM_OUT",            \_arguments -> zoomOut           >> return (Right "OK"))]
 
 
 resetKeyBindings :: (BaseIO m, MonadReader t m, Keys.HasHooks (ExceptT Text K) t) => m ()
 resetKeyBindings = do
 -- Browse
-    Keys.bind (_Alt     .| _Left)   $ goBack
-    Keys.bind (_Alt     .| _Right)  $ goForward
-    Keys.bind (_Control .| _Escape) $ stopLoading
-    Keys.bind _F5                   $ reload
-    Keys.bind (_Control .| _r)      $ reload
-    Keys.bind (_Control .| _F5)     $ reloadBypassCache
-    Keys.bind (_Alt     .| _r)      $ reloadBypassCache
+    Keys.bind (_Alt     .| _Left)     goBack
+    Keys.bind (_Alt     .| _Right)    goForward
+    Keys.bind (_Control .| _Escape)   stopLoading
+    Keys.bind _F5                     reload
+    Keys.bind (_Control .| _r)        reload
+    Keys.bind (_Control .| _F5)       reloadBypassCache
+    Keys.bind (_Alt     .| _r)        reloadBypassCache
     Keys.bind (_Control .| _dead_circumflex) $ scrollH (Absolute 0)
     Keys.bind (_Control .| _dollar) $ scrollH (Absolute 100)
     Keys.bind (_Control .| _Home)   $ scrollV (Absolute 0)
     Keys.bind (_Control .| _End)    $ scrollV (Absolute 100)
-    Keys.bind (_Alt     .| _Home)   $ goHome
+    Keys.bind (_Alt     .| _Home)     goHome
 -- Copy/paste
     Keys.bind (_Control .| _c)      $ getCurrentURI >>= Clipboard.write . tshow
     Keys.bind (_Alt     .| _c)      $ getPageTitle >>= Clipboard.write
     Keys.bind (_Control .| _v)      $ Clipboard.read >>= parseURIReference >>= load
     Keys.bind (_Alt     .| _v)      $ Clipboard.read >>= spawn "hbro" . ("-u":) . (:[]) . unpack
 -- Display
-    Keys.bind (_Control .| _plus)   $ zoomIn
-    Keys.bind (_Control .| _minus)  $ zoomOut
+    Keys.bind (_Control .| _plus)     zoomIn
+    Keys.bind (_Control .| _minus)    zoomOut
     Keys.bind (_Control .| _b)      $ Gui.toggle =<< Gui.get statusBarL
     Keys.bind (_Alt     .| _b)      $ Gui.toggle =<< Gui.get notificationBarL
     Keys.bind (_Control .| _u)      $ toggleSourceMode >> reload
@@ -155,7 +155,7 @@ resetKeyBindings = do
     Keys.bind (_Control .| _h)      $ gAsync . webViewUnMarkTextMatches =<< Gui.get webViewL
 -- Misc
     -- Keys.bind (_Control .| _i)      $ openInspector
-    Keys.bind (_Alt     .| _Print)  printPage
+    Keys.bind (_Alt     .| _Print)    printPage
     Keys.bind (_Control .| _t)      $ spawn "hbro" []
-    Keys.bind (_Control .| _w)      quit
+    Keys.bind (_Control .| _w)        quit
 -- }}}

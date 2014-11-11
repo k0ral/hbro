@@ -47,7 +47,7 @@ initialize :: (Functor n, BaseIO m, Default (Keys.Status n), Default (Hook n Lin
            => m (Hooks n)
 initialize = Hooks <$> WebView.initHooks
                    <*> Keys.initializeHooks
-                   <*> (io $ newTVarIO def)
+                   <*> io (newTVarIO def)
                    <*> Prompt.initHooks
 
 routines :: (ControlIO m) => a -> Signals -> Hooks (ExceptT Text (ReaderT a m)) -> [m ()]
@@ -81,5 +81,5 @@ dequeueRoutine globalContext signal hook = forever $ do
     debugM "hbro.hooks" $ "Signal acknowledged [" ++ describe signal ++ "]."
 
     (`runReaderT` globalContext) . logErrors' $ do
-        (Hook f) <- (atomically $ tryReadTMVar hook) <!> ("Undefined hook: " ++ describe signal)
+        (Hook f) <- atomically (tryReadTMVar hook) <!> ("Undefined hook: " ++ describe signal)
         async . handleIO (throwError . tshow) $ f input

@@ -170,7 +170,7 @@ initializeWebView webView = gAsync $ do
         return True
 
     void . on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> do
-      uri <- (networkRequestGetUri request :: IO (Maybe Text))
+      uri <- networkRequestGetUri request :: IO (Maybe Text)
       debugM "hbro.gui" $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" ++ tshow uri ++ ">"
       renderable <- webViewCanShowMimeType webView mimetype
       case (uri, renderable) of

@@ -39,13 +39,13 @@ hbro :: K () -> IO ()
 hbro setup = do
     options <- parseOptions
     case options of
-        Left Rebuild -> Dyre.recompile >>= mapM_ putStrLn
+        Left Rebuild -> Dyre.recompile >>= mapM_ (infoM "hbro.boot")
         Left Version -> do
             (a, b, c) <- io ZMQ.version
             putStrLn $ "hbro: v" ++ pack (showVersion version)
             putStrLn $ "0MQ library: v" ++ intercalate "." (map tshow [a, b, c])
         Right runOptions -> Dyre.wrap (runOptions^.dyreModeL)
-                                      (\x -> withAsyncBound guiThread (mainThread x))
+                                      (withAsyncBound guiThread . mainThread)
                                       (setup, runOptions)
 
 -- | Gtk main loop thread.
@@ -88,7 +88,7 @@ mainThread (customSetup, options) uiThread = logErrors_ $ do
 
         logErrors_ $ maybe goHome (load <=< getStartURI) (options^.startURIL)
 
-    io . withAsyncList (Hooks.routines globalStatus signals hooks) $ \_ -> do
+    io . withAsyncList (Hooks.routines globalStatus signals hooks) $ \_ ->
       withAsync (runZMQ $ IPC.routine theSocketURI (signals^.ipcSignalsL)) $ \_ ->
         wait uiThread
 
@@ -99,7 +99,7 @@ mainThread (customSetup, options) uiThread = logErrors_ $ do
 getUIFiles :: (BaseIO m) => CliOptions -> m [FilePath]
 getUIFiles options = do
     fileFromConfig  <- getAppConfigDirectory "hbro" >/> "ui.xml"
-    fileFromPackage <- fpFromText . pack <$> (io $ getDataFileName "examples/ui.xml")
+    fileFromPackage <- fpFromText . pack <$> io (getDataFileName "examples/ui.xml")
     return $ catMaybes [options^.uiFileL, Just fileFromConfig, Just fileFromPackage]
 
 -- | Return socket URI used by this instance
@@ -108,7 +108,7 @@ getSocketURI options = maybe getDefaultSocketURI (return . normalize) $ options^
   where
     normalize = ("ipc://" ++) . fpToText
     getDefaultSocketURI = do
-      dir <- fpToText <$> (io $ getAppCacheDirectory "hbro")
+      dir <- fpToText <$> io (getAppCacheDirectory "hbro")
       pid <- io getProcessID
       return $ "ipc://" ++ dir ++ "/hbro." ++ tshow pid
 

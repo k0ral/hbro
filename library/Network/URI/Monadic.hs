@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveDataTypeable #-}
 -- | Functions from 'Network.URI' rewritten with 'MonadError' instead of 'Maybe'.
 module Network.URI.Monadic
     ( module X

@@ -79,13 +79,13 @@ instance Default Mode where def = Normal
 type KeyStroke  = Model.KeyStroke Modifier KeyVal
 
 instance Describable KeyStroke where
-   describe s = foldr (++) "" (map describe . Set.toList $ s^.modifiersL) ++ describe (s^.keyL)
+   describe s = foldr ((++) . describe) "" (Set.toList $ s^.modifiersL) ++ describe (s^.keyL)
 
 instance ToNonEmpty KeyStroke KeyStroke where
     toNonEmpty x = x :| []
 
 instance ToNonEmpty KeyStroke KeyVal where
-    toNonEmpty x = ((Set.empty .| x) :| [])
+    toNonEmpty x = (Set.empty .| x) :| []
 
 keyStroke :: Parser KeyStroke
 keyStroke = do
@@ -110,7 +110,7 @@ class HasHooks m t | t -> m where _hooks :: Lens' t (Hooks m)
 instance HasHooks m (Hooks m) where _hooks = id
 
 initializeHooks :: (BaseIO m) => m (Hooks n)
-initializeHooks = Hooks <$> io (newTVarIO def) <*> io (newEmptyTMVarIO)
+initializeHooks = Hooks <$> io (newTVarIO def) <*> io newEmptyTMVarIO
 
 set :: (BaseIO m, MonadReader r m, HasHooks n r) => Lens' (Hooks n) (TMVar a) -> a -> m ()
 set l v = atomically . (`writeTMVar` v) =<< askL (_hooks.l)

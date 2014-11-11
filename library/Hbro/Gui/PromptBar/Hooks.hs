@@ -45,7 +45,7 @@ clean = do
         tryTakeTMVar $ hooks^.onValidatedL
 
 
-set :: (BaseIO m, MonadReader t m, HasPromptHooks n t) => Lens' (PromptHooks n) (TMVar (Hook n x)) -> (Hook n x) -> m ()
+set :: (BaseIO m, MonadReader t m, HasPromptHooks n t) => Lens' (PromptHooks n) (TMVar (Hook n x)) -> Hook n x -> m ()
 set l f = do
     hook' <- askL $ _promptHooks.l
     atomically $ writeTMVar hook' f
