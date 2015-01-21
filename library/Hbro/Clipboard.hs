@@ -10,6 +10,7 @@ import           Graphics.UI.Gtk.General.Clipboard
 import           Graphics.UI.Gtk.General.Selection
 -- }}}
 
+
 -- | Write given 'Text' to the selection-primary clipboard
 write :: (BaseIO m) => Text -> m ()
 write = write' selectionPrimary
@@ -21,11 +22,11 @@ write' tag text = do
     gSync (clipboardGet tag) >>= gAsync . (`clipboardSetText` text)
 
 -- | Read clipboard's content. Both 'selectionPrimary' and 'selectionClipboard' are inspected (in this order).
-read :: (BaseIO m) => ExceptT Text m Text
+read :: (BaseIO m, Alternative m, MonadError Text m) => m Text
 read = read' selectionPrimary <|> read' selectionClipboard
 
 -- | Return the content from the given clipboard.
-read' :: (BaseIO m, MonadError Text m) => SelectionTag -> m Text
+read' :: (Alternative m, MonadError Text m, BaseIO m) => SelectionTag -> m Text
 read' tag = do
     clipboard <- gSync $ clipboardGet tag
     result    <- newEmptyMVar
