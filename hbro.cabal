@@ -19,12 +19,6 @@ Data-files:          examples/ui.xml
 Source-repository head
     Type:     git
     Location: https://github.com/k0ral/hbro.git
-Source-repository head
-    Type:     hg
-    Location: https://bitbucket.org/k0ral/hbro
-Source-repository head
-    Type:     hg
-    Location: https://hgweb.twyk.org/hbro
 
 Library
     Build-depends:
