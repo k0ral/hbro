@@ -1,4 +1,5 @@
--- | Functions from 'Network.URI' rewritten with 'MonadError' instead of 'Maybe'.
+{-# LANGUAGE FlexibleContexts #-}
+-- | Monadic version of 'Network.URI'.
 module Network.URI.Monadic
     ( module X
     , parseURIReference
@@ -6,12 +7,11 @@ module Network.URI.Monadic
     ) where
 
 -- {{{ Imports
+import           Hbro.Error
 import           Hbro.Prelude
 
-import           Control.Monad.Except (MonadError (..), throwError)
-
-import           Network.URI          as X hiding (parseURI, parseURIReference)
-import qualified Network.URI          as N
+import           Network.URI  as X hiding (parseURI, parseURIReference)
+import qualified Network.URI  as N
 -- }}}
 
 -- | Error message
@@ -19,7 +19,7 @@ invalidURI :: Text -> Text
 invalidURI uri = "Invalid URI: " ++ uri
 
 parseURIReference :: (MonadError Text m) => Text -> m URI
-parseURIReference uri = maybe (throwError $ invalidURI uri) return . N.parseURIReference $ unpack uri
+parseURIReference uri = (N.parseURIReference $ unpack uri) `failWith` invalidURI uri
 
 parseURI :: (MonadError Text m) => Text -> m URI
-parseURI uri = maybe (throwError $ invalidURI uri) return . N.parseURI $ unpack uri
+parseURI uri = (N.parseURI $ unpack uri) `failWith` invalidURI uri
