@@ -61,6 +61,7 @@ Library
         zeromq4-haskell
     Exposed-modules:
         Hbro,
+        Hbro.Attributes,
         Hbro.Boot,
         Hbro.Clipboard,
         Hbro.Config,
