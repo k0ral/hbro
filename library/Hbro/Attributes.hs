@@ -1,5 +1,6 @@
-{-# LANGUAGE ConstraintKinds  #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | Convenient wrappers around Glib's attribute system.
 module Hbro.Attributes where
 
@@ -11,27 +12,32 @@ import           System.Glib.Attributes (Attr, AttrOp (..))
 import qualified System.Glib.Attributes as Glib
 -- }}}
 
-get :: (BaseIO m) => o -> Attr o a -> m a
+get :: (MonadIO m) => o -> Attr o a -> m a
 get o a = gSync $ Glib.get o a
 
-set :: (BaseIO m, Show a) => o -> Attr o a -> a -> m ()
-set object attribute newValue = modify_ object attribute $ const newValue
+set :: (MonadIO m, Show a) => o -> Attr o a -> a -> m o
+set object attribute newValue = do
+  gAsync $ Glib.set object [attribute := newValue]
+  return object
 
-modify :: (BaseIO m, Show a) => o -> Attr o a -> (a -> a) -> m a
+set_ :: (MonadIO m, Functor m, Show a) => o -> Attr o a -> a -> m ()
+set_ o a v = void $ set o a v
+
+modify :: (MonadIO m, Show a) => o -> Attr o a -> (a -> a) -> m a
 modify object attribute f = do
     oldValue <- gSync $ Glib.get object attribute
 
-    gAsync $ Glib.set object [attribute := f oldValue]
+    set object attribute $ f oldValue
     infoM $ "Set " ++ tshow attribute ++ " = " ++ tshow (f oldValue)
     return oldValue
 
 -- | Same as 'modify', but discards the result
-modify_ :: (BaseIO m, Show a) => o -> Attr o a -> (a -> a) -> m ()
+modify_ :: (MonadIO m, Functor m, Show a) => o -> Attr o a -> (a -> a) -> m ()
 modify_ object e = void . modify object e
 
-toggle :: (BaseIO m) => o -> Attr o Bool -> m Bool
+toggle :: (MonadIO m) => o -> Attr o Bool -> m Bool
 toggle object x = modify object x not
 
 -- | Same as 'toggle', but discards the result
-toggle_ :: (BaseIO m) => o -> Attr o Bool -> m ()
+toggle_ :: (MonadIO m, Functor m) => o -> Attr o Bool -> m ()
 toggle_ object x = modify_ object x not

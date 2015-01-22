@@ -1,22 +1,25 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 module Hbro.Gui.NotificationBar (
 -- * Type
       NotificationBar
-    , HasNotificationBar(..)
+    , NotifBarTag(..)
+    , NotificationBarReader
+    , buildFrom
+    , getNotificationBar
     , initialize
 ) where
 
 -- {{{ Imports
 -- import Hbro.Error
-import           Hbro.Gui.Buildable
+import           Hbro.Gui.Builder
 import           Hbro.Logger                     hiding (initialize)
 import           Hbro.Prelude
 
-import           Control.Lens
-
 import           Graphics.Rendering.Pango.Enums
 import           Graphics.UI.Gtk.Abstract.Widget
-import           Graphics.UI.Gtk.Builder
+import qualified Graphics.UI.Gtk.Builder         as Gtk
 import           Graphics.UI.Gtk.Display.Label
 
 import           System.Glib.Types
@@ -31,13 +34,17 @@ import           System.Log.Logger               (addHandler, rootLoggerName,
 -- TODO: make it possible to change the log level
 
 -- {{{ Types
-declareClassy [d|
-  data NotificationBar = NotificationBar { labelL :: Label }
-  |]
+data NotificationBar = NotificationBar Label
+
+data NotifBarTag = NotifBarTag
+type NotificationBarReader m = MonadReader NotifBarTag NotificationBar m
+
+getNotificationBar :: (NotificationBarReader m) => m NotificationBar
+getNotificationBar = read NotifBarTag
 
 -- | A 'NotificationBar' can be built from an XML file.
-instance Buildable NotificationBar where
-    buildWith b = NotificationBar <$> gSync (builderGetObject b castToLabel $ asText "notificationLabel")
+buildFrom :: (MonadIO m, Functor m) => Gtk.Builder -> m NotificationBar
+buildFrom builder = NotificationBar <$> getWidget builder "notificationLabel"
 
 instance GObjectClass NotificationBar where
     toGObject (NotificationBar l) = toGObject l
@@ -47,14 +54,10 @@ instance GObjectClass NotificationBar where
 instance WidgetClass NotificationBar
 -- }}}
 
-get' :: (MonadReader r m, BaseIO m, HasNotificationBar r) => Lens' NotificationBar a -> m a
-get' l = askL $ notificationBar.l
-
--- modify' :: (MonadReader r m, BaseIO m, HasNotificationBar r) => (Status -> Status) -> m ()
--- modify' f = io . atomically . (`modifyTVar` f) =<< asks (view _notificationBar)
-
-initialize :: (BaseIO m) => NotificationBar -> m ()
-initialize notifBar = io . updateGlobalLogger rootLoggerName $ addHandler (logHandler notifBar)
+initialize :: (MonadIO m) => NotificationBar -> m NotificationBar
+initialize notifBar = do
+  io . updateGlobalLogger rootLoggerName $ addHandler (logHandler notifBar)
+  return notifBar
 
 
 logHandler :: NotificationBar -> GenericHandler NotificationBar
@@ -62,13 +65,13 @@ logHandler notifBar = GenericHandler
     { priority  = INFO
     , formatter = simpleLogFormatter "$msg"
     , privData  = notifBar
-    , writeFunc = \n t -> runReaderT (write t) n
+    , writeFunc = \n t -> runReaderT NotifBarTag n (write t)
     , closeFunc = \_ -> return ()
     }
 
-write :: (BaseIO m, MonadReader r m, HasNotificationBar r) => String -> m ()
+write :: (MonadIO m, MonadReader NotifBarTag NotificationBar m) => String -> m ()
 write text = do
-    label  <- get' labelL
+    (NotificationBar label) <- getNotificationBar
 
     gAsync $ do
         labelSetAttributes label [AttrForeground {paStart = 0, paEnd = -1, paColor = gray}]

@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | Monadic version of 'Network.URI'.
 module Network.URI.Monadic
     ( module X
@@ -19,7 +20,7 @@ invalidURI :: Text -> Text
 invalidURI uri = "Invalid URI: " ++ uri
 
 parseURIReference :: (MonadError Text m) => Text -> m URI
-parseURIReference uri = (N.parseURIReference $ unpack uri) `failWith` invalidURI uri
+parseURIReference uri = N.parseURIReference (unpack uri) `failWith` invalidURI uri
 
 parseURI :: (MonadError Text m) => Text -> m URI
-parseURI uri = (N.parseURI $ unpack uri) `failWith` invalidURI uri
+parseURI uri = N.parseURI (unpack uri) `failWith` invalidURI uri

@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE CPP, ForeignFunctionInterface, TupleSections #-}
 -- | Binding for GDK key constants defined in @gdk/gdkkeysyms.h@
 module Hbro.Gdk.KeyVal where

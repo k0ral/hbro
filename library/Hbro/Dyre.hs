@@ -1,3 +1,6 @@
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | Dynamic reconfiguration. Designed to be imported as @qualified@.
 module Hbro.Dyre
     ( Mode(..)
@@ -22,7 +25,7 @@ data Mode = Normal | Vanilla | ForceReconfiguration | IgnoreReconfiguration
 instance Default Mode where def = Normal
 
 -- | Describe various paths used for dynamic reconfiguration
-describePaths :: BaseIO m => m Text
+describePaths :: MonadIO m => m Text
 describePaths = io $ do
     (a, b, c, d, e) <- getPaths baseParameters
     return . unlines $ map pack
@@ -40,10 +43,10 @@ parameters mode main = baseParameters
     , realMain    = main'
     }
   where
-    main' (Left e)  = errorM "hbro.dyre" e
+    main' (Left e)  = errorM e
     main' (Right x) = do
-      debugM "hbro.dyre" . ("Dynamic reconfiguration paths:\n" ++) =<< describePaths
-      void $ main x
+      debugM . ("Dynamic reconfiguration paths:\n" ++) =<< describePaths
+      void . io $ main x
 
 baseParameters :: Params (Either Text a)
 baseParameters = defaultParams
@@ -54,12 +57,12 @@ baseParameters = defaultParams
     , includeCurrentDirectory = False
     }
 
-wrap :: (BaseIO m) => Mode -> (a -> IO b) -> a -> m ()
+wrap :: (MonadIO m) => Mode -> (a -> IO b) -> a -> m ()
 wrap mode main args = io . wrapMain (parameters mode main) $ Right args
 
 
 -- | Launch a recompilation of the configuration file
-recompile :: (BaseIO m) => m (Maybe Text)
+recompile :: (MonadIO m) => m (Maybe Text)
 recompile = io $ do
     customCompile baseParameters
     map pack <$> getErrorString baseParameters

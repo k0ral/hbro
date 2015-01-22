@@ -38,10 +38,10 @@ Library
         -- http-types,
         integer-simple,
         lens >= 4.4,
-        lifted-async,
-        lifted-base,
-        mtl >= 2.2.1,
-        monad-control,
+        lifted-async >= 0.6,
+        lifted-base >= 0.2.3.3,
+        mtl < 2.2,
+        monad-control >= 1.0,
         network-uri,
         optparse-applicative >= 0.11,
         pango,
@@ -60,35 +60,27 @@ Library
         webkitgtk3 >= 0.13,
         zeromq4-haskell
     Exposed-modules:
+        Control.Monad.Reader.Tagged,
         Hbro,
         Hbro.Attributes,
         Hbro.Boot,
         Hbro.Clipboard,
         Hbro.Config,
         Hbro.Core,
+        Hbro.Defaults,
         Hbro.Error,
         Hbro.Event,
         Hbro.Gdk.KeyVal,
-        Hbro.Gui,
-        Hbro.Gui.Buildable,
+        Hbro.Gui.Builder,
+        Hbro.Gui.MainView,
         Hbro.Gui.NotificationBar,
         Hbro.Gui.PromptBar,
-        Hbro.Gui.PromptBar.Hooks,
-        Hbro.Gui.PromptBar.Signals,
         Hbro.Gui.StatusBar,
-        Hbro.Hooks,
         Hbro.IPC,
-        Hbro.IPC.Hooks,
-        Hbro.K,
         Hbro.Keys,
         Hbro.Keys.Model,
-        Hbro.Keys.Monadic,
-        Hbro.Keys.Signals,
         Hbro.Logger,
         Hbro.Prelude,
-        Hbro.Signals,
-        Hbro.Webkit.WebSettings
-        Hbro.WebView.Hooks,
         Hbro.WebView.Signals,
         Network.URI.Monadic
     Other-modules:
@@ -96,21 +88,15 @@ Library
         Graphics.UI.Gtk.WebKit.Lifted.WebView,
         -- Hbro.CFunctions,
         Hbro.Dyre,
-        Hbro.IPC.Signals,
+        Hbro.Gui,
         Hbro.Options,
         Paths_hbro
     Extensions:
-        ConstraintKinds,
-        DeriveDataTypeable,
-        FlexibleContexts,
-        FlexibleInstances,
-        FunctionalDependencies,
         GeneralizedNewtypeDeriving,
         MultiParamTypeClasses,
-        NoImplicitPrelude,
         OverloadedStrings,
         RankNTypes,
-        ViewPatterns
+        StandaloneDeriving
     -- Build-tools: hsc2hs
     -- C-sources: cbits/cbits.c
     -- Include-dirs: include

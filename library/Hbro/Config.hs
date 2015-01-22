@@ -1,5 +1,7 @@
-{-# LANGUAGE TemplateHaskell      #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell   #-}
 -- | General configuration parameters.
 -- The recommended way to import this module is:
 -- @
@@ -10,7 +12,8 @@ module Hbro.Config (
 -- * Types
       Config
     , homePageL
-    , HasConfig(..)
+    , ConfigReader
+    , withConfig
 -- * Getter/setter
     , get
     , set
@@ -19,11 +22,11 @@ module Hbro.Config (
 -- {{{ Imports
 import           Hbro.Prelude
 
-import           Control.Lens         hiding (set)
-import qualified Control.Lens         as L (set)
+import           Control.Lens hiding (set)
+import qualified Control.Lens as L (set)
 
-import           Network.URI          (URI)
-import qualified Network.URI          as N
+import           Network.URI  (URI)
+import qualified Network.URI  as N
 -- }}}
 
 -- | Custom settings provided by the user
@@ -39,12 +42,16 @@ instance Describable Config where
 instance Default Config where
     def = Config $ fromJust . N.parseURI $ "https://duckduckgo.com/"
 
-class HasConfig t where _config :: Lens' t (TVar Config)
+data ConfigTag = ConfigTag
+type ConfigReader m = MonadReader ConfigTag (TVar Config) m
 
-instance HasConfig (TVar Config) where _config = id
+withConfig :: (MonadIO m) => Config -> ReaderT ConfigTag (TVar Config) m a -> m a
+withConfig config f = do
+  configTVar <- io $ newTVarIO config
+  runReaderT ConfigTag configTVar f
 
-get :: (MonadReader r m, BaseIO m, HasConfig r) => Lens' Config a -> m a
-get l = return . view l =<< atomically . readTVar =<< askL _config
+get :: (MonadIO m, ConfigReader m) => Lens' Config a -> m a
+get l = return . view l =<< atomically . readTVar =<< read ConfigTag
 
-set :: (MonadReader r m, BaseIO m, HasConfig r) => Lens' Config a -> a -> m ()
-set l v = atomically . (`modifyTVar` L.set l v) =<< askL _config
+set :: (MonadIO m, ConfigReader m) => Lens' Config a -> a -> m ()
+set l v = atomically . (`modifyTVar` L.set l v) =<< read ConfigTag

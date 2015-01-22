@@ -1,3 +1,6 @@
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | Some lifted functions from 'Graphics.UI.Gtk.WebKit.WebView'.
 -- Designed to be imported as @qualified@.
 module Graphics.UI.Gtk.WebKit.Lifted.WebView
@@ -31,20 +34,20 @@ unavailableURI = "No available URI."
 titleUnavailable = "No available title."
 
 
-webViewGetUri :: (BaseIO m, MonadError Text m) => WebView -> m URI
+webViewGetUri :: (MonadIO m, MonadError Text m) => WebView -> m URI
 webViewGetUri = gSync . W.webViewGetUri >=> maybe (throwError unavailableURI) return >=> parseURI
 
-webViewGetIconUri :: (BaseIO m, MonadError Text m) => WebView -> m URI
+webViewGetIconUri :: (MonadIO m, MonadError Text m) => WebView -> m URI
 webViewGetIconUri = gSync . W.webViewGetIconUri >=> maybe (throwError unavailableURI) return >=> parseURI
 
-webViewTryGetFaviconPixbuf :: (BaseIO m, MonadError Text m) => WebView -> Int -> Int -> m Pixbuf
+webViewTryGetFaviconPixbuf :: (MonadIO m, MonadError Text m) => WebView -> Int -> Int -> m Pixbuf
 webViewTryGetFaviconPixbuf webView width height = gSync (W.webViewTryGetFaviconPixbuf webView width height) >>= maybe (throwError unavailableFavicon) return
 
-webViewGetTitle :: (BaseIO m, MonadError Text m) => WebView -> m Text
+webViewGetTitle :: (MonadIO m, MonadError Text m) => WebView -> m Text
 webViewGetTitle = gSync . W.webViewGetTitle >=> maybe (throwError titleUnavailable) return
 
-loadHtmlString :: (BaseIO m) => Text -> URI -> WebView -> m ()
+loadHtmlString :: (MonadIO m) => Text -> URI -> WebView -> m ()
 loadHtmlString html uri webView = gAsync $ W.webViewLoadHtmlString webView html (tshow uri)
 
-loadString :: (BaseIO m) => Text -> URI -> WebView -> m ()
+loadString :: (MonadIO m) => Text -> URI -> WebView -> m ()
 loadString html uri webView = gAsync $ W.webViewLoadString webView html Nothing (tshow uri)

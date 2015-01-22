@@ -1,3 +1,6 @@
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | Some lifted functions from 'Graphics.UI.Gtk.WebKit'.
 -- Designed to be imported as @qualified@.
 module Graphics.UI.Gtk.WebKit.Lifted (

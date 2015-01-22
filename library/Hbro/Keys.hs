@@ -1,5 +1,9 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections   #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE TypeFamilies      #-}
 -- | Key bindings model.
 -- Designed to be imported as @qualified@.
 module Hbro.Keys (
@@ -11,62 +15,75 @@ module Hbro.Keys (
     , modifier
 -- * Mode
     , Mode(..)
--- * Bindings implementation
+-- * KeyMap implementation
     , KeyStroke
-    , keyStroke
-    , Bindings
-    , Status
-    , Hooks
-    , statusL
-    , onKeyPressedL
+    , keyStrokes
+    , KeyMap
 -- * Interface
-    , HasHooks(..)
-    , initializeHooks
-    , Hbro.Keys.set
+    , KeyPressed(..)
+    , KeyMapPressed(..)
+    , KeySignalTag(..)
+    , KeySignalReader
+    , bindKeys
     ) where
 
 -- {{{ Imports
+import           Hbro.Error
+import           Hbro.Event
 import           Hbro.Gdk.KeyVal
-import           Hbro.Keys.Model            (keyL, modifiersL, (.|))
-import qualified Hbro.Keys.Model            as Model
-import           Hbro.Prelude
+import           Hbro.Keys.Model                 ((.|))
+import qualified Hbro.Keys.Model                 as Model
+import           Hbro.Logger
+import           Hbro.Prelude                    hiding (isPrefixOf)
 
-import           Control.Lens.Getter
-import           Control.Lens.Lens
-import           Control.Lens.TH
+import           Control.Concurrent.Async.Lifted
 
-import           Data.List.NonEmpty         (NonEmpty (..))
-import qualified Data.Set                   as Set
+import qualified Data.List.NonEmpty              as NonEmpty
+import qualified Data.Map                        as Map
+import qualified Data.Set                        as Set
 
-import qualified Graphics.UI.Gtk.Gdk.EventM as Gdk
+import qualified Graphics.UI.Gtk.Gdk.EventM      as Gdk
 
-import           Text.Parsec
+import           Text.Parsec                     hiding (many)
 import           Text.Parsec.Text
 -- }}}
 
 -- {{{ Modifiers
-newtype Modifier = Modifier Gdk.Modifier deriving(Eq)
+instance Describable Gdk.Modifier where
+    describe Gdk.Control = "C-"
+    describe Gdk.Shift   = "S-"
+    describe Gdk.Alt     = "M-"
+    describe _           = ""
+
+deriving instance Ord Gdk.Modifier
+
+instance Describable (Modifier, KeyVal) where
+    describe (m, k) = describe m ++ describe k
+
+newtype Modifier = Modifier (Set Gdk.Modifier) deriving(Eq)
+
+instance Monoid Modifier where
+  mempty = Modifier mempty
+  (Modifier a) `mappend` (Modifier b) = Modifier (a `mappend` b)
 
 instance Describable Modifier where
-    describe (Modifier Gdk.Control) = "C-"
-    describe (Modifier Gdk.Shift)   = "S-"
-    describe (Modifier Gdk.Alt)     = "M-"
-    describe (Modifier _)           = ""
+    describe (Modifier x) = concatMap describe $ Set.toList x
 
 instance Ord Modifier where compare = comparing describe
 
-instance ToSet Modifier Modifier where toSet = Set.singleton
-
 _Alt, _Control, _Shift :: Modifier
-_Alt     = Modifier Gdk.Alt
-_Control = Modifier Gdk.Control
-_Shift   = Modifier Gdk.Shift
+_Alt     = Modifier $ Set.singleton Gdk.Alt
+_Control = Modifier $ Set.singleton Gdk.Control
+_Shift   = Modifier $ Set.singleton Gdk.Shift
 
 modifier :: Parser Modifier
-modifier = spaces *> choice [ string "C-" >> return _Control
-                            , string "M-" >> return _Alt
-                            -- , string "S-" >> return _Shift
-                            ]
+modifier = spaces *> (mconcat <$> many elementModifier)
+
+elementModifier :: Parser Modifier
+elementModifier = choice [ string "C-" >> return _Control
+                         , string "M-" >> return _Alt
+                         -- , string "S-" >> return _Shift
+                         ]
 -- }}}
 
 -- {{{ Key mode (à la vi)
@@ -75,48 +92,44 @@ data Mode = Normal | Insert deriving(Eq, Ord)
 instance Default Mode where def = Normal
 -- }}}
 
--- {{{ Bindings implementation
-type KeyStroke  = Model.KeyStroke Modifier KeyVal
+-- {{{ KeyMap implementation
+type KeyStroke = Model.KeyStroke Modifier KeyVal
 
 instance Describable KeyStroke where
-   describe s = foldr ((++) . describe) "" (Set.toList $ s^.modifiersL) ++ describe (s^.keyL)
+  describe (Model.KeyStroke m k) = describe m ++ describe k
 
-instance ToNonEmpty KeyStroke KeyStroke where
-    toNonEmpty x = x :| []
-
-instance ToNonEmpty KeyStroke KeyVal where
-    toNonEmpty x = (Set.empty .| x) :| []
-
-keyStroke :: Parser KeyStroke
-keyStroke = do
+keyStrokes :: Parser KeyStroke
+keyStrokes = do
     spaces
-    m <- maybe Set.empty Set.singleton <$> optionMaybe modifier
+    m <- fromMaybe (Modifier Set.empty) <$> optionMaybe modifier
     k <- keyVal
-    return $ Model.KeyStroke m k
+    return $  m .| k
 
 -- type Binding m  = Model.Binding  Hbro.Keys.Stroke (m ())
-type Bindings m = Model.Bindings KeyStroke (m ())
-type Status m   = Model.Status KeyStroke Mode (m ())
-
-declareLenses [d|
-  data Hooks m    = Hooks
-    { statusL       :: TVar (Status m)
-    , onKeyPressedL :: TMVar ([KeyStroke] -> m ())
-    }
-  |]
-
-class HasHooks m t | t -> m where _hooks :: Lens' t (Hooks m)
-
-instance HasHooks m (Hooks m) where _hooks = id
-
-initializeHooks :: (BaseIO m) => m (Hooks n)
-initializeHooks = Hooks <$> io (newTVarIO def) <*> io newEmptyTMVarIO
-
-set :: (BaseIO m, MonadReader r m, HasHooks n r) => Lens' (Hooks n) (TMVar a) -> a -> m ()
-set l v = atomically . (`writeTMVar` v) =<< askL (_hooks.l)
+type KeyMap m = Model.KeyMap KeyStroke (m ())
 -- }}}
 
+data KeyPressed = KeyPressed deriving(Show)
+instance Event KeyPressed where
+  type Input KeyPressed = KeyStroke
 
-{-instance Monoid KeyMap where
-    mempty = KeyBindings M.empty
-    mappend (KeyBindings a) (KeyBindings b) = KeyBindings (mappend a b)-}
+data KeyMapPressed = KeyMapPressed deriving(Show)
+instance Event KeyMapPressed where
+  type Input KeyMapPressed = ([KeyStroke], Bool)
+
+data KeySignalTag = KeySignalTag
+type KeySignalReader m = MonadReader KeySignalTag (Signal KeyMapPressed) m
+
+bindKeys :: (ControlIO m, MonadError Text m) => Signal KeyPressed -> Signal KeyMapPressed -> KeyMap m -> m (Async ())
+bindKeys input output keyMap = addRecursiveHook input empty $ \previousStrokes newStroke -> do
+    let k = Map.keys keyMap
+        strokes = previousStrokes |: newStroke
+        strokesL = NonEmpty.toList strokes
+        found = Map.lookup strokes keyMap
+        reset = isJust found || all (not . NonEmpty.isPrefixOf strokesL) k
+
+    debugM $ "Accumulated: " ++ unwords (map describe strokesL)
+    emit output (strokesL, isJust found)
+
+    async . logErrors $ fromMaybe doNothing found
+    return $ empty <| reset |> strokesL

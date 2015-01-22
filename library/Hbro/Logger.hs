@@ -1,3 +1,6 @@
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Hbro.Logger
     ( module X
@@ -6,6 +9,7 @@ module Hbro.Logger
     , debugM
     , errorM
     , infoM
+    , warningM
 ) where
 
 -- {{{ Imports
@@ -23,7 +27,7 @@ import           System.Log.Logger         (Logger, rootLoggerName, setHandlers,
 import qualified System.Log.Logger         as L
 -- }}}
 
-initialize :: (BaseIO m) => Priority -> m ()
+initialize :: (MonadIO m) => Priority -> m ()
 initialize = io . updateGlobalLogger rootLoggerName . setup
 
 setup :: Priority -> Logger -> Logger
@@ -35,7 +39,7 @@ logHandler = GenericHandler
     , formatter = logFormatter "$my_time $my_prio $my_tid $msg"
     , privData  = ()
     , writeFunc = \_ t -> putStrLn $ pack t
-    , closeFunc = \_ -> return ()
+    , closeFunc = const $ return ()
     }
 
 logFormatter :: String -> LogFormatter a
@@ -52,14 +56,18 @@ formatPriority CRITICAL  = "CRIT "
 formatPriority INFO      = "INFO "
 formatPriority p         = unpack . justifyLeft 5 ' ' . take 5 $ tshow p
 
--- | Better version of 'debugM'
-debugM :: (BaseIO m) => Text -> Text -> m ()
-debugM a b = io $ L.debugM (unpack a) (unpack b)
+-- | Lifted 'debugM'
+debugM :: (MonadIO m) => Text -> m ()
+debugM a = io $ L.debugM "hbro" (unpack a)
 
--- | Better version of 'errorM'
-errorM :: (BaseIO m) => Text -> Text -> m ()
-errorM a b = io $ L.errorM (unpack a) (unpack b)
+-- | Lifted 'errorM'
+errorM :: (MonadIO m) => Text -> m ()
+errorM a = io $ L.errorM "hbro" (unpack a)
 
--- | Better version of 'infoM'
-infoM :: (BaseIO m) => Text -> Text -> m ()
-infoM a b = io $ L.infoM (unpack a) (unpack b)
+-- | Lifted 'infoM'
+infoM :: (MonadIO m) => Text -> m ()
+infoM = io . L.infoM "hbro" . unpack
+
+-- | Lifted 'warningM'
+warningM :: (MonadIO m) => Text -> m ()
+warningM = io . L.warningM "hbro" . unpack

@@ -1,25 +1,24 @@
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TypeFamilies      #-}
 module Hbro.WebView.Signals where
 
 -- {{{ Imports
+import           Hbro.Attributes
 import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
-import           Hbro.Keys                                  as Keys hiding
-                                                                     (Hooks)
+import           Hbro.Keys                                  as Keys
 import           Hbro.Keys.Model                            ((.|))
-import           Hbro.Keys.Signals                          as Keys
 import           Hbro.Logger
 import           Hbro.Prelude                               hiding (on)
 
 import           Graphics.UI.Gtk.WebKit.Lifted              as Lifted
 
-import           Control.Lens.Getter
-import           Control.Lens.TH
-
 import           Data.Set                                   as S hiding (map)
 
+import           Graphics.UI.Gtk.Abstract.Object
 import           Graphics.UI.Gtk.Abstract.Widget            hiding (KeyVal)
 import           Graphics.UI.Gtk.Gdk.EventM                 as Gdk
 import           Graphics.UI.Gtk.WebKit.Download            as W hiding
@@ -29,7 +28,7 @@ import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import           Graphics.UI.Gtk.WebKit.WebView             as W hiding
                                                                   (LoadFinished)
 
-import           Network.URI
+import           Network.URI.Monadic
 
 import           System.Glib.Signals                        hiding (Signal)
 -- }}}
@@ -41,6 +40,9 @@ instance Event Download where
 data LinkHovered = LinkHovered deriving(Show)
 instance Event LinkHovered where
   type Input LinkHovered = (URI, Maybe Text)
+
+data LinkUnhovered = LinkUnhovered deriving(Show)
+instance Event LinkUnhovered
 
 data LinkClicked = LinkClicked deriving(Show)
 instance Event LinkClicked where
@@ -68,87 +70,49 @@ data TitleChanged = TitleChanged deriving(Show)
 instance Event TitleChanged where
   type Input TitleChanged = Text
 
+data ZoomLevelChanged = ZoomLevelChanged deriving(Show)
+instance Event ZoomLevelChanged where
+  type Input ZoomLevelChanged = Float
+
 data ResourceAction = Load | Download' deriving(Show)
 instance Describable ResourceAction where describe = tshow
 
 
-declareLenses [d|
-  data Signals = Signals
-    { downloadL       :: Signal Download
-    , keyPressedL     :: Signal KeyPressed
-    , linkClickedL    :: Signal LinkClicked
-    , linkHoveredL    :: Signal LinkHovered
-    , loadRequestedL  :: Signal LoadRequested
-    , loadStartedL    :: Signal LoadStarted
-    , loadFinishedL   :: Signal LoadFinished
-    -- newWebViewL        :: TQueue URI,
-    , newWindowL      :: Signal NewWindow
-    , resourceOpenedL :: Signal ResourceOpened
-    , titleChangedL   :: Signal TitleChanged
-    }
-  |]
-
-initSignals :: (BaseIO m) => m Signals
-initSignals = Signals <$> newSignal Download
-                      <*> newSignal KeyPressed
-                      <*> newSignal LinkClicked
-                      <*> newSignal LinkHovered
-                      <*> newSignal LoadRequested
-                      <*> newSignal LoadStarted
-                      <*> newSignal LoadFinished
-                      <*> newSignal NewWindow
-                      <*> newSignal ResourceOpened
-                      <*> newSignal TitleChanged
-
--- | Sequentially bind all signals.
-attach :: (BaseIO m) => WebView -> Signals -> m ()
-attach webView signals = sequence_
-    [ attachDownload          webView (signals^.downloadL)
-    , attachLinkHovered       webView (signals^.linkHoveredL)
-    , attachLoadStarted       webView (signals^.loadStartedL)
-    , attachLoadFinished      webView (signals^.loadFinishedL)
-    , attachNavigationRequest webView (signals^.linkClickedL, signals^.loadRequestedL)
-    , attachNewWebView        webView (signals^.newWindowL)
-    , attachNewWindow         webView (signals^.newWindowL)
-    -- , attachResourceOpened    webView (signals^.resourceOpenedL)
-    , attachTitleChanged      webView (signals^.titleChangedL)
-    , attachKeyPressed        webView (signals^.keyPressedL)
-    ]
-
-
-attachDownload :: (BaseIO m) => WebView -> Signal Download -> m (ConnectId WebView)
+attachDownload :: (MonadIO m) => WebView -> Signal Download -> m (ConnectId WebView)
 attachDownload webView signal = gSync . on webView downloadRequested $ \d -> do
-    logErrors $ do
+    runErrorT . logErrors $ do
         amount <- io $ downloadGetTotalSize d
         uri    <- downloadGetUri d
         name   <- downloadGetSuggestedFilename d
 
-        debugM "hbro.signals" $ "Requested download <" ++ tshow uri ++ ">"
+        debugM $ "Requested download <" ++ tshow uri ++ ">"
 
         emit signal (uri, name, Just amount)
     return False
 
 
-attachLinkHovered :: (BaseIO m) => WebView -> Signal LinkHovered -> m (ConnectId WebView)
-attachLinkHovered webView signal = gSync . on webView hoveringOverLink $ \title uri -> void . runMaybeT $ do
-    debugM "hbro.signals" $ "Link hovered <" ++ tshow uri ++ ">"
-    u <- MaybeT . return $ parseURI . unpack =<< uri
+attachLinkHovered :: (MonadIO m) => WebView -> Signal LinkHovered -> Signal LinkUnhovered -> m (ConnectId WebView)
+attachLinkHovered webView hoveredSignal unhoveredSignal = gSync $ on webView hoveringOverLink callback
+  where callback title (Just uri) = void . runErrorT . logErrors $ do
+          debugM $ "Link hovered <" ++ tshow uri ++ ">"
+          u <- parseURI $ pack uri
 
-    emit signal (u, title)
+          emit hoveredSignal (u, pack <$> title)
+        callback _ _ = emit unhoveredSignal ()
 
 
 -- Triggered in 2 cases:
 --  1/ Javascript window.open()
 --  2/ Context menu "Open in new window"
-attachNewWebView :: (BaseIO m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
+attachNewWebView :: (MonadIO m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
 attachNewWebView webView signal = gSync . on webView createWebView $ \_frame -> do
     webView' <- webViewNew
 
     on webView' webViewReady $ return True
     on webView' navigationPolicyDecisionRequested $ \_ request _ decision -> do
-        logErrors $ do
+        runErrorT . logErrors $ do
             uri <- networkRequestGetUri request
-            debugM "hbro.signals" $ "New window <" ++ tshow uri ++ ">"
+            debugM $ "New window <" ++ tshow uri ++ ">"
             emit signal uri
 
         webPolicyDecisionIgnore decision
@@ -157,19 +121,14 @@ attachNewWebView webView signal = gSync . on webView createWebView $ \_frame -> 
     return webView'
 
 
-attachLoadStarted :: (BaseIO m) => WebView -> Signal LoadStarted -> m (ConnectId WebView)
-attachLoadStarted webView signal = gSync . on webView loadStarted $ \_frame -> do
-    debugM "hbro.signals" "Load started"
-    emit signal ()
+attachLoadStarted :: (MonadIO m) => WebView -> Signal LoadStarted -> m (ConnectId WebView)
+attachLoadStarted webView signal = gSync . on webView loadStarted $ \_frame -> emit signal ()
+
+attachLoadFinished :: (MonadIO m) => WebView -> Signal LoadFinished -> m (ConnectId WebView)
+attachLoadFinished webView signal = gSync . on webView loadFinished $ \_frame -> emit signal ()
 
 
-attachLoadFinished :: (BaseIO m) => WebView -> Signal LoadFinished -> m (ConnectId WebView)
-attachLoadFinished webView signal = gSync . on webView loadFinished $ \_frame -> do
-    debugM "hbro.signals" "Load finished"
-    emit signal ()
-
-
-attachNavigationRequest :: (BaseIO m) => WebView -> (Signal LinkClicked, Signal LoadRequested) -> m (ConnectId WebView)
+attachNavigationRequest :: (MonadIO m) => WebView -> (Signal LinkClicked, Signal LoadRequested) -> m (ConnectId WebView)
 attachNavigationRequest webView (signal1, signal2) = gSync . on webView navigationPolicyDecisionRequested $ \_frame request action decision -> do
     reason <- webNavigationActionGetReason action
     button <- toMouseButton <$> webNavigationActionGetButton action
@@ -178,33 +137,33 @@ attachNavigationRequest webView (signal1, signal2) = gSync . on webView navigati
     -- io . putStrLn . ("Request type: " ++) . describe =<< networkRequestGetContentType request
     -- io . putStrLn . ("Request type: " ++) . describe =<< networkRequestGetURI request
 
-    logErrors $ do
+    runErrorT . logErrors $ do
         uri <- networkRequestGetUri request
 
         case (reason, button) of
-            (WebNavigationReasonLinkClicked, Just b) -> io $ do
-                debugM "hbro.signals" $ "Link clicked <" ++ tshow uri ++ ">"
+            (WebNavigationReasonLinkClicked, Just b) -> do
+                debugM $ "Link clicked <" ++ tshow uri ++ ">"
                 emit signal1 (uri, b)
-                webPolicyDecisionIgnore decision
-            (WebNavigationReasonOther, _) -> io $ do
-                debugM "hbro.signals" $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
-                webPolicyDecisionUse decision
-            (WebNavigationReasonBackForward, _) -> io $ do
-                debugM "hbro.signals" $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
-                webPolicyDecisionUse decision
-            (WebNavigationReasonReload, _) -> io $ do
-                debugM "hbro.signals" $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
-                webPolicyDecisionUse decision
-            (WebNavigationReasonFormSubmitted, _) -> io $ do
-                debugM "hbro.signals" $ "Form submitted to <" ++ tshow uri ++ ">"
-                webPolicyDecisionUse decision
-            _ -> io $ do
-                debugM "hbro.signals" $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
+                io $ webPolicyDecisionIgnore decision
+            (WebNavigationReasonOther, _) -> do
+                debugM $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
+                io $ webPolicyDecisionUse decision
+            (WebNavigationReasonBackForward, _) -> do
+                debugM $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
+                io $ webPolicyDecisionUse decision
+            (WebNavigationReasonReload, _) -> do
+                debugM $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
+                io $ webPolicyDecisionUse decision
+            (WebNavigationReasonFormSubmitted, _) -> do
+                debugM $ "Form submitted to <" ++ tshow uri ++ ">"
+                io $ webPolicyDecisionUse decision
+            _ -> do
+                debugM $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
                 emit signal2 uri
-                webPolicyDecisionIgnore decision
-      `catchError` \e -> io $ do
-        errorM "hbro.signals" $ tshow e
-        webPolicyDecisionUse decision
+                io $ webPolicyDecisionIgnore decision
+      `catchError` \e -> do
+        errorM $ asText e
+        io $ webPolicyDecisionUse decision
 
     return True
   where
@@ -214,22 +173,22 @@ attachNavigationRequest webView (signal1, signal2) = gSync . on webView navigati
     toMouseButton _ = Nothing
 
 
-attachNewWindow :: (BaseIO m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
+attachNewWindow :: (MonadIO m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
 attachNewWindow webView signal = gSync . on webView newWindowPolicyDecisionRequested $ \_frame request _action decision -> do
-    logErrors $ do
+    runErrorT . logErrors $ do
         uri <- networkRequestGetUri request
-        debugM "hbro.signals" $ "New window request <" ++ tshow uri ++ ">"
+        debugM $ "New window request <" ++ tshow uri ++ ">"
         emit signal uri
 
     webPolicyDecisionIgnore decision
     return True
 
 
--- attachResourceOpened :: (BaseIO m) => WebView -> Signal ResourceOpened -> m (ConnectId WebView)
+-- attachResourceOpened :: (MonadIO m) => WebView -> Signal ResourceOpened -> m (ConnectId WebView)
 -- attachResourceOpened webView signal = gSync . on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> do
 --     action <- logErrors $ do
 --         uri <- networkRequestGetUri request
---         debugM "hbro.signals" $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" ++ tshow uri ++ ">"
+--         debugM $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" ++ tshow uri ++ ">"
 --         -- io . waitForResult =<<
 --         emit signal (uri, mimetype)
 
@@ -245,23 +204,28 @@ attachNewWindow webView signal = gSync . on webView newWindowPolicyDecisionReque
 --   maybe (waitForResult output) return =<< (atomically $ tryTakeTMVar output)
 
 
-
-attachTitleChanged :: (BaseIO m) => WebView -> Signal TitleChanged -> m (ConnectId WebView)
+attachTitleChanged :: (MonadIO m) => WebView -> Signal TitleChanged -> m (ConnectId WebView)
 attachTitleChanged webView signal = gSync . on webView W.titleChanged $ \_frame title -> do
-    debugM "hbro.signals" $ "Title changed to: " ++ title
+    debugM $ "Title changed to: " ++ title
     void $ emit signal title
 
+attachZoomLevelChanged :: (MonadIO m) => WebView -> Signal ZoomLevelChanged -> m (ConnectId WebView)
+attachZoomLevelChanged webView signal = gSync . on webView (notifyProperty webViewZoomLevel) $ do
+    value <- get webView webViewZoomLevel
+    debugM $ "Zoom level changed to: " ++ tshow value
+    emit signal value
 
-attachKeyPressed :: (BaseIO m) => WebView -> Signal KeyPressed -> m (ConnectId WebView)
+
+attachKeyPressed :: (MonadIO m) => WebView -> Signal KeyPressed -> m (ConnectId WebView)
 attachKeyPressed webView signal = gSync . on webView keyPressEvent $ do
-    modifiers <- S.delete _Shift . S.fromList . map Keys.Modifier <$> Gdk.eventModifier
+    modifiers <- Modifier . S.delete Gdk.Shift . S.fromList <$> Gdk.eventModifier
     key       <- KeyVal <$> Gdk.eventKeyVal
 
-    io . runMaybeT $ do
+    io . runFailT $ do
         guard . not $ isModifier key || isModalKey key
 
         let theStroke = modifiers .| key
-        debugM "hbro.signals" $ "Pressed: " ++ describe theStroke
+        debugM $ "Pressed: " ++ describe theStroke
 
         emit signal theStroke
 

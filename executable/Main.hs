@@ -4,4 +4,4 @@ import           Hbro
 
 -- Default main function provided as example
 main :: IO ()
-main = hbro doNothing
+main = hbro def

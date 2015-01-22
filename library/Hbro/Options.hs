@@ -1,4 +1,7 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell   #-}
 -- | Commandline options tools.
 module Hbro.Options (
       Command(..)
@@ -64,7 +67,7 @@ instance Default CliOptions where
             {- logLevel   -} INFO
 
 -- * High level
-parseOptions :: (BaseIO m) => m (Either Command CliOptions)
+parseOptions :: (MonadIO m) => m (Either Command CliOptions)
 parseOptions = io $ customExecParser (prefs noBacktrack) (info parser $ progDesc "Minimal KISS-compliant browser")
 
 -- * Low level

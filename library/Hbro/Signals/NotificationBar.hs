@@ -1,3 +1,4 @@
+{-# LANGUAGE NoImplicitPrelude #-}
 module Hbro.Signals.NotificationBar where
 
 import           Hbro.Prelude

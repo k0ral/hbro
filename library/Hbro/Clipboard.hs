@@ -1,3 +1,6 @@
+{-# LANGUAGE ConstraintKinds   #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 -- | Designed to be imported as @qualified@.
 module Hbro.Clipboard where
 
@@ -18,7 +21,7 @@ write = write' selectionPrimary
 -- | Write given text to the given clipboard
 write' :: (BaseIO m) => SelectionTag -> Text -> m ()
 write' tag text = do
-    debugM "hbro.clipboard" $ "Writing to clipboard: " ++ text
+    debugM $ "Writing to clipboard: " ++ text
     gSync (clipboardGet tag) >>= gAsync . (`clipboardSetText` text)
 
 -- | Read clipboard's content. Both 'selectionPrimary' and 'selectionClipboard' are inspected (in this order).

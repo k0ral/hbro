@@ -1,25 +1,30 @@
-{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE ConstraintKinds      #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE NoImplicitPrelude    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- | Replacement for the traditional @Prelude@ module. This module doesn't import any other Hbro.* module, so it can be safely imported from anywhere in the project.
 module Hbro.Prelude
     ( module X
 -- * Typeclass
-    , ToList(..)
-    , ToSet(..)
-    , ToNonEmpty(..)
     , Describable(..)
     , BaseIO
     , ControlIO
 -- * Generic aliases/shortcuts
+    , (|:)
+    , (>:)
     , leftM
     , io
     , (>/>)
     , abort
     , doNothing
+-- * Lifted util
+    , getDataFileName
 -- * Lens util
     , withM
     , withM_
     , fwd
-    , askL
 -- * Concurrent util
     , writeTMVar
     , withAsyncList
@@ -41,7 +46,9 @@ module Hbro.Prelude
 ) where
 
 -- {{{ Imports
-import           ClassyPrelude                   as X hiding (Builder (..), log,
+import           ClassyPrelude                   as X hiding (Builder (..),
+                                                       MonadReader (..),
+                                                       ReaderT (..), log,
                                                        toList)
 
 import           Control.Applicative             as X (Alternative (..),
@@ -53,18 +60,21 @@ import           Control.Conditional             as X (ToBool (..), (<<|), (<|),
                                                        (|>), (|>>))
 import           Control.Lens
 import           Control.Monad.Base              as X (MonadBase (..))
-import           Control.Monad.Reader
+import           Control.Monad.Reader.Tagged     as X
 import           Control.Monad.Trans.Control     as X
 
 import           Data.Default                    as X
 import           Data.Foldable                   as X (asum)
 import           Data.Functor                    as X
 import           Data.List                       as X (tail)
-import           Data.List.NonEmpty              (NonEmpty (..))
+import           Data.List.NonEmpty              hiding (reverse)
+import qualified Data.List.NonEmpty              as NonEmpty
 import           Data.Maybe                      as X (fromJust)
 
 import           Graphics.Rendering.Pango.Enums
 import           Graphics.UI.Gtk.General.General
+
+import qualified Paths_hbro                      as Package
 
 import           Safe                            as X (initSafe, tailSafe)
 
@@ -74,20 +84,6 @@ import           System.Log.Logger
 import           System.Process
 -- }}}
 
--- | We often want to use a single object where a list is expected.
-class ToList m t | t -> m where toList :: t -> [m]
-
-instance ToList m [m] where toList = id
-
--- | We often want to use a single object where a set is expected.
-class ToSet m t | t -> m where toSet :: t -> Set m
-
-instance ToSet m (Set m) where toSet = id
-
--- | We often want to use a single object where a non-empty list is expected.
-class ToNonEmpty s t | t -> s where toNonEmpty :: t -> NonEmpty s
-
-instance ToNonEmpty s (NonEmpty s) where toNonEmpty = id
 
 -- | Like 'Show', for 'Text'
 class Describable a where describe :: a -> Text
@@ -100,7 +96,14 @@ type BaseIO m = (MonadBase IO m, MonadIO m)
 type ControlIO m = (MonadBaseControl IO m, MonadIO m)
 
 -- {{{ Generic aliases/shortcuts
--- 'left' for 'Kleisli' arrows
+(|:) :: [a] -> a -> NonEmpty a
+list |: e = NonEmpty.reverse (e :| reverse list)
+
+(>:) :: a -> b -> (a, b)
+(>:) = (,)
+infix 0 >:
+
+-- | 'left' for 'Kleisli' arrows
 leftM :: Monad m => (a -> m b) -> Either a c -> m (Either b c)
 leftM f = runKleisli (left $ Kleisli f)
 
@@ -109,7 +112,7 @@ io :: MonadIO m => IO a -> m a
 io = liftIO
 
 -- | Like '(\</\>)' with first argument in @IO@ to build platform-dependent paths.
-(>/>) :: (BaseIO m) => IO FilePath -> FilePath -> m FilePath
+(>/>) :: MonadIO m => IO FilePath -> FilePath -> m FilePath
 (>/>) a b = io $ (</> b) <$> a
 
 -- | Alias for 'mzero'
@@ -119,6 +122,11 @@ abort = mzero
 -- | Alias for @return ()@
 doNothing :: Monad m => m ()
 doNothing = return ()
+-- }}}
+
+-- {{{ Lifted util
+getDataFileName :: (MonadIO m, Functor m) => Text -> m FilePath
+getDataFileName file = fpFromText . pack <$> io (Package.getDataFileName $ unpack file)
 -- }}}
 
 -- {{{ Lens util
@@ -131,10 +139,6 @@ withM_ l f = mapMOf l (fwd f)
 
 fwd :: (Monad m) => (a -> m ()) -> a -> m a
 fwd f x = f x >> return x
-
--- | Call 'asks' with the given lens getter.
-askL ::(MonadReader t m) => Lens' t a -> m a
-askL l = asks $ view l
 -- }}}
 
 -- {{{ Concurrent util
@@ -160,20 +164,20 @@ withAsyncList' (a:b) x f = withAsync a $ \x' -> withAsyncList' b (x':x) f
 
 -- {{{ Gtk util
 -- | Lifted alias for 'postGUISync'
-gSync :: (BaseIO m) => IO a -> m a
+gSync :: MonadIO m => IO a -> m a
 gSync  = io . postGUISync
 
 -- | Lifted alias for 'postGUIAsync'
-gAsync :: (BaseIO m) => IO () -> m ()
-gAsync = io . postGUIAsync
+gAsync :: MonadIO m => IO a -> m ()
+gAsync = io . postGUIAsync . void
 -- }}}
 
 -- {{{ Process management
 -- | Run external command and don't die when parent process exits.
-spawn :: (BaseIO m) => String -> [String] -> m ()
+spawn :: MonadIO m => String -> [String] -> m ()
 spawn command options = io $ do
-    debugM "hbro.prelude" $ "Executing command: " ++ unwords (command:options)
-    void $ createProcess (proc command options) { std_in = CreatePipe,  std_out = CreatePipe, std_err = CreatePipe, close_fds = True }
+    debugM "hbro.prelude" $ "Executing command: " ++ showCommandForUser command options
+    void $ createProcess (proc command options) { std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe, close_fds = True }
 
 -- Return the list of process IDs corresponding to all running instances of the browser.
 -- getAllProcessIDs :: MonadIO m => m [ProcessID]
