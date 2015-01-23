@@ -69,7 +69,7 @@ GUI layout
 
 The graphical layout is described in an XML file that is parsed by GtkBuilder_. This file is looked for in several places with the following order of priority:
 
-- the value from commandline option ``-u``;
+- the value from commandline option ``-U``;
 - the file ``~/.config/hbro/ui.xml``;
 - the file ``examples/ui.xml`` bundled with the package.
 
