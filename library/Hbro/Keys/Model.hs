@@ -1,6 +1,7 @@
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TupleSections     #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE NoImplicitPrelude  #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TupleSections      #-}
+{-# LANGUAGE TypeFamilies       #-}
 -- | Key bindings model.
 -- Designed to be imported as @qualified@.
 module Hbro.Keys.Model (

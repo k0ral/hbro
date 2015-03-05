@@ -1,6 +1,9 @@
 {-# LANGUAGE ConstraintKinds   #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE TypeFamilies      #-}
 -- | Dynamic reconfiguration. Designed to be imported as @qualified@.
 module Hbro.Dyre
     ( Mode(..)

@@ -94,12 +94,6 @@ Library
         Hbro.Gui,
         Hbro.Options,
         Paths_hbro
-    Extensions:
-        GeneralizedNewtypeDeriving,
-        MultiParamTypeClasses,
-        OverloadedStrings,
-        RankNTypes,
-        StandaloneDeriving
     -- Build-tools: hsc2hs
     -- C-sources: cbits/cbits.c
     -- Include-dirs: include
