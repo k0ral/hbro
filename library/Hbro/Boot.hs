@@ -84,7 +84,7 @@ guiThread = do
 
 
 mainThread :: (ControlIO m, MonadLogger m, MonadThreadedLogger m) => (Settings, CliOptions) -> Async () -> m ()
-mainThread (settings, options) uiThread = void . runErrorT . logErrors $ do
+mainThread (settings, options) uiThread = void . runExceptT . logErrors $ do
     uiFiles      <- getUIFiles options
     (builder, mainView, promptBar, statusBar, notifBar) <- asum $ map Gui.initialize uiFiles
 

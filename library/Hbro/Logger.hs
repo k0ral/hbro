@@ -42,7 +42,7 @@ instance Event LogMessage where
 class MonadThreadedLogger m where
   addLogHandler :: (Input LogMessage -> IO ()) -> m ()
 
-instance (Monad m, MonadThreadedLogger m) => MonadThreadedLogger (ErrorT e m) where
+instance (Monad m, MonadThreadedLogger m) => MonadThreadedLogger (ExceptT e m) where
   addLogHandler = lift . addLogHandler
 
 newtype ThreadedLoggingT m a = ThreadedLoggingT { unThreadedLoggingT :: ReaderT (Signal LogMessage, LogLevel) m a }

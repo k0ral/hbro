@@ -91,7 +91,7 @@ instance Describable ResourceAction where describe = tshow
 
 attachDownload :: (ControlIO m, MonadLogger m) => WebView -> Signal Download -> m (ConnectId WebView)
 attachDownload webView signal = liftBaseWith $ \runInIO -> gSync . on webView downloadRequested $ \d -> do
-    runInIO . runErrorT . logErrors $ do
+    runInIO . runExceptT . logErrors $ do
         amount <- io $ downloadGetTotalSize d
         uri    <- downloadGetUri d
         name   <- downloadGetSuggestedFilename d
@@ -102,7 +102,7 @@ attachDownload webView signal = liftBaseWith $ \runInIO -> gSync . on webView do
 
 attachLinkHovered :: (ControlIO m, MonadLogger m) => WebView -> Signal LinkHovered -> Signal LinkUnhovered -> m (ConnectId WebView)
 attachLinkHovered webView hoveredSignal unhoveredSignal = liftBaseWith $ \runInIO -> gSync $ on webView hoveringOverLink (\a b -> void . runInIO $ callback a b)
-  where callback title (Just uri) = void . runErrorT . logErrors $ do
+  where callback title (Just uri) = void . runExceptT . logErrors $ do
           u <- parseURIM $ pack uri
           emit hoveredSignal (u, pack <$> title)
         callback _ _ = emit unhoveredSignal ()
@@ -117,7 +117,7 @@ attachNewWebView webView signal = liftBaseWith $ \runInIO -> gSync . on webView 
 
     on webView' webViewReady $ return True
     on webView' navigationPolicyDecisionRequested $ \_ request _ decision -> do
-        runInIO . runErrorT . logErrors $ networkRequestGetUri request >>= emit signal
+        runInIO . runExceptT . logErrors $ networkRequestGetUri request >>= emit signal
         webPolicyDecisionIgnore decision
         return True
 
@@ -140,7 +140,7 @@ attachNavigationRequest webView (signal1, signal2) = liftBaseWith $ \runInIO -> 
     -- io . putStrLn . ("Request type: " ++) . describe =<< networkRequestGetContentType request
     -- io . putStrLn . ("Request type: " ++) . describe =<< networkRequestGetURI request
 
-    runInIO . runErrorT $ do
+    runInIO . runExceptT $ do
         uri <- networkRequestGetUri request
 
         case (reason, button) of
@@ -177,7 +177,7 @@ attachNavigationRequest webView (signal1, signal2) = liftBaseWith $ \runInIO -> 
 
 attachNewWindow :: (ControlIO m, MonadLogger m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
 attachNewWindow webView signal = liftBaseWith $ \runInIO -> gSync . on webView newWindowPolicyDecisionRequested $ \_frame request _action decision -> do
-    runInIO . runErrorT . logErrors $ networkRequestGetUri request >>= emit signal
+    runInIO . runExceptT . logErrors $ networkRequestGetUri request >>= emit signal
     webPolicyDecisionIgnore decision
     return True
 

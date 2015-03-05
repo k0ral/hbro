@@ -7,19 +7,10 @@ module Hbro.Error ( module X, module Hbro.Error) where
 import           Hbro.Prelude
 
 import           Control.Error.Safe
-import           Control.Error.Util  as X (hush, note)
-import           Control.Monad.Error as X (Error (..), ErrorT, MonadError (..),
-                                           runErrorT)
+import           Control.Error.Util   as X (hush, note)
+import           Control.Monad.Except as X (ExceptT, MonadError (..),
+                                            runExceptT)
 -- }}}
-
-
-instance Error Text where
-  noMsg = ""
-  strMsg = pack
-
-instance Error () where
-  noMsg = ()
-  strMsg = const ()
 
 -- {{{ Fail
 -- | 'MonadError' with trivial error.
@@ -30,8 +21,8 @@ die :: MonadFail m => m a
 die = throwError ()
 
 -- | 'runErrorT' with trivial error.
-runFailT :: (Monad m) => ErrorT () m a -> m (Maybe a)
-runFailT = return . rightMay <=< runErrorT
+runFailT :: (Monad m) => ExceptT () m a -> m (Maybe a)
+runFailT = return . rightMay <=< runExceptT
 
 -- | Lift a 'Maybe' value into a 'MonadFail' computation
 liftMaybe :: (MonadFail m) => Maybe a -> m a

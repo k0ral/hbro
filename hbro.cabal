@@ -41,7 +41,7 @@ Library
         lens >= 4.4,
         lifted-async >= 0.6,
         lifted-base >= 0.2.3.3,
-        mtl < 2.2,
+        mtl >= 2.2,
         monad-control >= 1.0,
         monad-logger >= 0.3.6.2,
         network-uri,

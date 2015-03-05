@@ -9,7 +9,7 @@ module Hbro.Gui.NotificationBar
     ) where
 
 -- {{{ Imports
--- import Hbro.Error
+import           Hbro.Error
 import           Hbro.Gui.Builder
 import           Hbro.Logger
 import           Hbro.Prelude
