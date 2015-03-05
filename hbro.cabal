@@ -51,7 +51,6 @@ Library
         process,
         safe,
         semigroups,
-        stm,
         system-fileio,
         text,
         -- text-icu,
