@@ -1,15 +1,12 @@
 {-# LANGUAGE ConstraintKinds   #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-module Hbro.Gui.NotificationBar (
--- * Type
-      NotificationBar
-    , NotifBarTag(..)
-    , NotificationBarReader
+module Hbro.Gui.NotificationBar
+    ( NotificationBar
     , buildFrom
-    , getNotificationBar
+    , asNotificationBar
     , initialize
-) where
+    ) where
 
 -- {{{ Imports
 -- import Hbro.Error
@@ -18,6 +15,7 @@ import           Hbro.Logger                     hiding (initialize)
 import           Hbro.Prelude
 
 import           Graphics.Rendering.Pango.Enums
+import           Graphics.UI.Gtk.Abstract.Misc
 import           Graphics.UI.Gtk.Abstract.Widget
 import qualified Graphics.UI.Gtk.Builder         as Gtk
 import           Graphics.UI.Gtk.Display.Label
@@ -34,13 +32,12 @@ import           System.Log.Logger               (addHandler, rootLoggerName,
 -- TODO: make it possible to change the log level
 
 -- {{{ Types
+-- | A 'NotificationBar' can be manipulated as a 'Label'.
 data NotificationBar = NotificationBar Label
 
-data NotifBarTag = NotifBarTag
-type NotificationBarReader m = MonadReader NotifBarTag NotificationBar m
-
-getNotificationBar :: (NotificationBarReader m) => m NotificationBar
-getNotificationBar = read NotifBarTag
+-- | Useful to help the type checker
+asNotificationBar :: NotificationBar -> NotificationBar
+asNotificationBar = id
 
 -- | A 'NotificationBar' can be built from an XML file.
 buildFrom :: (MonadIO m, Functor m) => Gtk.Builder -> m NotificationBar
@@ -50,8 +47,9 @@ instance GObjectClass NotificationBar where
     toGObject (NotificationBar l) = toGObject l
     unsafeCastGObject = NotificationBar . unsafeCastGObject
 
--- | A 'NotificationBar' can be manipulated as a 'Widget'.
 instance WidgetClass NotificationBar
+instance MiscClass NotificationBar
+instance LabelClass NotificationBar
 -- }}}
 
 initialize :: (MonadIO m) => NotificationBar -> m NotificationBar
@@ -69,10 +67,12 @@ logHandler notifBar = GenericHandler
     , closeFunc = \_ -> return ()
     }
 
-write :: (MonadIO m, MonadReader NotifBarTag NotificationBar m) => String -> m ()
-write text = do
-    (NotificationBar label) <- getNotificationBar
+write :: (MonadIO m) => Text -> NotificationBar -> m NotificationBar
+write message = write' message gray
 
+write' :: (MonadIO m) => Text -> Color -> NotificationBar -> m NotificationBar
+write' message color bar = do
     gAsync $ do
-        labelSetAttributes label [AttrForeground {paStart = 0, paEnd = -1, paColor = gray}]
-        labelSetMarkup label text
+        labelSetAttributes bar [AttrForeground {paStart = 0, paEnd = -1, paColor = color}]
+        labelSetText bar message
+    return bar

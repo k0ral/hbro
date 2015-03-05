@@ -12,8 +12,6 @@ module Hbro.Config (
 -- * Types
       Config
     , homePageL
-    , ConfigReader
-    , withConfig
 -- * Getter/setter
     , get
     , set
@@ -42,16 +40,8 @@ instance Describable Config where
 instance Default Config where
     def = Config $ fromJust . N.parseURI $ "https://duckduckgo.com/"
 
-data ConfigTag = ConfigTag
-type ConfigReader m = MonadReader ConfigTag (TVar Config) m
+get :: (MonadIO m, MonadReader r m, Has (TVar Config) r) => Lens' Config a -> m a
+get l = return . view l =<< atomically . readTVar =<< ask
 
-withConfig :: (MonadIO m) => Config -> ReaderT ConfigTag (TVar Config) m a -> m a
-withConfig config f = do
-  configTVar <- io $ newTVarIO config
-  runReaderT ConfigTag configTVar f
-
-get :: (MonadIO m, ConfigReader m) => Lens' Config a -> m a
-get l = return . view l =<< atomically . readTVar =<< read ConfigTag
-
-set :: (MonadIO m, ConfigReader m) => Lens' Config a -> a -> m ()
-set l v = atomically . (`modifyTVar` L.set l v) =<< read ConfigTag
+set :: (MonadIO m, MonadReader r m, Has (TVar Config) r) => Lens' Config a -> a -> m ()
+set l v = atomically . (`modifyTVar` L.set l v) =<< ask

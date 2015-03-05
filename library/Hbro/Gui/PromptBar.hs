@@ -8,11 +8,8 @@
 module Hbro.Gui.PromptBar (
 -- * Types
       PromptBar
-    , PromptBarTag(..)
-    , PromptBarReader
     , boxL
     , closedL
-    , getPromptBar
     , buildFrom
     , labelName
     , entryName
@@ -79,16 +76,10 @@ declareLenses [d|
     , validatedL   :: TMVar Text
     }
   |]
-
-data PromptBarTag = PromptBarTag
-type PromptBarReader m = MonadReader PromptBarTag PromptBar m
-
-getPromptBar :: (PromptBarReader m) => m PromptBar
-getPromptBar = read PromptBarTag
 -- }}}
 
 -- | A 'PromptBar' can be built from an XML file.
-buildFrom :: (BaseIO m, Applicative m) => Gtk.Builder -> m PromptBar
+buildFrom :: (ControlIO m, Applicative m) => Gtk.Builder -> m PromptBar
 buildFrom builder = do
     validation  <- io newEmptyTMVarIO
     entry       <- getWidget builder entryName
@@ -169,8 +160,8 @@ prompt description startValue promptBar = do
     close promptBar
     either (const $ throwError promptInterrupted) return result
 
-promptM :: (ControlIO m, MonadError Text m, PromptBarReader m) => Text -> Text -> m Text
-promptM a b = prompt a b =<< read PromptBarTag
+promptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadError Text m) => Text -> Text -> m Text
+promptM a b = prompt a b =<< ask
 
 
 iprompt :: (ControlIO m, MonadError Text m)
@@ -189,8 +180,8 @@ iprompt description startValue f promptBar = do
     close promptBar
     cancel update
 
-ipromptM :: (ControlIO m, MonadError Text m, PromptBarReader m) => Text -> Text -> (Text -> m ()) -> m ()
-ipromptM a b c = iprompt a b c =<< read PromptBarTag
+ipromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadError Text m) => Text -> Text -> (Text -> m ()) -> m ()
+ipromptM a b c = iprompt a b c =<< ask
 
 
 -- | Same as 'prompt' for URI values
@@ -215,8 +206,8 @@ uriPrompt description startValue promptBar = do
 
     parseURIReferenceM =<< resultM
 
-uriPromptM :: (ControlIO m, MonadError Text m, PromptBarReader m) => Text -> Text -> m URI
-uriPromptM a b = uriPrompt a b =<< read PromptBarTag
+uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadError Text m) => Text -> Text -> m URI
+uriPromptM a b = uriPrompt a b =<< ask
 
 
 checkURI :: (MonadIO m) => PromptBar -> Text -> m ()
@@ -228,8 +219,8 @@ checkURI promptBar v = do
 getPromptValue :: (MonadIO m) => PromptBar -> m Text
 getPromptValue = gSync . entryGetText . view entryL
 
-getPromptValueM :: (MonadIO m, PromptBarReader m) => m Text
-getPromptValueM = getPromptValue =<< read PromptBarTag
+getPromptValueM :: (MonadIO m, MonadReader r m, Has PromptBar r) => m Text
+getPromptValueM = getPromptValue =<< ask
 
 
 onEntryCanceled :: (MonadIO m, EntryClass t) => t -> IO a -> m (ConnectId t)

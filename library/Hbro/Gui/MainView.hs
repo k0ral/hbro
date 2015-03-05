@@ -19,11 +19,8 @@ module Hbro.Gui.MainView
   , scrolledHookL
   , titleChangedHookL
   , zoomLevelChangedHookL
-  , MainViewReader
   , Axis(..)
   , Position(..)
-  , withMainView
-  , getMainView
   , getWebView
   , getWebSettings
   , getDOM
@@ -93,25 +90,16 @@ declareLenses [d|
     }
   |]
 
--- * 'ReaderT' shortcut
-data MainViewTag = MainViewTag
-type MainViewReader m = (Functor m, MonadReader MainViewTag MainView m)
-
-withMainView :: MainView -> ReaderT MainViewTag MainView m a -> m a
-withMainView = runReaderT MainViewTag
 
 -- * Commonly used getters
-getMainView :: MainViewReader m => m MainView
-getMainView = read MainViewTag
+getWebView :: (MonadReader r m, Has MainView r) => m WebView
+getWebView = asks $ view webViewL
 
-getWebView :: MainViewReader m => m WebView
-getWebView = readL MainViewTag webViewL
+getWebSettings :: (MonadIO m, MonadReader r m, Has MainView r) => m WebSettings
+getWebSettings = gSync . webViewGetWebSettings =<< asks (view webViewL)
 
-getWebSettings :: (MonadIO m, MainViewReader m) => m WebSettings
-getWebSettings = gSync . webViewGetWebSettings =<< getWebView
-
-getDOM :: (MonadIO m, MainViewReader m) => m (Maybe Document)
-getDOM = gSync . webViewGetDomDocument =<< getWebView
+getDOM :: (MonadIO m, MonadReader r m, Has MainView r) => m (Maybe Document)
+getDOM = gSync . webViewGetDomDocument =<< asks (view webViewL)
 
 getAdjustment :: (MonadIO m) => Axis -> ScrolledWindow -> m Gtk.Adjustment
 getAdjustment Horizontal = gSync . scrolledWindowGetHAdjustment
@@ -195,18 +183,18 @@ initialize mainView = do
   return mainView
   where webView = mainView^.webViewL
 
-canRender :: (MonadIO m, MainViewReader m) => Text -> m Bool
-canRender mimetype = gSync . (`webViewCanShowMimeType` mimetype) =<< getWebView
+canRender :: (MonadIO m, MonadReader r m, Has MainView r) => Text -> m Bool
+canRender mimetype = gSync . (`webViewCanShowMimeType` mimetype) =<< asks (view webViewL)
 
 
-render :: (MainViewReader m, MonadIO m) => Text -> URI -> m ()
+render :: (MonadReader r m, Has MainView r, MonadIO m) => Text -> URI -> m ()
 render page uri = do
     debugM $ "Rendering <" ++ tshow uri ++ ">"
     -- loadString page uri =<< get' webViewL
 
     -- debugM $ "Base URI: " ++ show (baseOf uri)
 
-    loadString page (baseOf uri) =<< getWebView
+    loadString page (baseOf uri) =<< asks (view webViewL)
   where
     baseOf uri' = uri' {
         uriPath = unpack . (`snoc` '/') . intercalate "/" . initSafe . splitOn "/" . pack $ uriPath uri'
@@ -248,14 +236,14 @@ initSettings webView = do
     return webView
 
 
-zoomIn, zoomOut :: (MonadIO m, MainViewReader m) => m ()
+zoomIn, zoomOut :: (MonadIO m, Functor m, MonadReader r m, Has MainView r) => m ()
 zoomIn  = getWebView >>= gAsync . webViewZoomIn
 zoomOut = getWebView >>= gAsync . webViewZoomOut
 
 -- | Shortcut to 'scroll' horizontally or vertically.
-scrollH, scrollV :: (MonadIO m, MainViewReader m) => Position -> m ()
-scrollH p = void . scroll Horizontal p =<< read MainViewTag
-scrollV p = void . scroll Vertical p =<< read MainViewTag
+scrollH, scrollV :: (MonadIO m, Functor m, MonadReader r m, Has MainView r) => Position -> m ()
+scrollH p = void . scroll Horizontal p =<< ask
+scrollV p = void . scroll Vertical p =<< ask
 
 -- | General scrolling command
 scroll :: (MonadIO m) => Axis -> Position -> MainView -> m MainView

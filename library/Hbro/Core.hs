@@ -72,27 +72,27 @@ data ZoomDirection = In | Out
 -- }}}
 
 -- {{{ Getters
-getCurrentURI :: (MonadIO m, MainViewReader m, MonadError Text m) => m URI
+getCurrentURI :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m URI
 getCurrentURI = webViewGetUri =<< getWebView
 
-getFaviconURI :: (MonadIO m, MainViewReader m, MonadError Text m) => m URI
+getFaviconURI :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m URI
 getFaviconURI = webViewGetIconUri =<< getWebView
 
-getFavicon :: (MonadIO m, MainViewReader m, MonadError Text m) => Int -> Int -> m Pixbuf
+getFavicon :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => Int -> Int -> m Pixbuf
 getFavicon w h = (\v -> webViewTryGetFaviconPixbuf v w h) =<< getWebView
 
-getLoadProgress :: (MonadIO m, MainViewReader m) => m Double
+getLoadProgress :: (MonadIO m, MonadReader r m, Has MainView r) => m Double
 getLoadProgress = gSync . webViewGetProgress =<< getWebView
 
-getPageTitle :: (MonadIO m, MainViewReader m, MonadError Text m) => m Text
+getPageTitle :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m Text
 getPageTitle = webViewGetTitle =<< getWebView
 -- }}}
 
 -- {{{ Browsing
-goHome :: (MonadIO m, MainViewReader m, ConfigReader m, MonadError Text m) => m ()
+goHome :: (MonadIO m, MonadReader r m, Has MainView r, Has (TVar Config) r, MonadError Text m) => m ()
 goHome = load =<< Config.get homePageL
 
-load :: (MonadIO m, MainViewReader m, MonadError Text m) => URI -> m ()
+load :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => URI -> m ()
 load uri = do
     debugM $ "Loading URI: " ++ tshow uri
     -- void . logErrors $ do
@@ -120,7 +120,7 @@ load uri = do
 --     render page uri
 
 
-reload, goBack, goForward :: (MonadIO m, MainViewReader m, MonadError Text m) => m ()
+reload, goBack, goForward :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m ()
 -- reload    = load  =<< Client.getURI
 -- goBack    = load' =<< Browser.stepBackward =<< getURI
 -- goForward = load' =<< Browser.stepForward =<< getURI
@@ -128,23 +128,23 @@ reload    = gAsync . webViewReload    =<< getWebView
 goBack    = gAsync . webViewGoBack    =<< getWebView
 goForward = gAsync . webViewGoForward =<< getWebView
 
-reloadBypassCache, stopLoading :: (MonadIO m, MainViewReader m) => m ()
+reloadBypassCache, stopLoading :: (MonadIO m, MonadReader r m, Has MainView r) => m ()
 reloadBypassCache = getWebView >>= gAsync . webViewReloadBypassCache >> debugM "Reloading without cache."
 stopLoading = getWebView >>= gAsync . webViewStopLoading >> debugM "Stopped loading"
 -- }}}
 
 
 -- {{{
-searchText :: (MonadIO m, MainViewReader m) => CaseSensitivity -> Direction -> Wrap -> Text -> m Bool
+searchText :: (MonadIO m, MonadReader r m, Has MainView r) => CaseSensitivity -> Direction -> Wrap -> Text -> m Bool
 searchText s d w text = do
     debugM $ "Searching text: " ++ text
     v <- getWebView
     gSync $ webViewSearchText v text (toBool s) (toBool d) (toBool w)
 
-searchText_ :: (MonadIO m, Functor m, MainViewReader m) => CaseSensitivity -> Direction -> Wrap -> Text -> m ()
+searchText_ :: (MonadIO m, Functor m, MonadReader r m, Has MainView r) => CaseSensitivity -> Direction -> Wrap -> Text -> m ()
 searchText_ s d w text = void $ searchText s d w text
 
-printPage :: (MonadIO m, MainViewReader m) => m ()
+printPage :: (MonadIO m, MonadReader r m, Has MainView r) => m ()
 printPage = gAsync . webFramePrint =<< gSync . webViewGetMainFrame =<< getWebView
 -- }}}
 

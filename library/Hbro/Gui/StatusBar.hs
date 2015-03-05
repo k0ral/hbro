@@ -3,9 +3,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Hbro.Gui.StatusBar
     ( StatusBar(..)
-    , StatusBarReader
-    , withStatusBar
-    , getStatusBar
+    , asStatusBar
     , statusBarName
     ) where
 
@@ -21,14 +19,8 @@ import           System.Glib.Types
 -- | Status bar is just a horizontal layout that can host widgets.
 newtype StatusBar = StatusBar HBox
 
-data StatusBarTag = StatusBarTag
-type StatusBarReader m = MonadReader StatusBarTag StatusBar m
-
-withStatusBar :: StatusBar -> ReaderT StatusBarTag StatusBar m a -> m a
-withStatusBar = runReaderT StatusBarTag
-
-getStatusBar :: (StatusBarReader m) => m StatusBar
-getStatusBar = read StatusBarTag
+asStatusBar :: StatusBar -> StatusBar
+asStatusBar = id
 
 instance GObjectClass StatusBar where
     toGObject (StatusBar h) = toGObject h

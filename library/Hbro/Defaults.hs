@@ -8,13 +8,12 @@ module Hbro.Defaults where
 -- {{{ Imports
 import           Hbro.Attributes
 import           Hbro.Clipboard                  as Clipboard
-import           Hbro.Config                     (ConfigReader)
+import           Hbro.Config                     (Config)
 import           Hbro.Core
 import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Gui                        as Gui
-import           Hbro.Gui.Builder
 import           Hbro.Gui.MainView
 import           Hbro.Gui.NotificationBar
 import           Hbro.Gui.PromptBar              as Prompt
@@ -29,7 +28,8 @@ import           Hbro.WebView.Signals
 import           Data.Map                        as Map hiding (foldl, map)
 
 import           Graphics.UI.Gtk.Abstract.Widget
-import           Graphics.UI.Gtk.Gdk.EventM      as Gdk
+import           Graphics.UI.Gtk.Builder         as Gtk
+import           Graphics.UI.Gtk.Gdk.EventM      as Gtk
 import           Graphics.UI.Gtk.WebKit.WebView
 import           Graphics.UI.Gtk.Windows.Window
 
@@ -38,22 +38,23 @@ import           Network.URI.Extended
 import qualified System.Glib.Attributes          as G
 -- }}}
 
-type OmniReader m = (ControlIO m, MonadError Text m, ConfigReader m, PromptBarReader m, NotificationBarReader m, StatusBarReader m, UIReader m, KeySignalReader m, Alternative m, MainViewReader m)
+-- | A 'God' monad has access to everything.
+type God r m = (ControlIO m, MonadError Text m, MonadReader r m, Has (TVar Config) r, Has PromptBar r, Has NotificationBar r, Has StatusBar r, Has Gtk.Builder r, Has (Signal KeyMapPressed) r, Has MainView r, Alternative m)
 
 defaultDownloadHook :: (MonadIO m) => Input Download -> m ()
 defaultDownloadHook _ = warningM "No download hook defined."
 
-defaultLinkClickedHook :: (MonadIO m, MonadError Text m, MainViewReader m) => Input LinkClicked -> m ()
+defaultLinkClickedHook :: (MonadIO m, MonadError Text m, MonadReader r m, Has MainView r) => Input LinkClicked -> m ()
 defaultLinkClickedHook (uri, Gdk.MiddleButton) = spawn "hbro" ["-u", show uri]
 defaultLinkClickedHook (uri, _) = load uri
 
-defaultLoadRequestedHook :: (MonadIO m, MonadError Text m, MainViewReader m) => URI -> m ()
+defaultLoadRequestedHook :: (MonadIO m, MonadError Text m, MonadReader r m, Has MainView r) => URI -> m ()
 defaultLoadRequestedHook = load
 
 defaultNewWindowHook :: (MonadIO m) => URI -> m ()
 defaultNewWindowHook uri = spawn "hbro" ["-u", show uri]
 
-defaultTitleChangedHook :: (MonadIO m, MonadError Text m, UIReader m) => Text -> m ()
+defaultTitleChangedHook :: (MonadIO m, MonadError Text m, MonadReader r m, Has Gtk.Builder r) => Text -> m ()
 defaultTitleChangedHook title = getMainWindow >>= gAsync . (`G.set` [ windowTitle G.:= ("hbro | " ++ title)])
 
 -- /!\ NetworkRequest's Haskell binding is missing the function "webkit_network_request_get_message", which makes it rather useless...
@@ -64,7 +65,7 @@ defaultTitleChangedHook title = getMainWindow >>= gAsync . (`G.set` [ windowTitl
 
 
 -- | List of default supported requests.
-defaultCommandMap :: OmniReader m => CommandMap m
+defaultCommandMap :: God r m => CommandMap m
 defaultCommandMap = Map.fromList
 -- Get information
     [ "GET_URI"             >: \_arguments -> Right . tshow <$> getCurrentURI
@@ -85,7 +86,7 @@ defaultCommandMap = Map.fromList
     ]
 
 
-defaultKeyMap :: (OmniReader m) => KeyMap m
+defaultKeyMap :: (God r m) => KeyMap m
 defaultKeyMap = Map.fromList
 -- Browse
    [ [_Alt     .| _Left]   >: goBack
@@ -108,8 +109,8 @@ defaultKeyMap = Map.fromList
 -- Display
    , [_Control .| _plus]   >: zoomIn
    , [_Control .| _minus]  >: zoomOut
-   , [_Control .| _b]      >: getStatusBar >>= \s -> toggle_ s widgetVisible
-   , [_Alt     .| _b]      >: getNotificationBar >>= \n -> toggle_ n widgetVisible
+   , [_Control .| _b]      >: asks asStatusBar >>= \s -> toggle_ s widgetVisible
+   , [_Alt     .| _b]      >: asks asNotificationBar >>= \n -> toggle_ n widgetVisible
    , [_Control .| _u]      >: getWebView >>= \v -> toggle_ v webViewViewSourceMode
 -- Prompt
    , [_Control .| _o]      >: uriPromptM "Open URI" "" >>= load

@@ -1,11 +1,9 @@
 {-# LANGUAGE ConstraintKinds   #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Hbro.Gui.Builder
-  ( UIReader
-  , getBuilder
-  , withBuilder
-  , FromGObject(..)
+  ( FromGObject(..)
   , getWidget
   , getMainWindow
   ) where
@@ -24,15 +22,6 @@ import           System.Glib.Types
 -- }}}
 
 
-data UIBuilderTag = UIBuilderTag
-type UIReader m = MonadReader UIBuilderTag Gtk.Builder m
-
-getBuilder :: (UIReader m) => m Gtk.Builder
-getBuilder = read UIBuilderTag
-
-withBuilder :: Gtk.Builder -> ReaderT UIBuilderTag Gtk.Builder m a -> m a
-withBuilder builder = runReaderT UIBuilderTag builder
-
 -- | UI elements that can be built from a @GtkBuilder@ object (that is: an XML file)
 class (GObjectClass a) => FromGObject a where
   cast :: GObject -> a
@@ -47,5 +36,5 @@ instance FromGObject Gtk.Window where cast = Gtk.castToWindow
 getWidget :: (MonadIO m, FromGObject a) => Gtk.Builder -> Text -> m a
 getWidget builder name = gSync $ Gtk.builderGetObject builder cast name
 
-getMainWindow :: (MonadIO m, UIReader m) => m Gtk.Window
-getMainWindow = (`getWidget` "mainWindow") =<< getBuilder
+getMainWindow :: (MonadIO m, MonadReader r m, Has Gtk.Builder r) => m Gtk.Window
+getMainWindow = (`getWidget` "mainWindow") =<< ask

@@ -11,11 +11,7 @@ import           Hbro.Dyre                       as Dyre
 import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gui                        as Gui
-import           Hbro.Gui.Builder
 import           Hbro.Gui.MainView
-import           Hbro.Gui.NotificationBar        (NotifBarTag (..))
-import           Hbro.Gui.PromptBar              (PromptBarTag (..))
-import           Hbro.Gui.StatusBar
 import           Hbro.IPC                        as IPC (CommandMap,
                                                          bindCommands)
 import           Hbro.Keys                       as Keys
@@ -44,9 +40,9 @@ import qualified System.ZMQ4                     as ZMQ (version)
 -- | What users can configure.
 data Settings = Settings
     { configuration :: Config
-    , commandMap    :: OmniReader m => CommandMap m
-    , keyMap        :: OmniReader m => KeyMap m
-    , startUpHook   :: OmniReader m => m ()
+    , commandMap    :: God r m => CommandMap m
+    , keyMap        :: God r m => KeyMap m
+    , startUpHook   :: God r m => m ()
     }
 
 instance Default Settings where
@@ -95,16 +91,17 @@ mainThread (settings, options) uiThread = do
     uiFiles <- getUIFiles options
     (builder, mainView, promptBar, statusBar, notifBar) <- asum $ map Gui.initialize uiFiles
 
-    socketURI <- getSocketURI options
-    keySignal <- newSignal KeyMapPressed
+    socketURI    <- getSocketURI options
+    keySignal    <- newSignal KeyMapPressed
+    config       <- io . newTVarIO $ configuration settings
 
-    withConfig (configuration settings)
-      . withMainView mainView
-      . withStatusBar statusBar
-      . runReaderT PromptBarTag promptBar
-      . runReaderT NotifBarTag notifBar
-      . withBuilder builder
-      . runReaderT KeySignalTag keySignal
+    flip runReaderT (config, ())
+      . withReaderT (mainView, )
+      . withReaderT (statusBar, )
+      . withReaderT (promptBar, )
+      . withReaderT (notifBar, )
+      . withReaderT (builder, )
+      . withReaderT (keySignal, )
       . withAsync (bindCommands socketURI (commandMap settings)) . const $ do
         bindKeys (mainView^.keyPressedHookL) keySignal (keyMap settings)
 

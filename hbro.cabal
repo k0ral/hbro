@@ -61,7 +61,7 @@ Library
         webkitgtk3 >= 0.13,
         zeromq4-haskell
     Exposed-modules:
-        Control.Monad.Reader.Tagged,
+        Control.Monad.Reader.Extended,
         Hbro,
         Hbro.Attributes,
         Hbro.Boot,

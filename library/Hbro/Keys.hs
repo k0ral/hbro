@@ -22,8 +22,6 @@ module Hbro.Keys (
 -- * Interface
     , KeyPressed(..)
     , KeyMapPressed(..)
-    , KeySignalTag(..)
-    , KeySignalReader
     , bindKeys
     ) where
 
@@ -117,8 +115,6 @@ data KeyMapPressed = KeyMapPressed deriving(Show)
 instance Event KeyMapPressed where
   type Input KeyMapPressed = ([KeyStroke], Bool)
 
-data KeySignalTag = KeySignalTag
-type KeySignalReader m = MonadReader KeySignalTag (Signal KeyMapPressed) m
 
 bindKeys :: (ControlIO m, MonadError Text m) => Signal KeyPressed -> Signal KeyMapPressed -> KeyMap m -> m (Async ())
 bindKeys input output keyMap = addRecursiveHook input empty $ \previousStrokes newStroke -> do
