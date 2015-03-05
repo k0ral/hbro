@@ -1,8 +1,8 @@
 Name:                hbro
 Version:             1.3.0.0
-Synopsis:            Minimal KISS-compliant browser
+Synopsis:            Minimal extensible web-browser
 Description:         Cf README
-Homepage:            https://bitbucket.org/k0ral/hbro
+Homepage:            https://github.com/k0ral/hbro
 Category:            Browser,Web
 
 License:             OtherLicense

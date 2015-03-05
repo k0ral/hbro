@@ -69,7 +69,7 @@ instance Default CliOptions where
 
 -- * High level
 parseOptions :: (MonadIO m) => m (Either Command CliOptions)
-parseOptions = io $ customExecParser (prefs noBacktrack) (info parser $ progDesc "Minimal KISS-compliant browser")
+parseOptions = io $ customExecParser (prefs noBacktrack) (info parser $ progDesc "Minimal extensible web-browser")
 
 -- * Low level
 -- ** URI options
