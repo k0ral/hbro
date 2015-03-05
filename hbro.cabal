@@ -28,7 +28,7 @@ Library
         classy-prelude >= 0.9.4,
         cond,
         containers,
-        data-default,
+        data-default-class,
         dyre >= 0.8.8,
         errors,
         glib,

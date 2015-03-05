@@ -56,7 +56,7 @@ import           Control.Monad.Base              as X (MonadBase (..))
 import           Control.Monad.Reader.Tagged     as X
 import           Control.Monad.Trans.Control     as X
 
-import           Data.Default                    as X
+import           Data.Default.Class              as X
 import           Data.Foldable                   as X (asum)
 import           Data.Functor                    as X
 import           Data.List                       as X (tail)
