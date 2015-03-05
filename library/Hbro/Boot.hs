@@ -34,14 +34,14 @@ import           Graphics.UI.Gtk.General.General as Gtk
 
 import           Network.URI.Extended
 
-import           Paths_hbro                      (version)
+import qualified Paths_hbro                      as Package
 
 import           System.Posix.Process
 import           System.Posix.Signals
 import qualified System.ZMQ4                     as ZMQ (version)
 -- }}}
 
--- {{{ Imports
+-- | What users can configure.
 data Settings = Settings
     { configuration :: Config
     , commandMap    :: OmniReader m => CommandMap m
@@ -56,17 +56,20 @@ instance Default Settings where
           , keyMap            = defaultKeyMap
           , startUpHook       = debugM "No start-up hook defined"
           }
--- }}}
 
--- | Main function to call in the configuration file (cf file @Hbro/Main.hs@).
+getDataFileName :: (MonadIO m, Functor m) => Text -> m FilePath
+getDataFileName file = fpFromText . pack <$> io (Package.getDataFileName $ unpack file)
+
+-- | Main function to call in the configuration file. Cf @Hbro/Main.hs@ as an example.
 hbro :: Settings -> IO ()
 hbro settings = do
     options <- parseOptions
+
     case options of
         Left Rebuild -> Dyre.recompile >>= mapM_ infoM
         Left Version -> do
             (a, b, c) <- ZMQ.version
-            putStrLn $ "hbro: v" ++ pack (showVersion version)
+            putStrLn $ "hbro: v" ++ pack (showVersion Package.version)
             putStrLn $ "0MQ library: v" ++ intercalate "." (map tshow [a, b, c])
         Right runOptions -> Dyre.wrap (runOptions^.dyreModeL)
                                       (withAsyncBound guiThread . mainThread)

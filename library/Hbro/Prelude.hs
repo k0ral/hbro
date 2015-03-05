@@ -19,16 +19,10 @@ module Hbro.Prelude
     , (>/>)
     , abort
     , doNothing
--- * Lifted util
-    , getDataFileName
 -- * Lens util
     , withM
     , withM_
     , fwd
--- * Concurrent util
-    , writeTMVar
-    , withAsyncList
-    , withAsyncList_
 -- * Gtk util
     , gSync
     , gAsync
@@ -48,14 +42,13 @@ module Hbro.Prelude
 -- {{{ Imports
 import           ClassyPrelude                   as X hiding (Builder (..),
                                                        MonadReader (..),
-                                                       ReaderT (..), log,
+                                                       ReaderT (..), error, log,
                                                        toList)
 
 import           Control.Applicative             as X (Alternative (..),
                                                        WrappedMonad, optional)
 import           Control.Arrow                   as X (Kleisli (..), left,
                                                        right)
-import           Control.Concurrent.Async.Lifted
 import           Control.Conditional             as X (ToBool (..), (<<|), (<|),
                                                        (|>), (|>>))
 import           Control.Lens
@@ -74,8 +67,6 @@ import           Data.Maybe                      as X (fromJust)
 import           Graphics.Rendering.Pango.Enums
 import           Graphics.UI.Gtk.General.General
 
-import qualified Paths_hbro                      as Package
-
 import           Safe                            as X (initSafe, tailSafe)
 
 import           System.Log.Logger
@@ -89,16 +80,18 @@ import           System.Process
 class Describable a where describe :: a -> Text
 instance Describable () where describe = const "()"
 
--- | Mix of 'MonadBase IO' and 'MonadIO'
+-- | Mix of @MonadBase IO@ and @MonadIO@
 type BaseIO m = (MonadBase IO m, MonadIO m)
 
--- | Mix of 'MonadBaseControl IO' and 'MonadIO'
+-- | Mix of @MonadBaseControl IO@ and @MonadIO@
 type ControlIO m = (MonadBaseControl IO m, MonadIO m)
 
 -- {{{ Generic aliases/shortcuts
+-- | Build a 'NonEmpty' from the right
 (|:) :: [a] -> a -> NonEmpty a
 list |: e = NonEmpty.reverse (e :| reverse list)
 
+-- | Infix operator to build couples
 (>:) :: a -> b -> (a, b)
 (>:) = (,)
 infix 0 >:
@@ -124,11 +117,6 @@ doNothing :: Monad m => m ()
 doNothing = return ()
 -- }}}
 
--- {{{ Lifted util
-getDataFileName :: (MonadIO m, Functor m) => Text -> m FilePath
-getDataFileName file = fpFromText . pack <$> io (Package.getDataFileName $ unpack file)
--- }}}
-
 -- {{{ Lens util
 -- | Alias for 'mapMOf'
 withM :: Profunctor p => Over p (WrappedMonad m) s t a b -> p a (m b) -> s -> m t
@@ -139,27 +127,6 @@ withM_ l f = mapMOf l (fwd f)
 
 fwd :: (Monad m) => (a -> m ()) -> a -> m a
 fwd f x = f x >> return x
--- }}}
-
--- {{{ Concurrent util
--- | This is a combination of 'tryTakeTMVar' and 'putTMVar';
--- ie. it empties the 'TMVar' if needed, and puts the new value instead.
-writeTMVar :: TMVar a -> a -> STM ()
-writeTMVar var val = do
-    tryTakeTMVar var
-    putTMVar var val
-
--- | Recursive 'withAsync'
-withAsyncList :: (ControlIO m) => [m a] -> ([Async (StM m a)] -> m b) -> m b
-withAsyncList a = withAsyncList' a []
-
--- | Same as 'withAsyncList', but discards the result
-withAsyncList_ :: (ControlIO m) => [m a] -> ([Async (StM m a)] -> m b) -> m ()
-withAsyncList_ a f = void $ withAsyncList a f
-
-withAsyncList' :: (ControlIO m) => [m a] -> [Async (StM m a)] -> ([Async (StM m a)] -> m b) -> m b
-withAsyncList' [] x f  = f x
-withAsyncList' (a:b) x f = withAsync a $ \x' -> withAsyncList' b (x':x) f
 -- }}}
 
 -- {{{ Gtk util
