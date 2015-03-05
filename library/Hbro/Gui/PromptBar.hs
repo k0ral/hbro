@@ -55,7 +55,7 @@ import           Graphics.UI.Gtk.Entry.Entry
 import           Graphics.UI.Gtk.Gdk.EventM      as Gdk
 import           Graphics.UI.Gtk.Layout.HBox
 
-import           Network.URI.Monadic
+import           Network.URI.Extended
 
 import           System.Glib.Signals             hiding (Signal)
 -- }}}
@@ -213,7 +213,7 @@ uriPrompt description startValue promptBar = do
     cancel update
     let resultM = either (const $ throwError promptInterrupted) return result
 
-    parseURIReference =<< resultM
+    parseURIReferenceM =<< resultM
 
 uriPromptM :: (ControlIO m, MonadError Text m, PromptBarReader m) => Text -> Text -> m URI
 uriPromptM a b = uriPrompt a b =<< read PromptBarTag

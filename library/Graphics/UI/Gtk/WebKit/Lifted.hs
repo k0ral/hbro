@@ -20,7 +20,7 @@ import qualified Graphics.UI.Gtk.WebKit.Download       as W
 import           Graphics.UI.Gtk.WebKit.NetworkRequest (NetworkRequest)
 import qualified Graphics.UI.Gtk.WebKit.NetworkRequest as W
 
-import           Network.URI.Monadic
+import           Network.URI.Extended
 -- }}}
 
 -- | Error message
@@ -29,10 +29,10 @@ unavailableFileName = "No file name available"
 unavailableURI = "No URI available"
 
 networkRequestGetUri :: (MonadIO m, MonadError Text m) => NetworkRequest -> m URI
-networkRequestGetUri r = parseURIReference =<< io (W.networkRequestGetUri r) <!> unavailableURI
+networkRequestGetUri r = parseURIReferenceM =<< io (W.networkRequestGetUri r) <!> unavailableURI
 
 downloadGetUri :: (MonadIO m, MonadError Text m) => W.Download -> m URI
-downloadGetUri d = parseURI =<< io (W.downloadGetUri d) <!> unavailableURI
+downloadGetUri d = parseURIM =<< io (W.downloadGetUri d) <!> unavailableURI
 
 downloadGetSuggestedFilename :: (MonadIO m, MonadError Text m) => W.Download -> m Text
 downloadGetSuggestedFilename d = io (W.downloadGetSuggestedFilename d) <!> unavailableFileName

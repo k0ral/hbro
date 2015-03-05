@@ -46,7 +46,7 @@ import           Graphics.UI.Gtk.General.General
 import           Graphics.UI.Gtk.WebKit.WebDataSource
 import           Graphics.UI.Gtk.WebKit.WebFrame
 
-import           Network.URI.Monadic
+import           Network.URI.Extended
 -- }}}
 
 -- {{{ Types

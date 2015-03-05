@@ -28,7 +28,7 @@ import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import           Graphics.UI.Gtk.WebKit.WebView             as W hiding
                                                                   (LoadFinished)
 
-import           Network.URI.Monadic
+import           Network.URI.Extended
 
 import           System.Glib.Signals                        hiding (Signal)
 -- }}}
@@ -95,7 +95,7 @@ attachLinkHovered :: (MonadIO m) => WebView -> Signal LinkHovered -> Signal Link
 attachLinkHovered webView hoveredSignal unhoveredSignal = gSync $ on webView hoveringOverLink callback
   where callback title (Just uri) = void . runErrorT . logErrors $ do
           debugM $ "Link hovered <" ++ tshow uri ++ ">"
-          u <- parseURI $ pack uri
+          u <- parseURIM $ pack uri
 
           emit hoveredSignal (u, pack <$> title)
         callback _ _ = emit unhoveredSignal ()

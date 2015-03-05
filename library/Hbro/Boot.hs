@@ -32,7 +32,7 @@ import           Filesystem
 
 import           Graphics.UI.Gtk.General.General as Gtk
 
-import           Network.URI.Monadic
+import           Network.URI.Extended
 
 import           Paths_hbro                      (version)
 
@@ -145,5 +145,5 @@ getStartURI uri = do
     fileURI    <- io . isFile . fpFromText $ tshow uri
     workingDir <- io getWorkingDirectory
 
-    parseURIReference ("file://" ++ fpToText workingDir ++ "/" ++ tshow uri) <| fileURI |> return uri
+    parseURIReferenceM ("file://" ++ fpToText workingDir ++ "/" ++ tshow uri) <| fileURI |> return uri
     -- maybe abort return =<< logErrors (parseURIReference fileURI')

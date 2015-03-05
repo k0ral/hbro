@@ -22,6 +22,7 @@ Source-repository head
 
 Library
     Build-depends:
+        aeson,
         base == 4.*,
         bytestring,
         classy-prelude >= 0.9.4,
@@ -82,7 +83,7 @@ Library
         Hbro.Logger,
         Hbro.Prelude,
         Hbro.WebView.Signals,
-        Network.URI.Monadic
+        Network.URI.Extended
     Other-modules:
         Graphics.UI.Gtk.WebKit.Lifted,
         Graphics.UI.Gtk.WebKit.Lifted.WebView,

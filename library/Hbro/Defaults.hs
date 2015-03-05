@@ -33,7 +33,7 @@ import           Graphics.UI.Gtk.Gdk.EventM      as Gdk
 import           Graphics.UI.Gtk.WebKit.WebView
 import           Graphics.UI.Gtk.Windows.Window
 
-import           Network.URI.Monadic
+import           Network.URI.Extended
 
 import qualified System.Glib.Attributes          as G
 -- }}}
@@ -73,7 +73,7 @@ defaultCommandMap = Map.fromList
     , "GET_LOAD_PROGRESS"   >: \_arguments -> Right . tshow <$> getLoadProgress
 -- Trigger actions
     , "LOAD_URI"            >: \arguments -> case arguments of
-            uri:_ -> parseURIReference uri >>= load >> return (Right "OK")
+            uri:_ -> parseURIReferenceM uri >>= load >> return (Right "OK")
             _     -> return . Left $ "Argument needed."
     , "STOP_LOADING"        >: \_arguments -> stopLoading       >> return (Right "OK")
     , "RELOAD"              >: \_arguments -> reload            >> return (Right "OK")
@@ -103,7 +103,7 @@ defaultKeyMap = Map.fromList
 -- Copy/paste
    , [_Control .| _c]      >: getCurrentURI >>= Clipboard.write . tshow
    , [_Alt     .| _c]      >: getPageTitle >>= Clipboard.write
-   , [_Control .| _v]      >: Clipboard.read >>= parseURIReference >>= load
+   , [_Control .| _v]      >: Clipboard.read >>= parseURIReferenceM >>= load
    , [_Alt     .| _v]      >: Clipboard.read >>= spawn "hbro" . ("-u":) . (:[]) . unpack
 -- Display
    , [_Control .| _plus]   >: zoomIn

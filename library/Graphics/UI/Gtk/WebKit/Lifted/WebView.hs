@@ -24,7 +24,7 @@ import           Graphics.UI.Gtk.WebKit.WebView as Export hiding
                                                            webViewGetUri, webViewTryGetFaviconPixbuf)
 import qualified Graphics.UI.Gtk.WebKit.WebView as W
 
-import           Network.URI.Monadic
+import           Network.URI.Extended
 -- }}}
 
 -- | Error message
@@ -35,10 +35,10 @@ titleUnavailable = "No available title."
 
 
 webViewGetUri :: (MonadIO m, MonadError Text m) => WebView -> m URI
-webViewGetUri = gSync . W.webViewGetUri >=> maybe (throwError unavailableURI) return >=> parseURI
+webViewGetUri = gSync . W.webViewGetUri >=> maybe (throwError unavailableURI) return >=> parseURIM
 
 webViewGetIconUri :: (MonadIO m, MonadError Text m) => WebView -> m URI
-webViewGetIconUri = gSync . W.webViewGetIconUri >=> maybe (throwError unavailableURI) return >=> parseURI
+webViewGetIconUri = gSync . W.webViewGetIconUri >=> maybe (throwError unavailableURI) return >=> parseURIM
 
 webViewTryGetFaviconPixbuf :: (MonadIO m, MonadError Text m) => WebView -> Int -> Int -> m Pixbuf
 webViewTryGetFaviconPixbuf webView width height = gSync (W.webViewTryGetFaviconPixbuf webView width height) >>= maybe (throwError unavailableFavicon) return
