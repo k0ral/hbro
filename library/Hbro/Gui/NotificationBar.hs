@@ -11,7 +11,7 @@ module Hbro.Gui.NotificationBar
 -- {{{ Imports
 -- import Hbro.Error
 import           Hbro.Gui.Builder
-import           Hbro.Logger                     hiding (initialize)
+import           Hbro.Logger
 import           Hbro.Prelude
 
 import           Graphics.Rendering.Pango.Enums
@@ -21,13 +21,8 @@ import qualified Graphics.UI.Gtk.Builder         as Gtk
 import           Graphics.UI.Gtk.Display.Label
 
 import           System.Glib.Types
-import           System.Log.Formatter
-import           System.Log.Handler.Simple
-import           System.Log.Logger               (addHandler, rootLoggerName,
-                                                  updateGlobalLogger)
 -- }}}
 
--- TODO: color notifications depending on their level
 -- TODO: make it possible to expand the notification bar to display the last N log lines
 -- TODO: make it possible to change the log level
 
@@ -52,20 +47,17 @@ instance MiscClass NotificationBar
 instance LabelClass NotificationBar
 -- }}}
 
-initialize :: (MonadIO m) => NotificationBar -> m NotificationBar
+initialize :: (ControlIO m, MonadThreadedLogger m) => NotificationBar -> m NotificationBar
 initialize notifBar = do
-  io . updateGlobalLogger rootLoggerName $ addHandler (logHandler notifBar)
+  addLogHandler $ \(_loc, _source, level, message) -> void . runFailT $ do
+    guard $ level >= LevelInfo
+    write' message (logColor level) notifBar
   return notifBar
 
-
-logHandler :: NotificationBar -> GenericHandler NotificationBar
-logHandler notifBar = GenericHandler
-    { priority  = INFO
-    , formatter = simpleLogFormatter "$msg"
-    , privData  = notifBar
-    , writeFunc = \n t -> runReaderT NotifBarTag n (write t)
-    , closeFunc = \_ -> return ()
-    }
+logColor :: LogLevel -> Color
+logColor LevelError = red
+logColor LevelWarn = yellow
+logColor _ = gray
 
 write :: (MonadIO m) => Text -> NotificationBar -> m NotificationBar
 write message = write' message gray

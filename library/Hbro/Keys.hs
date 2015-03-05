@@ -110,13 +110,15 @@ type KeyMap m = Model.KeyMap KeyStroke (m ())
 data KeyPressed = KeyPressed deriving(Show)
 instance Event KeyPressed where
   type Input KeyPressed = KeyStroke
+  describeInput _ stroke = Just $ "Key pressed: " ++ describe stroke
 
 data KeyMapPressed = KeyMapPressed deriving(Show)
 instance Event KeyMapPressed where
   type Input KeyMapPressed = ([KeyStroke], Bool)
+  describeInput _ (strokes, _bound) = Just . unwords $ "Key pressed: " : (describe <$> strokes)
 
 
-bindKeys :: (ControlIO m, MonadError Text m) => Signal KeyPressed -> Signal KeyMapPressed -> KeyMap m -> m (Async ())
+bindKeys :: (ControlIO m, MonadLogger m, MonadError Text m) => Signal KeyPressed -> Signal KeyMapPressed -> KeyMap m -> m (Async ())
 bindKeys input output keyMap = addRecursiveHook input empty $ \previousStrokes newStroke -> do
     let k = Map.keys keyMap
         strokes = previousStrokes |: newStroke
@@ -124,7 +126,7 @@ bindKeys input output keyMap = addRecursiveHook input empty $ \previousStrokes n
         found = Map.lookup strokes keyMap
         reset = isJust found || all (not . NonEmpty.isPrefixOf strokesL) k
 
-    debugM $ "Accumulated: " ++ unwords (map describe strokesL)
+    debug $ "Accumulated: " ++ unwords (map describe strokesL)
     emit output (strokesL, isJust found)
 
     async . logErrors $ fromMaybe doNothing found

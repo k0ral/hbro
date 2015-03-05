@@ -15,7 +15,7 @@ import           Hbro.Gui.MainView
 import           Hbro.IPC                        as IPC (CommandMap,
                                                          bindCommands)
 import           Hbro.Keys                       as Keys
-import           Hbro.Logger                     as Logger
+import           Hbro.Logger
 import           Hbro.Options                    as Options
 import           Hbro.Prelude
 
@@ -50,7 +50,7 @@ instance Default Settings where
           { configuration     = def
           , commandMap        = defaultCommandMap
           , keyMap            = defaultKeyMap
-          , startUpHook       = debugM "No start-up hook defined"
+          , startUpHook       = debug "No start-up hook defined"
           }
 
 getDataFileName :: (MonadIO m, Functor m) => Text -> m FilePath
@@ -62,33 +62,30 @@ hbro settings = do
     options <- parseOptions
 
     case options of
-        Left Rebuild -> Dyre.recompile >>= mapM_ infoM
+        Left Rebuild -> Dyre.recompile >>= mapM_ putStrLn
         Left Version -> do
             (a, b, c) <- ZMQ.version
-            putStrLn $ "hbro: v" ++ pack (showVersion Package.version)
-            putStrLn $ "0MQ library: v" ++ intercalate "." (map tshow [a, b, c])
-        Right runOptions -> Dyre.wrap (runOptions^.dyreModeL)
-                                      (withAsyncBound guiThread . mainThread)
-                                      (settings, runOptions)
+            putStrLn $ "hbro v" ++ pack (showVersion Package.version)
+            putStrLn $ "0MQ library v" ++ intercalate "." (map tshow [a, b, c])
+        Right runOptions -> runThreadedLoggingT (runOptions^.logLevelL) $ Dyre.wrap (runOptions^.dyreModeL)
+                              (withAsyncBound guiThread . mainThread)
+                              (settings, runOptions)
 
 -- | Gtk main loop thread.
-guiThread :: IO ()
+guiThread :: (ControlIO m, MonadLogger m) => m ()
 guiThread = do
-    async $ do
+    io . async $ do
         installHandler sigINT  (Catch onInterrupt) Nothing
         installHandler sigTERM (Catch onInterrupt) Nothing
-    initGUI >> mainGUI
-    debugM "GUI thread correctly exited."
+    io $ initGUI >> mainGUI
+    debug "GUI thread correctly exited."
   where onInterrupt  = logInterrupt >> postGUIAsync mainQuit
-        logInterrupt = infoM "Received interrupt signal."
+        logInterrupt = putStrLn "Received interrupt signal."
 
 
-mainThread :: (Settings, CliOptions) -> Async () -> IO ()
-mainThread (settings, options) uiThread = do
-  void . runErrorT . logErrors $ do
-    Logger.initialize $ options^.logLevelL
-
-    uiFiles <- getUIFiles options
+mainThread :: (ControlIO m, MonadLogger m, MonadThreadedLogger m) => (Settings, CliOptions) -> Async () -> m ()
+mainThread (settings, options) uiThread = void . runErrorT . logErrors $ do
+    uiFiles      <- getUIFiles options
     (builder, mainView, promptBar, statusBar, notifBar) <- asum $ map Gui.initialize uiFiles
 
     socketURI    <- getSocketURI options
@@ -113,12 +110,12 @@ mainThread (settings, options) uiThread = do
 
         startUpHook settings
 
-        debugM . ("Start-up configuration: \n" ++) . describe =<< Config.get id
+        debug . ("Start-up configuration: \n" ++) . describe =<< Config.get id
 
         maybe goHome (load <=< getStartURI) (options^.startURIL)
         io $ wait uiThread
 
-  debugM "All threads correctly exited."
+    debug "All threads correctly exited."
 
 
 -- | Return the list of available UI files (from configuration and package)

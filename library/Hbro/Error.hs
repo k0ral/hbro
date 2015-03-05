@@ -4,7 +4,6 @@
 module Hbro.Error ( module X, module Hbro.Error) where
 
 -- {{{ Imports
-import           Hbro.Logger
 import           Hbro.Prelude
 
 import           Control.Error.Safe
@@ -49,11 +48,3 @@ failWith x e = either throwError return $ note e x
 -- | Monadic and infix version of 'failWith'
 (<!>) :: (MonadError e m) => m (Maybe a) -> e -> m a
 (<!>) f e = f >>= (`failWith` e)
-
--- | Like 'catchError', except that the error is automatically logged, then discarded.
-logErrors :: (MonadIO m, Functor m, MonadError Text m) => m a -> m (Maybe a)
-logErrors f = catchError (Just <$> f) $ \e -> errorM e >> return Nothing
-
--- | Like 'logErrors', but discards the result.
-logErrors_ :: (MonadIO m, Functor m, MonadError Text m) => m a -> m ()
-logErrors_ = void . logErrors

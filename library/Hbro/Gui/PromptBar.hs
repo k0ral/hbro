@@ -31,12 +31,11 @@ module Hbro.Gui.PromptBar (
 ) where
 
 -- {{{ Imports
-import           Hbro.Attributes
 import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Gui.Builder
-import           Hbro.Logger                     hiding (initialize)
+import           Hbro.Logger
 import           Hbro.Prelude                    hiding (on)
 
 import           Control.Concurrent.Async.Lifted
@@ -54,16 +53,19 @@ import           Graphics.UI.Gtk.Layout.HBox
 
 import           Network.URI.Extended
 
+import           System.Glib.Attributes.Extended
 import           System.Glib.Signals             hiding (Signal)
 -- }}}
 
 -- {{{ Types
 data Closed = Closed deriving(Show)
-instance Event Closed
+instance Event Closed where
+  describeInput _ _ = Just "Prompt closed."
 
 data Changed   = Changed deriving(Show)
 instance Event Changed where
   type Input Changed = Text
+  describeInput _ = Just . (++) "Prompt value changed to: "
 
 -- | No exported constructor, please use 'buildFrom'
 declareLenses [d|
@@ -79,7 +81,7 @@ declareLenses [d|
 -- }}}
 
 -- | A 'PromptBar' can be built from an XML file.
-buildFrom :: (ControlIO m, Applicative m) => Gtk.Builder -> m PromptBar
+buildFrom :: (ControlIO m, MonadLogger m, Applicative m) => Gtk.Builder -> m PromptBar
 buildFrom builder = do
     validation  <- io newEmptyTMVarIO
     entry       <- getWidget builder entryName
@@ -125,7 +127,7 @@ open description defaultText =
         >=> withM_ entryL (gAsync . widgetGrabFocus)
         >=> withM_ entryL (gAsync . (`editableSetPosition` (-1)))
 
-close :: (ControlIO m) => PromptBar -> m PromptBar
+close :: (ControlIO m, MonadLogger m) => PromptBar -> m PromptBar
 close promptBar = do
   runFailT $ do
     guard =<< get (promptBar^.boxL) widgetVisible
@@ -144,7 +146,7 @@ clean = withM_ entryL (gAsync . (`widgetRestoreText` StateNormal))
 -- {{{ Prompts
 -- | Open prompt bar with given description and default value,
 -- register a callback to trigger when value is changed, and another one when value is validated.
-prompt :: (ControlIO m, MonadError Text m)
+prompt :: (ControlIO m, MonadLogger m, MonadError Text m)
         => Text             -- ^ Prompt description
         -> Text             -- ^ Pre-fill value
         -> PromptBar
@@ -160,11 +162,11 @@ prompt description startValue promptBar = do
     close promptBar
     either (const $ throwError promptInterrupted) return result
 
-promptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadError Text m) => Text -> Text -> m Text
+promptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m) => Text -> Text -> m Text
 promptM a b = prompt a b =<< ask
 
 
-iprompt :: (ControlIO m, MonadError Text m)
+iprompt :: (ControlIO m, MonadLogger m, MonadError Text m)
         => Text
         -> Text
         -> (Text -> m ())
@@ -180,12 +182,12 @@ iprompt description startValue f promptBar = do
     close promptBar
     cancel update
 
-ipromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadError Text m) => Text -> Text -> (Text -> m ()) -> m ()
+ipromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m) => Text -> Text -> (Text -> m ()) -> m ()
 ipromptM a b c = iprompt a b c =<< ask
 
 
 -- | Same as 'prompt' for URI values
-uriPrompt :: (ControlIO m, MonadError Text m)
+uriPrompt :: (ControlIO m, MonadLogger m, MonadError Text m)
           => Text
           -> Text
           -> PromptBar
@@ -206,13 +208,13 @@ uriPrompt description startValue promptBar = do
 
     parseURIReferenceM =<< resultM
 
-uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadError Text m) => Text -> Text -> m URI
+uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m) => Text -> Text -> m URI
 uriPromptM a b = uriPrompt a b =<< ask
 
 
-checkURI :: (MonadIO m) => PromptBar -> Text -> m ()
+checkURI :: (MonadIO m, MonadLogger m) => PromptBar -> Text -> m ()
 checkURI promptBar v = do
-    debugM $ "Is URI ? " ++ tshow (isURIReference $ unpack v)
+    debug $ "Is URI ? " ++ tshow (isURIReference $ unpack v)
     gAsync $ widgetModifyText (promptBar^.entryL) StateNormal (green <| isURIReference (unpack v) |> red)
 
 
@@ -223,23 +225,18 @@ getPromptValueM :: (MonadIO m, MonadReader r m, Has PromptBar r) => m Text
 getPromptValueM = getPromptValue =<< ask
 
 
-onEntryCanceled :: (MonadIO m, EntryClass t) => t -> IO a -> m (ConnectId t)
-onEntryCanceled entry f = gSync . on entry keyPressEvent $ do
+onEntryCanceled :: (ControlIO m, MonadLogger m, EntryClass t) => t -> m a -> m ()
+onEntryCanceled entry f = liftBaseWith $ \runInIO -> gAsync . on entry keyPressEvent $ do
     key <- KeyVal <$> eventKeyVal
-    io . when (key == _Escape) $ do
-        value <- entryGetText entry
-        debugM $ "Entry cancelled with value: " ++ value
-        void f
+    io . when (key == _Escape) . void . runInIO $ void f
     return False
 
-onEntryChanged :: (MonadIO m, EditableClass t, EntryClass t) => t -> (Text -> IO ()) -> m (ConnectId t)
-onEntryChanged entry f = gSync . on entry editableChanged $ do
+onEntryChanged :: (ControlIO m, MonadLogger m, EditableClass t, EntryClass t) => t -> (Text -> m ()) -> m ()
+onEntryChanged entry f = liftBaseWith $ \runInIO -> gAsync . on entry editableChanged $ do
     value <- entryGetText entry
-    debugM $ "Entry value changed to: " ++ value
-    f value
+    void . runInIO $ f value
 
-onEntryValidated :: (MonadIO m, EntryClass t) => t -> (Text -> IO ()) -> m (ConnectId t)
-onEntryValidated entry f = gSync . on entry entryActivated $ do
+onEntryValidated :: (ControlIO m, MonadLogger m, EntryClass t) => t -> (Text -> m ()) -> m ()
+onEntryValidated entry f = liftBaseWith $ \runInIO -> gAsync . on entry entryActivated $ do
     value <- entryGetText entry
-    debugM $ "Entry validated with value: " ++ value
-    f value
+    void . runInIO $ f value

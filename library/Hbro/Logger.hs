@@ -1,73 +1,99 @@
-{-# LANGUAGE ConstraintKinds   #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ConstraintKinds      #-}
+{-# LANGUAGE DeriveFunctor        #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE NoImplicitPrelude    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Hbro.Logger
     ( module X
-    , initialize
--- * Redefinitions
-    , debugM
-    , errorM
-    , infoM
-    , warningM
-) where
+    , LogMessage(..)
+    , MonadThreadedLogger(..)
+    , ThreadedLoggingT
+    , runThreadedLoggingT
+    , logErrors
+    , logErrors_
+    ) where
 
 -- {{{ Imports
-import           Hbro.Prelude
+import           Hbro.Error
+import           Hbro.Event
+import           Hbro.Prelude                  hiding (runReaderT)
 
-import           Control.Concurrent        (myThreadId)
+import           Control.Monad.Base
+import           Control.Monad.Logger.Extended as X
+import           Control.Monad.Reader
 
-import           Data.Text                 (justifyLeft, replace)
+import           Data.Text                     (justifyLeft)
+import           Data.Text.Encoding
+import           Data.Text.Encoding.Error
 
-import           System.Log                as X (Priority (..))
-import           System.Log.Formatter
-import           System.Log.Handler.Simple
-import           System.Log.Logger         (Logger, rootLoggerName, setHandlers,
-                                            setLevel, updateGlobalLogger)
-import qualified System.Log.Logger         as L
+import           System.Log.FastLogger         as X
 -- }}}
 
-initialize :: (MonadIO m) => Priority -> m ()
-initialize = io . updateGlobalLogger rootLoggerName . setup
+-- | Log event
+data LogMessage = LogMessage deriving(Show)
+instance Event LogMessage where
+  type Input LogMessage = (Loc, LogSource, LogLevel, Text)
+  describeInput _ _ = Nothing
 
-setup :: Priority -> Logger -> Logger
-setup level = setLevel level . setHandlers [logHandler]
+class MonadThreadedLogger m where
+  addLogHandler :: (Input LogMessage -> IO ()) -> m ()
 
-logHandler :: GenericHandler ()
-logHandler = GenericHandler
-    { priority  = DEBUG
-    , formatter = logFormatter "$my_time $my_prio $my_tid $msg"
-    , privData  = ()
-    , writeFunc = \_ t -> putStrLn $ pack t
-    , closeFunc = const $ return ()
-    }
+instance (Monad m, MonadThreadedLogger m) => MonadThreadedLogger (ErrorT e m) where
+  addLogHandler = lift . addLogHandler
 
-logFormatter :: String -> LogFormatter a
-logFormatter string handler (prio, message) = varFormatter
-    [ ("my_prio", return $ formatPriority prio)
-    , ("my_time", formatTime defaultTimeLocale "%F %T" <$> getCurrentTime)
-    , ("my_tid",  unpack . justifyLeft 5 ' ' . replace "ThreadId " "#" . tshow <$> myThreadId)
-    ]
-    string handler (prio, message)
+newtype ThreadedLoggingT m a = ThreadedLoggingT { unThreadedLoggingT :: ReaderT (Signal LogMessage, LogLevel) m a }
+deriving instance (Applicative m) => Applicative (ThreadedLoggingT m)
+deriving instance (Functor m) => Functor (ThreadedLoggingT m)
+deriving instance (Monad m) => Monad (ThreadedLoggingT m)
+deriving instance (MonadIO m) => MonadIO (ThreadedLoggingT m)
+deriving instance MonadTrans ThreadedLoggingT
 
-formatPriority :: Priority -> String
-formatPriority WARNING   = "WARN "
-formatPriority CRITICAL  = "CRIT "
-formatPriority INFO      = "INFO "
-formatPriority p         = unpack . justifyLeft 5 ' ' . take 5 $ tshow p
+instance MonadBase b m => MonadBase b (ThreadedLoggingT m) where
+  liftBase = liftBaseDefault
 
--- | Lifted 'debugM'
-debugM :: (MonadIO m) => Text -> m ()
-debugM a = io $ L.debugM "hbro" (unpack a)
+instance MonadTransControl ThreadedLoggingT where
+  type StT ThreadedLoggingT a = StT (ReaderT (Signal LogMessage, LogLevel)) a
+  liftWith = defaultLiftWith ThreadedLoggingT unThreadedLoggingT
+  restoreT = defaultRestoreT ThreadedLoggingT
 
--- | Lifted 'errorM'
-errorM :: (MonadIO m) => Text -> m ()
-errorM a = io $ L.errorM "hbro" (unpack a)
+instance MonadBaseControl b m => MonadBaseControl b (ThreadedLoggingT m) where
+  type StM (ThreadedLoggingT m) a = ComposeSt ThreadedLoggingT m a
+  liftBaseWith = defaultLiftBaseWith
+  restoreM     = defaultRestoreM
 
--- | Lifted 'infoM'
-infoM :: (MonadIO m) => Text -> m ()
-infoM = io . L.infoM "hbro" . unpack
+instance (MonadIO m, Functor m) => MonadLogger (ThreadedLoggingT m) where
+  monadLoggerLog loc source level message = ThreadedLoggingT . void . runFailT $ do
+    (loggerSignal, levelRef) <- Control.Monad.Reader.ask
+    guard $ level >= levelRef
+    emit' loggerSignal (loc, source, level, decodeUtf8With lenientDecode . fromLogStr $ toLogStr message)
 
--- | Lifted 'warningM'
-warningM :: (MonadIO m) => Text -> m ()
-warningM = io . L.warningM "hbro" . unpack
+instance (ControlIO m) => MonadThreadedLogger (ThreadedLoggingT m) where
+  addLogHandler f = ThreadedLoggingT $ do
+    (loggerSignal, _) <- Control.Monad.Reader.ask
+    void $ addHook loggerSignal (io . f)
+
+runThreadedLoggingT :: (ControlIO m) => LogLevel -> ThreadedLoggingT m b -> m b
+runThreadedLoggingT logLevel f = do
+    loggerSignal <- newSignal LogMessage
+    stdoutLogger <- io $ newStdoutLoggerSet defaultBufSize
+    addHook loggerSignal $ \(_loc, _source, level, message) -> io . putStrLn $ formatLevel level ++ " " ++ message
+    flip runReaderT (loggerSignal, logLevel) $ unThreadedLoggingT f
+
+formatLevel :: LogLevel -> Text
+formatLevel LevelDebug     = "DEBUG"
+formatLevel LevelInfo      = "INFO "
+formatLevel LevelWarn      = "WARN "
+formatLevel LevelError     = "ERROR"
+formatLevel (LevelOther a) = justifyLeft 5 ' ' . take 5 $ tshow a
+
+-- | Like 'catchError', except that the error is automatically logged, then discarded.
+logErrors :: (MonadLogger m, Functor m, MonadError Text m) => m a -> m (Maybe a)
+logErrors f = catchError (Just <$> f) $ \e -> error e >> return Nothing
+
+-- | Like 'logErrors', but discards the result.
+logErrors_ :: (MonadLogger m, Functor m, MonadError Text m) => m a -> m ()
+logErrors_ = void . logErrors

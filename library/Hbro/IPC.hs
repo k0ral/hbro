@@ -38,14 +38,14 @@ withContext f = liftBaseWith $ \runInBase -> ZMQ.withContext (runInBase . f)
 withSocket :: (ZMQ.SocketType s, ControlIO m) => ZMQ.Context -> s -> (Socket s -> m a) -> m (StM m a)
 withSocket c s f = liftBaseWith $ \runInBase -> ZMQ.withSocket c s (runInBase . f)
 
-bindCommands :: (ControlIO m) => Text -> CommandMap m -> m ()
+bindCommands :: (ControlIO m, MonadLogger m) => Text -> CommandMap m -> m ()
 bindCommands uri commandMap = void . withContext $ \c -> withSocket c Rep $ \socket -> do
-  infoM $ "Opening IPC socket at: " ++ uri
+  info $ "Opening IPC socket at: " ++ uri
   io $ ZMQ.bind socket (unpack uri)
 
   fix $ \recurse -> do
     message <- receive socket
-    debugM $ "Received command: " ++ message
+    debug $ "Received command: " ++ message
 
     case words message of
       [] -> send socket "ERROR Empty command"
@@ -53,7 +53,7 @@ bindCommands uri commandMap = void . withContext $ \c -> withSocket c Rep $ \soc
         response <- case Map.lookup command commandMap of
                       Just f -> either ("ERROR " ++) id <$> f arguments
                       _ -> return "ERROR Unknown command"
-        debugM $ "Sending response: " ++ tshow response
+        debug $ "Sending response: " ++ tshow response
         send socket response
     recurse
 
@@ -72,7 +72,7 @@ send socket = io . ZMQ.send socket [] . encodeUtf8
 -- sendMessage context socketURI message = do
 --     socket <- io $ ZMQ.socket context Req
 --     io . ZMQ.bind socket $ unpack socketURI
---     debugM $ "Sending message to IPC socket at: " ++ socketURI
+--     debug $ "Sending message to IPC socket at: " ++ socketURI
 --     io . ZMQ.send socket [] $ encodeUtf8 message
 --     decodeUtf8 <$> io (ZMQ.receive socket)
 

@@ -31,9 +31,9 @@ Library
         data-default-class,
         dyre >= 0.8.8,
         errors,
+        fast-logger,
         glib,
         gtk3 >= 0.13,
-        hslogger,
         -- http-conduit,
         -- http-conduit-browser,
         -- http-types,
@@ -43,6 +43,7 @@ Library
         lifted-base >= 0.2.3.3,
         mtl < 2.2,
         monad-control >= 1.0,
+        monad-logger >= 0.3.6.2,
         network-uri,
         optparse-applicative >= 0.11,
         pango,
@@ -61,9 +62,9 @@ Library
         webkitgtk3 >= 0.13,
         zeromq4-haskell
     Exposed-modules:
+        Control.Monad.Logger.Extended,
         Control.Monad.Reader.Extended,
         Hbro,
-        Hbro.Attributes,
         Hbro.Boot,
         Hbro.Clipboard,
         Hbro.Config,
@@ -83,7 +84,9 @@ Library
         Hbro.Logger,
         Hbro.Prelude,
         Hbro.WebView.Signals,
-        Network.URI.Extended
+        Network.URI.Extended,
+        System.Glib.Attributes.Extended,
+        System.Process.Extended
     Other-modules:
         Graphics.UI.Gtk.WebKit.Lifted,
         Graphics.UI.Gtk.WebKit.Lifted.WebView,

@@ -18,11 +18,11 @@ module Hbro.Options (
 -- {{{ Imports
 import qualified Hbro.Dyre                   as Dyre
 import           Hbro.Error
-import           Hbro.Logger                 as Logger
 import           Hbro.Prelude                hiding ((<>))
 
 import           Control.Lens.Getter
 import           Control.Lens.TH
+import           Control.Monad.Logger
 
 import           Network.URI
 
@@ -43,7 +43,7 @@ declareLenses [d|
     , uiFileL     :: Maybe FilePath
     , dyreModeL   :: Dyre.Mode
     , dyreDebugL  :: Bool
-    , logLevelL   :: Priority
+    , logLevelL   :: LogLevel
     } deriving(Eq)
   |]
 
@@ -64,7 +64,7 @@ instance Default CliOptions where
             {- uiFile     -} Nothing
             {- dyreMode   -} def
             {- dyreDebug  -} False
-            {- logLevel   -} INFO
+            {- logLevel   -} LevelInfo
 
 -- * High level
 parseOptions :: (MonadIO m) => m (Either Command CliOptions)
@@ -92,10 +92,12 @@ dyreMasterBinary :: Parser String
 dyreMasterBinary = strOption $ long "dyre-master-binary" <> metavar "PATH" <> hidden <> internal <> help "Internal flag used for dynamic reconfiguration."
 
 -- ** Log level options
-verboseFlag, quietFlag, logLevel :: Parser Priority
-verboseFlag = flag INFO DEBUG $ long "verbose" <> short 'v' <> help "Set log level to DEBUG."
-quietFlag   = flag INFO ERROR $ long "quiet" <> short 'q' <> help "Set log level to ERROR."
-logLevel    = option auto $ long "log-level" <> short 'l' <> metavar "LOG-LEVEL" <> value INFO <> completeWith ["DEBUG", "INFO", "NOTICE", "WARNING", "ERROR", "CRITICAL", "ALERT", "EMERGENCY"] <> help "Set log level. Available values: DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY."
+verboseFlag, quietFlag, logLevel :: Parser LogLevel
+verboseFlag = flag LevelInfo LevelDebug $ long "verbose" <> short 'v' <> help "Set log level to DEBUG."
+quietFlag   = flag LevelInfo LevelError $ long "quiet" <> short 'q' <> help "Set log level to ERROR."
+logLevel    = option auto $ long "log-level" <> short 'l' <> metavar "LOG-LEVEL" <> value LevelInfo <> completeWith ["LevelDebug", "LevelInfo", "LevelWarn", "LevelError"] <> help "Set log level. Available values: LevelDebug, LevelInfo, LevelWarn, LevelError."
+
+-- |
 
 -- ** Commands
 rebuildOptions, versionOptions :: Parser Command

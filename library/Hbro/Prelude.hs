@@ -26,8 +26,6 @@ module Hbro.Prelude
 -- * Gtk util
     , gSync
     , gAsync
--- * Process control
-    , spawn
 -- * Pango util
     , allItalic
     , allBold
@@ -69,10 +67,8 @@ import           Graphics.UI.Gtk.General.General
 
 import           Safe                            as X (initSafe, tailSafe)
 
-import           System.Log.Logger
 -- import System.Posix.Process
 -- import System.Posix.Types
-import           System.Process
 -- }}}
 
 
@@ -140,12 +136,6 @@ gAsync = io . postGUIAsync . void
 -- }}}
 
 -- {{{ Process management
--- | Run external command and don't die when parent process exits.
-spawn :: MonadIO m => String -> [String] -> m ()
-spawn command options = io $ do
-    debugM "hbro.prelude" $ "Executing command: " ++ showCommandForUser command options
-    void $ createProcess (proc command options) { std_in = CreatePipe, std_out = CreatePipe, std_err = CreatePipe, close_fds = True }
-
 -- Return the list of process IDs corresponding to all running instances of the browser.
 -- getAllProcessIDs :: MonadIO m => m [ProcessID]
 -- getAllProcessIDs = do

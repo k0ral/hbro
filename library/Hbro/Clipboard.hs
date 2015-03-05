@@ -15,13 +15,13 @@ import           Graphics.UI.Gtk.General.Selection
 
 
 -- | Write given 'Text' to the selection-primary clipboard
-write :: (BaseIO m) => Text -> m ()
+write :: (BaseIO m, MonadLogger m) => Text -> m ()
 write = write' selectionPrimary
 
 -- | Write given text to the given clipboard
-write' :: (BaseIO m) => SelectionTag -> Text -> m ()
+write' :: (BaseIO m, MonadLogger m) => SelectionTag -> Text -> m ()
 write' tag text = do
-    debugM $ "Writing to clipboard: " ++ text
+    debug $ "Writing to clipboard: " ++ text
     gSync (clipboardGet tag) >>= gAsync . (`clipboardSetText` text)
 
 -- | Read clipboard's content. Both 'selectionPrimary' and 'selectionClipboard' are inspected (in this order).

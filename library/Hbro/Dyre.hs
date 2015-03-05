@@ -37,16 +37,15 @@ describePaths = io $ do
         ]
 
 -- Dynamic reconfiguration settings
-parameters :: Mode -> (a -> IO b) -> Params (Either Text a)
-parameters mode main = baseParameters
+parameters :: (Functor m, MonadIO m, MonadLogger m, StM m () ~ ()) => (RunInBase m IO) -> Mode -> (a -> m b) -> Params (Either Text a)
+parameters runInIO mode main = baseParameters
     { configCheck = mode /= Vanilla
-    , realMain    = main'
+    , realMain    = runInIO . main'
     }
-  where
-    main' (Left e)  = errorM e
-    main' (Right x) = do
-      debugM . ("Dynamic reconfiguration paths:\n" ++) =<< describePaths
-      void . io $ main x
+    where main' (Left e) = error e
+          main' (Right x) = do
+            debug . ("Dynamic reconfiguration paths:\n" ++) =<< describePaths
+            void $ main x
 
 baseParameters :: Params (Either Text a)
 baseParameters = defaultParams
@@ -57,8 +56,8 @@ baseParameters = defaultParams
     , includeCurrentDirectory = False
     }
 
-wrap :: (MonadIO m) => Mode -> (a -> IO b) -> a -> m ()
-wrap mode main args = io . wrapMain (parameters mode main) $ Right args
+wrap :: (ControlIO m, MonadLogger m, StM m () ~ ()) => Mode -> (a -> m b) -> a -> m ()
+wrap mode result args = liftBaseWith $ \runInIO -> wrapMain (parameters runInIO mode result) (Right args)
 
 
 -- | Launch a recompilation of the configuration file

@@ -9,6 +9,7 @@ module Hbro.Event (
 -- * Utils
     , newSignal
     , emit
+    , emit'
     , setDefaultHook
     , addHook
     , addRecursiveHook
@@ -16,10 +17,10 @@ module Hbro.Event (
     ) where
 
 -- {{{ Imports
-import           Hbro.Logger
 import           Hbro.Prelude
 
 import           Control.Concurrent.Async.Lifted
+import           Control.Monad.Logger.Extended
 
 import           Data.Function                   (fix)
 -- }}}
@@ -28,6 +29,8 @@ import           Data.Function                   (fix)
 class (Show e) => Event e where
   type Input e :: *
   type Input e = ()
+
+  describeInput :: e -> Input e -> Maybe Text
 
 -- | A signal notifies the occurrence of an event.
 data (Event e) => Signal e = Signal e (TChan (Input e)) (MVar (Async ()))
@@ -44,10 +47,14 @@ waitFor :: (MonadIO m) => TChan a -> m a
 waitFor = atomically . readTChan
 
 -- | Trigger an event.
-emit :: (Event e, MonadIO m) => Signal e -> Input e -> m ()
-emit (Signal e s _) input = do
-  debugM $ "Event triggered: " ++ tshow e
-  atomically $ writeTChan s input
+emit :: (Event e, MonadIO m, MonadLogger m) => Signal e -> Input e -> m ()
+emit signal@(Signal e _ _) input = do
+  forM_ (describeInput e input) $ debug . ("Event triggered: " ++)
+  emit' signal input
+
+-- | Like 'emit', but doesn't log anything.
+emit' :: (Event e, MonadIO m) => Signal e -> Input e -> m ()
+emit' (Signal _ s _) input = atomically $ writeTChan s input
 
 -- | A default hook is run as long as no other hook is added.
 setDefaultHook :: (Event a, ControlIO m) => Signal a -> (Input a -> m ()) -> m ()

@@ -24,7 +24,7 @@ import qualified Hbro.Gui.NotificationBar              as NotifBar
 import           Hbro.Gui.PromptBar                    (PromptBar, closedL)
 import qualified Hbro.Gui.PromptBar                    as Prompt
 import           Hbro.Gui.StatusBar
-import           Hbro.Logger                           hiding (initialize)
+import           Hbro.Logger
 import           Hbro.Prelude                          hiding (on)
 
 import           Control.Lens.Getter
@@ -34,12 +34,13 @@ import           Graphics.UI.Gtk.Abstract.Widget
 import qualified Graphics.UI.Gtk.Builder               as Gtk
 import           Graphics.UI.Gtk.General.General       as Gtk
 import           Graphics.UI.Gtk.Windows.Window
-import           System.Glib.Signals
+import           System.Glib.Signals                   hiding (Signal)
 -- }}}
 
-initialize :: (ControlIO m, Alternative m, MonadError Text m) => FilePath -> m (Gtk.Builder, MainView, PromptBar, StatusBar, NotificationBar)
+initialize :: (ControlIO m, Alternative m, MonadError Text m, MonadLogger m, MonadThreadedLogger m)
+           => FilePath -> m (Gtk.Builder, MainView, PromptBar, StatusBar, NotificationBar)
 initialize (fpToText -> file) = do
-    debugM $ "Building GUI from " ++ file
+    debug $ "Building GUI from " ++ file
     builder <- gSync Gtk.builderNew
     gSync . Gtk.builderAddFromFile builder $ unpack file
 

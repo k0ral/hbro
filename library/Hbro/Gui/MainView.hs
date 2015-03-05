@@ -37,11 +37,10 @@ module Hbro.Gui.MainView
   ) where
 
 -- {{{ Imports
-import           Hbro.Attributes
 import           Hbro.Event
 import           Hbro.Gui.Builder
 import           Hbro.Keys                                as Keys
-import           Hbro.Logger                              hiding (initialize)
+import           Hbro.Logger
 import           Hbro.Prelude                             hiding (on)
 import           Hbro.WebView.Signals
 
@@ -63,12 +62,14 @@ import           Graphics.UI.Gtk.WebKit.WebSettings
 
 import           Network.URI
 
+import           System.Glib.Attributes.Extended
 import           System.Glib.Signals                      hiding (Signal)
 -- }}}
 
 -- * Types
 data Scrolled = Scrolled deriving(Show)
-instance Event Scrolled
+instance Event Scrolled where
+  describeInput _ _ = Just "Scrolled"
 
 declareLenses [d|
   data MainView = MainView
@@ -133,7 +134,7 @@ buildFrom builder = do
              <*> newSignal ZoomLevelChanged
 
 
-initialize :: (MonadIO m, Functor m) => MainView -> m MainView
+initialize :: (ControlIO m, MonadLogger m) => MainView -> m MainView
 initialize mainView = do
   -- gAsync $ do
   set webView widgetCanDefault True
@@ -144,10 +145,10 @@ initialize mainView = do
       putStrLn $ unlines [a, b, tshow n, c]
       return True
 
-  gAsync . on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> do
+  gAsync . on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> io $ do
     uri <- networkRequestGetUri request :: IO (Maybe Text)
-    debugM $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" ++ tshow uri ++ ">"
-    renderable <- webViewCanShowMimeType webView mimetype
+    -- debug $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" ++ tshow uri ++ ">"
+    renderable <- webViewCanShowMimeType webView (asText mimetype)
     case (uri, renderable) of
       (Just _, True) -> webPolicyDecisionUse decision
       (Just _, _) -> webPolicyDecisionDownload decision
@@ -187,12 +188,12 @@ canRender :: (MonadIO m, MonadReader r m, Has MainView r) => Text -> m Bool
 canRender mimetype = gSync . (`webViewCanShowMimeType` mimetype) =<< asks (view webViewL)
 
 
-render :: (MonadReader r m, Has MainView r, MonadIO m) => Text -> URI -> m ()
+render :: (MonadReader r m, Has MainView r, MonadIO m, MonadLogger m) => Text -> URI -> m ()
 render page uri = do
-    debugM $ "Rendering <" ++ tshow uri ++ ">"
+    debug $ "Rendering <" ++ tshow uri ++ ">"
     -- loadString page uri =<< get' webViewL
 
-    -- debugM $ "Base URI: " ++ show (baseOf uri)
+    -- debug $ "Base URI: " ++ show (baseOf uri)
 
     loadString page (baseOf uri) =<< asks (view webViewL)
   where
@@ -202,7 +203,7 @@ render page uri = do
 
 
 -- | Set default settings
-initSettings :: (MonadIO m, Functor m) => WebView -> m WebView
+initSettings :: (MonadIO m, MonadLogger m, Functor m) => WebView -> m WebView
 initSettings webView = do
     s <- gSync $ webViewGetWebSettings webView
 
@@ -241,14 +242,14 @@ zoomIn  = getWebView >>= gAsync . webViewZoomIn
 zoomOut = getWebView >>= gAsync . webViewZoomOut
 
 -- | Shortcut to 'scroll' horizontally or vertically.
-scrollH, scrollV :: (MonadIO m, Functor m, MonadReader r m, Has MainView r) => Position -> m ()
+scrollH, scrollV :: (MonadIO m, Functor m, MonadLogger m, MonadReader r m, Has MainView r) => Position -> m ()
 scrollH p = void . scroll Horizontal p =<< ask
 scrollV p = void . scroll Vertical p =<< ask
 
 -- | General scrolling command
-scroll :: (MonadIO m) => Axis -> Position -> MainView -> m MainView
+scroll :: (MonadIO m, MonadLogger m) => Axis -> Position -> MainView -> m MainView
 scroll axis percentage mainView = do
-     debugM $ "Set scroll " ++ tshow axis ++ " = " ++ tshow percentage
+     debug $ "Set scroll " ++ tshow axis ++ " = " ++ tshow percentage
 
      adj     <- getAdjustment axis $ mainView^.scrollWindowL
      page    <- get adj Gtk.adjustmentPageSize
@@ -264,7 +265,7 @@ scroll axis percentage mainView = do
      return mainView
 
 
-attachScrolled :: (MonadIO m) => MainView -> Signal Scrolled -> m (ConnectId Gtk.Adjustment)
+attachScrolled :: (ControlIO m, MonadLogger m) => MainView -> Signal Scrolled -> m (ConnectId Gtk.Adjustment)
 attachScrolled mainView signal = do
   adjustment <- getAdjustment Vertical $ mainView^.scrollWindowL
-  gSync . Gtk.onValueChanged adjustment $ emit signal ()
+  liftBaseWith $ \runInIO -> gSync . Gtk.onValueChanged adjustment . void . runInIO $ emit signal ()

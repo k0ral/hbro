@@ -1,6 +1,5 @@
 module Hbro ( module X) where
 
--- import           Hbro.Attributes  as X
 import           Hbro.Boot         as X
 -- import           Hbro.Clipboard
 -- import           Hbro.Config

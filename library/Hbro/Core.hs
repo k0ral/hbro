@@ -38,7 +38,7 @@ import           Hbro.Config                           as Config
 import           Hbro.Error
 -- import           Hbro.Gui                              as Gui
 import           Hbro.Gui.MainView
-import           Hbro.Logger                           hiding (initialize)
+import           Hbro.Logger
 import           Hbro.Prelude                          as H
 
 import           Graphics.UI.Gtk.Gdk.Pixbuf            (Pixbuf)
@@ -89,12 +89,12 @@ getPageTitle = webViewGetTitle =<< getWebView
 -- }}}
 
 -- {{{ Browsing
-goHome :: (MonadIO m, MonadReader r m, Has MainView r, Has (TVar Config) r, MonadError Text m) => m ()
+goHome :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r, Has (TVar Config) r, MonadError Text m) => m ()
 goHome = load =<< Config.get homePageL
 
-load :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => URI -> m ()
+load :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r, MonadError Text m) => URI -> m ()
 load uri = do
-    debugM $ "Loading URI: " ++ tshow uri
+    debug $ "Loading URI: " ++ tshow uri
     -- void . logErrors $ do
     --     currentURI <- getURI
     --     guard (currentURI /= uri')
@@ -128,20 +128,20 @@ reload    = gAsync . webViewReload    =<< getWebView
 goBack    = gAsync . webViewGoBack    =<< getWebView
 goForward = gAsync . webViewGoForward =<< getWebView
 
-reloadBypassCache, stopLoading :: (MonadIO m, MonadReader r m, Has MainView r) => m ()
-reloadBypassCache = getWebView >>= gAsync . webViewReloadBypassCache >> debugM "Reloading without cache."
-stopLoading = getWebView >>= gAsync . webViewStopLoading >> debugM "Stopped loading"
+reloadBypassCache, stopLoading :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r) => m ()
+reloadBypassCache = getWebView >>= gAsync . webViewReloadBypassCache >> debug "Reloading without cache."
+stopLoading = getWebView >>= gAsync . webViewStopLoading >> debug "Stopped loading"
 -- }}}
 
 
 -- {{{
-searchText :: (MonadIO m, MonadReader r m, Has MainView r) => CaseSensitivity -> Direction -> Wrap -> Text -> m Bool
+searchText :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r) => CaseSensitivity -> Direction -> Wrap -> Text -> m Bool
 searchText s d w text = do
-    debugM $ "Searching text: " ++ text
+    debug $ "Searching text: " ++ text
     v <- getWebView
     gSync $ webViewSearchText v text (toBool s) (toBool d) (toBool w)
 
-searchText_ :: (MonadIO m, Functor m, MonadReader r m, Has MainView r) => CaseSensitivity -> Direction -> Wrap -> Text -> m ()
+searchText_ :: (MonadIO m, Functor m, MonadLogger m, MonadReader r m, Has MainView r) => CaseSensitivity -> Direction -> Wrap -> Text -> m ()
 searchText_ s d w text = void $ searchText s d w text
 
 printPage :: (MonadIO m, MonadReader r m, Has MainView r) => m ()
@@ -155,9 +155,9 @@ quit = gAsync mainQuit
 
 -- {{{ Misc
 -- | Execute a javascript file on current webpage.
-executeJSFile :: (MonadIO m) => FilePath -> WebView -> m ()
+executeJSFile :: (MonadIO m, MonadLogger m) => FilePath -> WebView -> m ()
 executeJSFile filePath webView' = do
-    debugM $ "Executing Javascript file: " ++ fpToText filePath
+    debug $ "Executing Javascript file: " ++ fpToText filePath
     script <- readFile filePath
     let script' = asText . unwords . map (++ "\n") . lines $ script
 
