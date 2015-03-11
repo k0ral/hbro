@@ -37,7 +37,6 @@ import           Graphics.UI.Gtk.Windows.Window
 import           Network.URI.Extended
 
 import           System.Glib.Attributes.Extended
-import           System.Process.Extended
 -- }}}
 
 -- | A 'God' monad has access to everything.
@@ -47,14 +46,14 @@ defaultDownloadHook :: (MonadLogger m) => Input Download -> m ()
 defaultDownloadHook _ = warning "No download hook defined."
 
 defaultLinkClickedHook :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has MainView r) => Input LinkClicked -> m ()
-defaultLinkClickedHook (uri, Gtk.MiddleButton) = spawn "hbro" ["-u", tshow uri]
+defaultLinkClickedHook (uri, Gtk.MiddleButton) = spawnHbro' uri
 defaultLinkClickedHook (uri, _) = load uri
 
 defaultLoadRequestedHook :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has MainView r) => URI -> m ()
 defaultLoadRequestedHook = load
 
 defaultNewWindowHook :: (MonadIO m, MonadLogger m) => URI -> m ()
-defaultNewWindowHook uri = spawn "hbro" ["-u", tshow uri]
+defaultNewWindowHook uri = spawnHbro' uri
 
 defaultTitleChangedHook :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has Gtk.Builder r) => Text -> m ()
 defaultTitleChangedHook title = getMainWindow >>= \w -> set w windowTitle ("hbro | " ++ title) >> return ()
@@ -107,7 +106,7 @@ defaultKeyMap = Map.fromList
    , [_Control .| _c]      >: getCurrentURI >>= Clipboard.write . tshow
    , [_Alt     .| _c]      >: getPageTitle >>= Clipboard.write
    , [_Control .| _v]      >: Clipboard.read >>= parseURIReferenceM >>= load
-   , [_Alt     .| _v]      >: Clipboard.read >>= \u -> spawn "hbro" ["-u", u]
+   , [_Alt     .| _v]      >: Clipboard.read >>= parseURIReferenceM >>= spawnHbro'
 -- Display
    , [_Control .| _plus]   >: zoomIn
    , [_Control .| _minus]  >: zoomOut
@@ -127,6 +126,6 @@ defaultKeyMap = Map.fromList
 -- Misc
     --, (_Control .| _i)      >: openInspector
    , [_Alt     .| _Print]  >: printPage
-   , [_Control .| _t]      >: spawn "hbro" []
+   , [_Control .| _t]      >: spawnHbro
    , [_Control .| _w]      >: quit
    ]

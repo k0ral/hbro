@@ -28,6 +28,8 @@ module Hbro.Core (
     , printPage
     , searchText
     , searchText_
+    , spawnHbro
+    , spawnHbro'
     , quit
     , executeJSFile
     ) where
@@ -36,6 +38,7 @@ module Hbro.Core (
 import           Graphics.UI.Gtk.WebKit.Lifted.WebView
 
 import           Hbro.Config                           as Config
+import           Hbro.Dyre
 import           Hbro.Error
 -- import           Hbro.Gui                              as Gui
 import           Hbro.Gui.MainView
@@ -48,6 +51,8 @@ import           Graphics.UI.Gtk.WebKit.WebDataSource
 import           Graphics.UI.Gtk.WebKit.WebFrame
 
 import           Network.URI.Extended
+
+import           System.Process.Extended
 -- }}}
 
 -- {{{ Types
@@ -148,6 +153,18 @@ searchText_ s d w text = void $ searchText s d w text
 printPage :: (MonadIO m, MonadReader r m, Has MainView r) => m ()
 printPage = gAsync . webFramePrint =<< gSync . webViewGetMainFrame =<< getWebView
 -- }}}
+
+-- | Spawn another browser instance.
+spawnHbro :: (MonadIO m, MonadLogger m) => m ()
+spawnHbro = do
+  executable <- getHbroExecutable
+  spawn (fpToText executable) []
+
+-- | Spawn another browser instance and load the given URI at start-up.
+spawnHbro' :: (MonadIO m, MonadLogger m) => URI -> m ()
+spawnHbro' uri = do
+  executable <- getHbroExecutable
+  spawn (fpToText executable) ["-u", tshow uri]
 
 -- | Terminate the program.
 quit :: (MonadIO m) => m ()

@@ -7,6 +7,7 @@
 -- | Dynamic reconfiguration. Designed to be imported as @qualified@.
 module Hbro.Dyre
     ( Mode(..)
+    , getHbroExecutable
     , wrap
     , recompile
     ) where
@@ -38,6 +39,11 @@ describePaths = io $ do
         , "Cache directory: " ++ d
         , "Lib directory:   " ++ e
         ]
+
+getHbroExecutable :: (MonadIO m) => m FilePath
+getHbroExecutable = io $ do
+  (a, _, _, _, _) <- getPaths baseParameters
+  return . fpFromText $ pack a
 
 -- Dynamic reconfiguration settings
 parameters :: (Functor m, MonadIO m, MonadLogger m, StM m () ~ ()) => (RunInBase m IO) -> Mode -> (a -> m b) -> Params (Either Text a)
