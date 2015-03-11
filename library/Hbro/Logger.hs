@@ -22,17 +22,18 @@ module Hbro.Logger
 -- {{{ Imports
 import           Hbro.Error
 import           Hbro.Event
-import           Hbro.Prelude                  hiding (runReaderT)
+import           Hbro.Prelude                    hiding (runReaderT)
 
+import           Control.Concurrent.Async.Lifted
 import           Control.Monad.Base
-import           Control.Monad.Logger.Extended as X
+import           Control.Monad.Logger.Extended   as X
 import           Control.Monad.Reader
 
-import           Data.Text                     (justifyLeft)
+import           Data.Text                       (justifyLeft)
 import           Data.Text.Encoding
 import           Data.Text.Encoding.Error
 
-import           System.Log.FastLogger         as X
+import           System.Log.FastLogger           as X
 -- }}}
 
 -- | Log event
@@ -81,9 +82,12 @@ instance (ControlIO m) => MonadThreadedLogger (ThreadedLoggingT m) where
 runThreadedLoggingT :: (ControlIO m) => LogLevel -> ThreadedLoggingT m b -> m b
 runThreadedLoggingT logLevel f = do
     loggerSignal <- newSignal LogMessage
-    stdoutLogger <- io $ newStdoutLoggerSet defaultBufSize
-    addHook loggerSignal $ \(_loc, _source, level, message) -> io . putStrLn $ formatLevel level ++ " " ++ message
-    flip runReaderT (loggerSignal, logLevel) $ unThreadedLoggingT f
+    loggerThread <- addHook loggerSignal $ \(_loc, _source, level, message) -> io . putStrLn $ formatLevel level ++ " " ++ message
+
+    result <- flip runReaderT (loggerSignal, logLevel) $ unThreadedLoggingT f
+    closeSignal' loggerSignal
+    io $ wait loggerThread
+    return result
 
 formatLevel :: LogLevel -> Text
 formatLevel LevelDebug     = "DEBUG"

@@ -86,15 +86,15 @@ declareLenses [d|
 -- | A 'PromptBar' can be built from an XML file.
 buildFrom :: (ControlIO m, MonadLogger m, Applicative m) => Gtk.Builder -> m PromptBar
 buildFrom builder = do
-    validation  <- io newEmptyTMVarIO
-    entry       <- getWidget builder entryName
-    closeSignal <- newSignal Closed
+    validation   <- io newEmptyTMVarIO
+    entry        <- getWidget builder entryName
+    closedSignal <- newSignal Closed
 
     promptBar <- PromptBar <$> getWidget builder boxName
                            <*> getWidget builder labelName
                            <*> pure entry
                            <*> newSignal Changed
-                           <*> pure closeSignal
+                           <*> pure closedSignal
                            <*> pure validation
 
     onEntryChanged entry $ emit (promptBar^.changedL)
