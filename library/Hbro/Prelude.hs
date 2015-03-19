@@ -20,6 +20,11 @@ module Hbro.Prelude
     , (>/>)
     , abort
     , doNothing
+-- * File manipulation
+    , readFileE
+    , readFileE'
+    , writeFileE
+    , writeFileE'
 -- * Lens util
     , withM
     , withM_
@@ -27,15 +32,6 @@ module Hbro.Prelude
 -- * Gtk util
     , gSync
     , gAsync
--- * Pango util
-    , allItalic
-    , allBold
-    , black
-    , gray
-    , red
-    , green
-    , blue
-    , yellow
 ) where
 
 -- {{{ Imports
@@ -52,18 +48,19 @@ import           Control.Conditional             as X (ToBool (..), (<<|), (<|),
                                                        (|>), (|>>))
 import           Control.Lens
 import           Control.Monad.Base              as X (MonadBase (..))
+import           Control.Monad.Except
 import           Control.Monad.Reader.Extended   as X hiding (get)
 import           Control.Monad.Trans.Control     as X
 
+import qualified Data.ByteString                 as Strict
+import qualified Data.ByteString.Lazy            as Lazy
 import           Data.Default.Class              as X
 import           Data.Foldable                   as X (asum)
-import           Data.Functor                    as X
 import           Data.List                       as X (tail)
 import           Data.List.NonEmpty              hiding (reverse)
 import qualified Data.List.NonEmpty              as NonEmpty
 import           Data.Maybe                      as X (fromJust)
 
-import           Graphics.Rendering.Pango.Enums
 import           Graphics.UI.Gtk.General.General
 
 import           Safe                            as X (initSafe, tailSafe)
@@ -114,6 +111,24 @@ doNothing :: Monad m => m ()
 doNothing = return ()
 -- }}}
 
+-- {{{ File manipulation
+-- | Lifted version of 'readFile'
+readFileE :: (ControlIO m, MonadError Text m) => FilePath -> m Lazy.ByteString
+readFileE = handleIO (throwError . tshow) . readFile
+
+-- | Strict version of 'readFileE'
+readFileE' :: (ControlIO m, MonadError Text m) => FilePath -> m Strict.ByteString
+readFileE' = handleIO (throwError . tshow) . readFile
+
+-- | Lifted version of 'writeFile'
+writeFileE :: (ControlIO m, MonadError Text m) => FilePath -> Lazy.ByteString -> m ()
+writeFileE f x = handleIO (throwError . tshow) $ writeFile f x
+
+-- | Strict version of 'writeFileE'
+writeFileE' :: (ControlIO m, MonadError Text m) => FilePath -> Strict.ByteString -> m ()
+writeFileE' f x = handleIO (throwError . tshow) $ writeFile f x
+-- }}}
+
 -- {{{ Lens util
 -- | Alias for 'mapMOf'
 withM :: Profunctor p => Over p (WrappedMonad m) s t a b -> p a (m b) -> s -> m t
@@ -153,17 +168,3 @@ errorHandler file e = do
   when (isAlreadyInUseError e) $ unlessQuiet . io . putStrLn $ "ERROR: file <" ++ file ++ "> is already opened and cannot be reopened."
   when (isDoesNotExistError e) $ unlessQuiet . io . putStrLn $ "ERROR: file <" ++ file ++ "> doesn't exist."
   when (isPermissionError   e) $ unlessQuiet . io . putStrLn $ "ERROR: user doesn't have permission to open file <" ++ file ++ ">."-}
-
--- {{{ Pango util
-allItalic, allBold :: PangoAttribute
-allItalic = AttrStyle  {paStart = 0, paEnd = -1, paStyle  = StyleItalic}
-allBold   = AttrWeight {paStart = 0, paEnd = -1, paWeight = WeightBold}
-
-black, gray, red, green, blue, yellow :: Color
-black  = Color     0     0     0
-gray   = Color 32767 32767 32767
-red    = Color 65535     0     0
-green  = Color     0 65535     0
-blue   = Color     0     0 65535
-yellow = Color 65535 65535     0
--- }}}

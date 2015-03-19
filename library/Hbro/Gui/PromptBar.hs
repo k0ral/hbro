@@ -39,25 +39,25 @@ import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Gui.Builder
 import           Hbro.Logger
-import           Hbro.Prelude                    hiding (on)
+import           Hbro.Prelude                      hiding (on)
 
 import           Control.Concurrent.Async.Lifted
 import           Control.Lens.Getter
 import           Control.Lens.TH
 
-import           Graphics.Rendering.Pango.Enums
+import           Graphics.Rendering.Pango.Extended
 import           Graphics.UI.Gtk.Abstract.Widget
-import qualified Graphics.UI.Gtk.Builder         as Gtk
+import qualified Graphics.UI.Gtk.Builder           as Gtk
 import           Graphics.UI.Gtk.Display.Label
 import           Graphics.UI.Gtk.Entry.Editable
 import           Graphics.UI.Gtk.Entry.Entry
-import           Graphics.UI.Gtk.Gdk.EventM      as Gdk
+import           Graphics.UI.Gtk.Gdk.EventM        as Gdk
 import           Graphics.UI.Gtk.Layout.HBox
 
 import           Network.URI.Extended
 
 import           System.Glib.Attributes.Extended
-import           System.Glib.Signals             hiding (Signal)
+import           System.Glib.Signals               hiding (Signal)
 -- }}}
 
 -- {{{ Types

@@ -62,39 +62,40 @@ Library
         webkitgtk3 >= 0.13,
         zeromq4-haskell
     Exposed-modules:
-        Control.Monad.Logger.Extended,
-        Control.Monad.Reader.Extended,
-        Hbro,
-        Hbro.Boot,
-        Hbro.Clipboard,
-        Hbro.Config,
-        Hbro.Core,
-        Hbro.Defaults,
-        Hbro.Error,
-        Hbro.Event,
-        Hbro.Gdk.KeyVal,
-        Hbro.Gui.Builder,
-        Hbro.Gui.MainView,
-        Hbro.Gui.NotificationBar,
-        Hbro.Gui.PromptBar,
-        Hbro.Gui.StatusBar,
-        Hbro.IPC,
-        Hbro.Keys,
-        Hbro.Keys.Model,
-        Hbro.Logger,
-        Hbro.Prelude,
-        Hbro.WebView.Signals,
-        Network.URI.Extended,
-        System.Glib.Attributes.Extended,
-        System.Process.Extended
+        Control.Monad.Logger.Extended
+        , Control.Monad.Reader.Extended
+        , Graphics.Rendering.Pango.Extended
+        , Hbro
+        , Hbro.Boot
+        , Hbro.Clipboard
+        , Hbro.Config
+        , Hbro.Core
+        , Hbro.Defaults
+        , Hbro.Error
+        , Hbro.Event
+        , Hbro.Gdk.KeyVal
+        , Hbro.Gui.Builder
+        , Hbro.Gui.MainView
+        , Hbro.Gui.NotificationBar
+        , Hbro.Gui.PromptBar
+        , Hbro.Gui.StatusBar
+        , Hbro.IPC
+        , Hbro.Keys
+        , Hbro.Keys.Model
+        , Hbro.Logger
+        , Hbro.Prelude
+        , Hbro.WebView.Signals
+        , Network.URI.Extended
+        , System.Glib.Attributes.Extended
+        , System.Process.Extended
     Other-modules:
-        Graphics.UI.Gtk.WebKit.Lifted,
-        Graphics.UI.Gtk.WebKit.Lifted.WebView,
-        -- Hbro.CFunctions,
-        Hbro.Dyre,
-        Hbro.Gui,
-        Hbro.Options,
-        Paths_hbro
+        Graphics.UI.Gtk.WebKit.Lifted
+        , Graphics.UI.Gtk.WebKit.Lifted.WebView
+        -- , Hbro.CFunctions
+        , Hbro.Dyre
+        , Hbro.Gui
+        , Hbro.Options
+        , Paths_hbro
     -- Build-tools: hsc2hs
     -- C-sources: cbits/cbits.c
     -- Include-dirs: include

@@ -15,10 +15,10 @@ import           Hbro.Gui.Builder
 import           Hbro.Logger
 import           Hbro.Prelude
 
-import           Graphics.Rendering.Pango.Enums
+import           Graphics.Rendering.Pango.Extended
 import           Graphics.UI.Gtk.Abstract.Misc
 import           Graphics.UI.Gtk.Abstract.Widget
-import qualified Graphics.UI.Gtk.Builder         as Gtk
+import qualified Graphics.UI.Gtk.Builder           as Gtk
 import           Graphics.UI.Gtk.Display.Label
 
 import           System.Glib.Types
