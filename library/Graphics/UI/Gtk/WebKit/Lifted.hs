@@ -11,7 +11,9 @@ module Graphics.UI.Gtk.WebKit.Lifted (
     downloadGetUri,
 -- * 'NetworkRequest'
     downloadGetSuggestedFilename,
-) where
+-- * 'WebDataSource'
+    dataSourceGetData
+    ) where
 
 -- {{{ Imports
 import           Hbro.Error
@@ -20,12 +22,14 @@ import           Hbro.Prelude
 import qualified Graphics.UI.Gtk.WebKit.Download       as W
 import           Graphics.UI.Gtk.WebKit.NetworkRequest (NetworkRequest)
 import qualified Graphics.UI.Gtk.WebKit.NetworkRequest as W
+import           Graphics.UI.Gtk.WebKit.WebDataSource  as W
 
 import           Network.URI.Extended
 -- }}}
 
 -- | Error message
-unavailableFileName, unavailableURI :: Text
+unavailableData, unavailableFileName, unavailableURI :: Text
+unavailableData = "No data available in the web frame."
 unavailableFileName = "No file name available"
 unavailableURI = "No URI available"
 
@@ -37,3 +41,6 @@ downloadGetUri d = parseURIM =<< io (W.downloadGetUri d) <!> unavailableURI
 
 downloadGetSuggestedFilename :: (MonadIO m, MonadError Text m) => W.Download -> m Text
 downloadGetSuggestedFilename d = io (W.downloadGetSuggestedFilename d) <!> unavailableFileName
+
+dataSourceGetData :: (MonadIO m, MonadError Text m) => WebDataSource -> m ByteString
+dataSourceGetData ds = io (webDataSourceGetData ds) <!> unavailableData

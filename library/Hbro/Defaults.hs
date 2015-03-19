@@ -125,6 +125,7 @@ defaultKeyMap = Map.fromList
    , [_Control .| _h]      >: gAsync . webViewUnMarkTextMatches =<< getWebView
 -- Misc
     --, (_Control .| _i)      >: openInspector
+   , [_Control .| _s]      >: promptM "Save webpage " "" >>= saveWebPage . fpFromText
    , [_Alt     .| _Print]  >: printPage
    , [_Control .| _t]      >: spawnHbro
    , [_Control .| _w]      >: quit

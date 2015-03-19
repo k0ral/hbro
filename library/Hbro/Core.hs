@@ -31,10 +31,12 @@ module Hbro.Core (
     , spawnHbro
     , spawnHbro'
     , quit
+    , saveWebPage
     , executeJSFile
     ) where
 
 -- {{{ Imports
+import           Graphics.UI.Gtk.WebKit.Lifted
 import           Graphics.UI.Gtk.WebKit.Lifted.WebView
 
 import           Hbro.Config                           as Config
@@ -172,6 +174,12 @@ quit = gAsync mainQuit
 
 
 -- {{{ Misc
+saveWebPage :: (ControlIO m, MonadLogger m, MonadReader r m, Has MainView r, MonadError Text m) => FilePath -> m ()
+saveWebPage file = do
+  webFrame <- io . webViewGetMainFrame =<< getWebView
+  rawData  <- dataSourceGetData =<< io (webFrameGetDataSource webFrame)
+  writeFileE' file rawData
+
 -- | Execute a javascript file on current webpage.
 executeJSFile :: (MonadIO m, MonadLogger m) => FilePath -> WebView -> m ()
 executeJSFile filePath webView' = do
