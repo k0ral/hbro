@@ -128,13 +128,17 @@ load uri = do
 --     render page uri
 
 
-reload, goBack, goForward :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m ()
+reload, goBack, goForward :: (MonadIO m, MonadReader r m, Has MainView r, MonadLogger m) => m ()
 -- reload    = load  =<< Client.getURI
 -- goBack    = load' =<< Browser.stepBackward =<< getURI
 -- goForward = load' =<< Browser.stepForward =<< getURI
 reload    = gAsync . webViewReload    =<< getWebView
-goBack    = gAsync . webViewGoBack    =<< getWebView
-goForward = gAsync . webViewGoForward =<< getWebView
+goBack = do
+  gAsync . webViewGoBack    =<< getWebView
+  unlessM (gSync . webViewCanGoBack =<< getWebView) $ warning "Unable to go back."
+goForward = do
+  gAsync . webViewGoForward =<< getWebView
+  unlessM (gSync . webViewCanGoForward =<< getWebView) $ warning "Unable to go forward."
 
 reloadBypassCache, stopLoading :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r) => m ()
 reloadBypassCache = getWebView >>= gAsync . webViewReloadBypassCache >> debug "Reloading without cache."
