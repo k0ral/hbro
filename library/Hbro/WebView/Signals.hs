@@ -26,11 +26,12 @@ import           Graphics.UI.Gtk.WebKit.Download            as W hiding
 import           Graphics.UI.Gtk.WebKit.WebNavigationAction
 import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import           Graphics.UI.Gtk.WebKit.WebView             as W hiding
-                                                                  (LoadFinished)
+                                                                  (LoadStatus)
 
 import           Network.URI.Extended
 
 import           System.Glib.Attributes.Extended
+import           System.Glib.GError
 import           System.Glib.Signals                        hiding (Signal)
 -- }}}
 
@@ -38,6 +39,11 @@ data Download = Download deriving(Show)
 instance Event Download where
   type Input Download = (URI, Text, Maybe Int)
   describeInput _ (uri, _, _) = Just $ "Requested download <" ++ tshow uri ++ ">"
+
+data LinkClicked = LinkClicked deriving(Show)
+instance Event LinkClicked where
+  type Input LinkClicked = (URI, MouseButton)
+  describeInput _ (uri, _) = Just $ "Link clicked <" ++ tshow uri ++ ">"
 
 data LinkHovered = LinkHovered deriving(Show)
 instance Event LinkHovered where
@@ -48,10 +54,18 @@ data LinkUnhovered = LinkUnhovered deriving(Show)
 instance Event LinkUnhovered where
   describeInput _ _ = Just "Link unhovered"
 
-data LinkClicked = LinkClicked deriving(Show)
-instance Event LinkClicked where
-  type Input LinkClicked = (URI, MouseButton)
-  describeInput _ (uri, _) = Just $ "Link clicked <" ++ tshow uri ++ ">"
+data LoadCommitted = LoadCommitted deriving(Show)
+instance Event LoadCommitted where
+  describeInput _ _ = Just "Load committed"
+
+data LoadFailed = LoadFailed deriving(Show)
+instance Event LoadFailed where
+  type Input LoadFailed = (URI, GError)
+  describeInput _ (uri, e) = Just $ "Error loading <" ++ tshow uri ++ "> : " ++ tshow e
+
+data LoadFinished = LoadFinished deriving(Show)
+instance Event LoadFinished where
+  describeInput _ _ = Just "Load finished"
 
 data LoadRequested = LoadRequested deriving(Show)
 instance Event LoadRequested where
@@ -62,14 +76,15 @@ data LoadStarted = LoadStarted deriving(Show)
 instance Event LoadStarted where
   describeInput _ _ = Just "Load started"
 
-data LoadFinished = LoadFinished deriving(Show)
-instance Event LoadFinished where
-  describeInput _ _ = Just "Load finished"
-
 data NewWindow = NewWindow deriving(Show)
 instance Event NewWindow where
   type Input NewWindow = URI
   describeInput _ uri = Just $ "New window <" ++ tshow uri ++ ">"
+
+data ProgressChanged = ProgressChanged deriving(Show)
+instance Event ProgressChanged where
+  type Input ProgressChanged = Int
+  describeInput _ percent = Just $ "Load progress: " ++ tshow percent ++ "%"
 
 data ResourceOpened = ResourceOpened deriving(Show)
 instance Event ResourceOpened where
@@ -109,28 +124,24 @@ attachLinkHovered webView hoveredSignal unhoveredSignal = liftBaseWith $ \runInI
         callback _ _ = emit unhoveredSignal ()
 
 
--- Triggered in 2 cases:
---  1/ Javascript window.open()
---  2/ Context menu "Open in new window"
-attachNewWebView :: (ControlIO m, MonadLogger m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
-attachNewWebView webView signal = liftBaseWith $ \runInIO -> gSync . on webView createWebView $ \_frame -> do
-    webView' <- webViewNew
-
-    on webView' webViewReady $ return True
-    on webView' navigationPolicyDecisionRequested $ \_ request _ decision -> do
-        runInIO . runExceptT . logErrors $ networkRequestGetUri request >>= emit signal
-        webPolicyDecisionIgnore decision
-        return True
-
-    return webView'
+attachLoadCommitted :: (ControlIO m, MonadLogger m) => WebView -> Signal LoadCommitted -> m (ConnectId WebView)
+attachLoadCommitted webView signal = liftBaseWith $ \runInIO -> gSync . on webView loadCommitted $ \_frame -> void . runInIO $ emit signal ()
 
 
-attachLoadStarted :: (ControlIO m, MonadLogger m) => WebView -> Signal LoadStarted -> m (ConnectId WebView)
-attachLoadStarted webView signal = liftBaseWith $ \runInIO -> gSync . on webView loadStarted $ \_frame -> void (runInIO $ emit signal ())
+attachLoadFailed :: (ControlIO m, MonadLogger m) => WebView -> Signal LoadFailed -> m (ConnectId WebView)
+attachLoadFailed webView signal = liftBaseWith $ \runInIO -> gSync . on webView loadError $ \_frame uri e -> do
+  runInIO . runExceptT . logErrors $ do
+    uri' <- parseURIReferenceM uri
+    emit signal (uri', e)
+  return False
+
 
 attachLoadFinished :: (ControlIO m, MonadLogger m) => WebView -> Signal LoadFinished -> m (ConnectId WebView)
 attachLoadFinished webView signal = liftBaseWith $ \runInIO -> gSync . on webView loadFinished $ \_frame -> void (runInIO $ emit signal ())
 
+
+attachLoadStarted :: (ControlIO m, MonadLogger m) => WebView -> Signal LoadStarted -> m (ConnectId WebView)
+attachLoadStarted webView signal = liftBaseWith $ \runInIO -> gSync . on webView loadStarted $ \_frame -> void (runInIO $ emit signal ())
 
 attachNavigationRequest :: (ControlIO m, MonadLogger m) => WebView -> (Signal LinkClicked, Signal LoadRequested) -> m (ConnectId WebView)
 attachNavigationRequest webView (signal1, signal2) = liftBaseWith $ \runInIO -> gSync . on webView navigationPolicyDecisionRequested $ \_frame request action decision -> do
@@ -176,12 +187,31 @@ attachNavigationRequest webView (signal1, signal2) = liftBaseWith $ \runInIO -> 
     toMouseButton _ = Nothing
 
 
+-- Triggered in 2 cases:
+--  1/ Javascript window.open()
+--  2/ Context menu "Open in new window"
+attachNewWebView :: (ControlIO m, MonadLogger m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
+attachNewWebView webView signal = liftBaseWith $ \runInIO -> gSync . on webView createWebView $ \_frame -> do
+    webView' <- webViewNew
+
+    on webView' webViewReady $ return True
+    on webView' navigationPolicyDecisionRequested $ \_ request _ decision -> do
+        runInIO . runExceptT . logErrors $ networkRequestGetUri request >>= emit signal
+        webPolicyDecisionIgnore decision
+        return True
+
+    return webView'
+
+
 attachNewWindow :: (ControlIO m, MonadLogger m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
 attachNewWindow webView signal = liftBaseWith $ \runInIO -> gSync . on webView newWindowPolicyDecisionRequested $ \_frame request _action decision -> do
     runInIO . runExceptT . logErrors $ networkRequestGetUri request >>= emit signal
     webPolicyDecisionIgnore decision
     return True
 
+
+attachProgressChanged :: (ControlIO m, MonadLogger m) => WebView -> Signal ProgressChanged -> m (ConnectId WebView)
+attachProgressChanged webView signal = liftBaseWith $ \runInIO -> gSync . on webView progressChanged $ void . runInIO . emit signal
 
 -- attachResourceOpened :: (MonadIO m) => WebView -> Signal ResourceOpened -> m (ConnectId WebView)
 -- attachResourceOpened webView signal = liftBaseWith $ \runInIO -> gSync . on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> do

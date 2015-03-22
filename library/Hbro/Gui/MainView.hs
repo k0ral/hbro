@@ -13,10 +13,13 @@ module Hbro.Gui.MainView
   , linkClickedHookL
   , linkHoveredHookL
   , linkUnhoveredHookL
+  , loadCommittedHookL
+  , loadFailedHookL
   , loadFinishedHookL
   , loadRequestedHookL
   , loadStartedHookL
   , newWindowHookL
+  , progressChangedHookL
   , scrolledHookL
   , titleChangedHookL
   , zoomLevelChangedHookL
@@ -56,7 +59,8 @@ import           Graphics.UI.Gtk.General.General
 import qualified Graphics.UI.Gtk.Misc.Adjustment          as Gtk
 import           Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import           Graphics.UI.Gtk.WebKit.DOM.Document
-import           Graphics.UI.Gtk.WebKit.Lifted.WebView    hiding (LoadFinished)
+import           Graphics.UI.Gtk.WebKit.Lifted.WebView    hiding
+                                                           (LoadStatus (..))
 import           Graphics.UI.Gtk.WebKit.NetworkRequest
 import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import           Graphics.UI.Gtk.WebKit.WebSettings
@@ -81,10 +85,13 @@ declareLenses [d|
     , linkClickedHookL      :: Signal LinkClicked
     , linkHoveredHookL      :: Signal LinkHovered
     , linkUnhoveredHookL    :: Signal LinkUnhovered
+    , loadCommittedHookL    :: Signal LoadCommitted
+    , loadFailedHookL       :: Signal LoadFailed
     , loadFinishedHookL     :: Signal LoadFinished
     , loadRequestedHookL    :: Signal LoadRequested
     , loadStartedHookL      :: Signal LoadStarted
     , newWindowHookL        :: Signal NewWindow
+    , progressChangedHookL  :: Signal ProgressChanged
     -- , resourceOpenedHookL   :: Signal ResourceOpened
     , scrolledHookL         :: Signal Scrolled
     , titleChangedHookL     :: Signal TitleChanged
@@ -125,10 +132,13 @@ buildFrom builder = do
              <*> newSignal LinkClicked
              <*> newSignal LinkHovered
              <*> newSignal LinkUnhovered
+             <*> newSignal LoadCommitted
+             <*> newSignal LoadFailed
              <*> newSignal LoadFinished
              <*> newSignal LoadRequested
              <*> newSignal LoadStarted
              <*> newSignal NewWindow
+             <*> newSignal ProgressChanged
              -- <*> newSignal ResourceOpened
              <*> newSignal Scrolled
              <*> newSignal TitleChanged
@@ -170,11 +180,14 @@ initialize mainView = do
   attachDownload          webView  $ mainView^.downloadHookL
   attachKeyPressed        webView  $ mainView^.keyPressedHookL
   attachLinkHovered       webView (mainView^.linkHoveredHookL) (mainView^.linkUnhoveredHookL)
-  attachLoadStarted       webView  $ mainView^.loadStartedHookL
+  attachLoadCommitted     webView  $ mainView^.loadCommittedHookL
+  attachLoadFailed        webView  $ mainView^.loadFailedHookL
   attachLoadFinished      webView  $ mainView^.loadFinishedHookL
+  attachLoadStarted       webView  $ mainView^.loadStartedHookL
   attachNavigationRequest webView (mainView^.linkClickedHookL, mainView^.loadRequestedHookL)
   attachNewWebView        webView  $ mainView^.newWindowHookL
   attachNewWindow         webView  $ mainView^.newWindowHookL
+  attachProgressChanged   webView  $ mainView^.progressChangedHookL
   -- attachResourceOpened    webView (mainView^.resourceOpenedHook)
   attachScrolled          mainView $ mainView^.scrolledHookL
   attachTitleChanged      webView  $ mainView^.titleChangedHookL
