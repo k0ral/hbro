@@ -16,6 +16,7 @@ module Hbro.Core (
     , getFavicon
     , getLoadProgress
     , getPageTitle
+    , getPageData
 -- * Browsing
     , goHome
     , load
@@ -94,6 +95,10 @@ getLoadProgress = gSync . webViewGetProgress =<< getWebView
 
 getPageTitle :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m Text
 getPageTitle = webViewGetTitle =<< getWebView
+
+-- | Return the HTML code of the current webpage.
+getPageData :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m ByteString
+getPageData = dataSourceGetData =<< io . webFrameGetDataSource =<< io . webViewGetMainFrame =<< getWebView
 -- }}}
 
 -- {{{ Browsing
@@ -179,10 +184,7 @@ quit = gAsync mainQuit
 
 -- {{{ Misc
 saveWebPage :: (ControlIO m, MonadLogger m, MonadReader r m, Has MainView r, MonadError Text m) => FilePath -> m ()
-saveWebPage file = do
-  webFrame <- io . webViewGetMainFrame =<< getWebView
-  rawData  <- dataSourceGetData =<< io (webFrameGetDataSource webFrame)
-  writeFileE' file rawData
+saveWebPage file = writeFileE' file =<< getPageData
 
 -- | Execute a javascript file on current webpage.
 executeJSFile :: (MonadIO m, MonadLogger m) => FilePath -> WebView -> m ()
