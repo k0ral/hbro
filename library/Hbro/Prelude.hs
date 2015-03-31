@@ -29,41 +29,35 @@ module Hbro.Prelude
     , withM
     , withM_
     , fwd
--- * Gtk util
-    , gSync
-    , gAsync
 ) where
 
 -- {{{ Imports
-import           ClassyPrelude                   as X hiding (Builder (..),
-                                                       MonadReader (..),
-                                                       ReaderT (..), error, log,
-                                                       toList)
+import           ClassyPrelude                 as X hiding (Builder (..),
+                                                     MonadReader (..),
+                                                     ReaderT (..), error, log,
+                                                     toList)
 
-import           Control.Applicative             as X (Alternative (..),
-                                                       WrappedMonad, optional)
-import           Control.Arrow                   as X (Kleisli (..), left,
-                                                       right)
-import           Control.Conditional             as X (ToBool (..), (<<|), (<|),
-                                                       (|>), (|>>))
+import           Control.Applicative           as X (Alternative (..),
+                                                     WrappedMonad, optional)
+import           Control.Arrow                 as X (Kleisli (..), left, right)
+import           Control.Conditional           as X (ToBool (..), (<<|), (<|),
+                                                     (|>), (|>>))
 import           Control.Lens
-import           Control.Monad.Base              as X (MonadBase (..))
+import           Control.Monad.Base            as X (MonadBase (..))
 import           Control.Monad.Except
-import           Control.Monad.Reader.Extended   as X hiding (get)
-import           Control.Monad.Trans.Control     as X
+import           Control.Monad.Reader.Extended as X hiding (get)
+import           Control.Monad.Trans.Control   as X
 
-import qualified Data.ByteString                 as Strict
-import qualified Data.ByteString.Lazy            as Lazy
-import           Data.Default.Class              as X
-import           Data.Foldable                   as X (asum)
-import           Data.List                       as X (tail)
-import           Data.List.NonEmpty              hiding (reverse)
-import qualified Data.List.NonEmpty              as NonEmpty
-import           Data.Maybe                      as X (fromJust)
+import qualified Data.ByteString               as Strict
+import qualified Data.ByteString.Lazy          as Lazy
+import           Data.Default.Class            as X
+import           Data.Foldable                 as X (asum)
+import           Data.List                     as X (tail)
+import           Data.List.NonEmpty            hiding (reverse)
+import qualified Data.List.NonEmpty            as NonEmpty
+import           Data.Maybe                    as X (fromJust)
 
-import           Graphics.UI.Gtk.General.General
-
-import           Safe                            as X (initSafe, tailSafe)
+import           Safe                          as X (initSafe, tailSafe)
 
 -- import System.Posix.Process
 -- import System.Posix.Types
@@ -139,16 +133,6 @@ withM_ l f = mapMOf l (fwd f)
 
 fwd :: (Monad m) => (a -> m ()) -> a -> m a
 fwd f x = f x >> return x
--- }}}
-
--- {{{ Gtk util
--- | Lifted alias for 'postGUISync'
-gSync :: MonadIO m => IO a -> m a
-gSync  = io . postGUISync
-
--- | Lifted alias for 'postGUIAsync'
-gAsync :: MonadIO m => IO a -> m ()
-gAsync = io . postGUIAsync . void
 -- }}}
 
 -- {{{ Process management

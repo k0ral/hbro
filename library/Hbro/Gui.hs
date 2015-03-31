@@ -13,29 +13,30 @@ module Hbro.Gui (
 ) where
 
 -- {{{ Imports
-import           Graphics.UI.Gtk.WebKit.Lifted.WebView ()
+import           Graphics.UI.Gtk.WebKit.Lifted.WebView    ()
 
-import           Hbro.Error                            as Hbro
+import           Hbro.Error                               as Hbro
 import           Hbro.Event
 import           Hbro.Gui.Builder
-import           Hbro.Gui.MainView                     hiding (initialize)
-import qualified Hbro.Gui.MainView                     as MainView
-import           Hbro.Gui.NotificationBar              (NotificationBar)
-import qualified Hbro.Gui.NotificationBar              as NotifBar
-import           Hbro.Gui.PromptBar                    (PromptBar, closedL)
-import qualified Hbro.Gui.PromptBar                    as Prompt
+import           Hbro.Gui.MainView                        hiding (initialize)
+import qualified Hbro.Gui.MainView                        as MainView
+import           Hbro.Gui.NotificationBar                 (NotificationBar)
+import qualified Hbro.Gui.NotificationBar                 as NotifBar
+import           Hbro.Gui.PromptBar                       (PromptBar, closedL)
+import qualified Hbro.Gui.PromptBar                       as Prompt
 import           Hbro.Gui.StatusBar
 import           Hbro.Logger
-import           Hbro.Prelude                          hiding (on)
+import           Hbro.Prelude                             hiding (on)
 
 import           Control.Lens.Getter
 
 import           Graphics.Rendering.Pango.Enums
 import           Graphics.UI.Gtk.Abstract.Widget
-import qualified Graphics.UI.Gtk.Builder               as Gtk
-import           Graphics.UI.Gtk.General.General       as Gtk
+import qualified Graphics.UI.Gtk.Builder                  as Gtk
+import           Graphics.UI.Gtk.General.General.Extended (gAsync, gSync)
+import qualified Graphics.UI.Gtk.General.General.Extended as Gtk
 import           Graphics.UI.Gtk.Windows.Window
-import           System.Glib.Signals                   hiding (Signal)
+import           System.Glib.Signals                      hiding (Signal)
 -- }}}
 
 initialize :: (ControlIO m, Alternative m, MonadError Text m, MonadLogger m, MonadThreadedLogger m)

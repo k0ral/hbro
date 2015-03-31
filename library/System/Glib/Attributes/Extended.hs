@@ -9,8 +9,10 @@ module System.Glib.Attributes.Extended where
 import           Hbro.Logger
 import           Hbro.Prelude
 
-import           System.Glib.Attributes (Attr, AttrOp (..))
-import qualified System.Glib.Attributes as Glib
+import           Graphics.UI.Gtk.General.General.Extended
+
+import           System.Glib.Attributes                   (Attr, AttrOp (..))
+import qualified System.Glib.Attributes                   as Glib
 -- }}}
 
 -- * Wrappers

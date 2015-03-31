@@ -8,29 +8,31 @@
 module Hbro.Defaults where
 
 -- {{{ Imports
-import           Hbro.Clipboard                  as Clipboard
-import           Hbro.Config                     (Config)
+import           Hbro.Clipboard                           as Clipboard
+import           Hbro.Config                              (Config)
 import           Hbro.Core
 import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
-import           Hbro.Gui                        as Gui
+import           Hbro.Gui                                 as Gui
 import           Hbro.Gui.MainView
 import           Hbro.Gui.NotificationBar
-import           Hbro.Gui.PromptBar              as Prompt
+import           Hbro.Gui.PromptBar                       as Prompt
 import           Hbro.Gui.StatusBar
 import           Hbro.IPC
-import           Hbro.Keys                       as Keys
-import           Hbro.Keys.Model                 (singleKey, (.|))
+import           Hbro.Keys                                as Keys
+import           Hbro.Keys.Model                          (singleKey, (.|))
 import           Hbro.Logger
 import           Hbro.Prelude
 import           Hbro.WebView.Signals
 
-import           Data.Map                        as Map hiding (foldl, map)
+import           Data.Map                                 as Map hiding (foldl,
+                                                                  map)
 
 import           Graphics.UI.Gtk.Abstract.Widget
-import           Graphics.UI.Gtk.Builder         as Gtk
-import           Graphics.UI.Gtk.Gdk.EventM      as Gtk
+import           Graphics.UI.Gtk.Builder                  as Gtk
+import           Graphics.UI.Gtk.Gdk.EventM               as Gtk
+import           Graphics.UI.Gtk.General.General.Extended
 import           Graphics.UI.Gtk.WebKit.WebView
 import           Graphics.UI.Gtk.Windows.Window
 

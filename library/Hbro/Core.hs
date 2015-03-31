@@ -40,16 +40,16 @@ module Hbro.Core (
 import           Graphics.UI.Gtk.WebKit.Lifted
 import           Graphics.UI.Gtk.WebKit.Lifted.WebView
 
-import           Hbro.Config                           as Config
+import           Hbro.Config                              as Config
 import           Hbro.Dyre
 import           Hbro.Error
 -- import           Hbro.Gui                              as Gui
 import           Hbro.Gui.MainView
 import           Hbro.Logger
-import           Hbro.Prelude                          as H
+import           Hbro.Prelude                             as H
 
-import           Graphics.UI.Gtk.Gdk.Pixbuf            (Pixbuf)
-import           Graphics.UI.Gtk.General.General
+import           Graphics.UI.Gtk.Gdk.Pixbuf               (Pixbuf)
+import           Graphics.UI.Gtk.General.General.Extended
 import           Graphics.UI.Gtk.WebKit.WebDataSource
 import           Graphics.UI.Gtk.WebKit.WebFrame
 

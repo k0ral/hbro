@@ -19,11 +19,9 @@ import           Hbro.Error
 import           Hbro.Prelude
 
 import           Graphics.UI.Gtk.Gdk.Pixbuf
-import           Graphics.UI.Gtk.WebKit.WebView as Export hiding
-                                                           (webViewGetIconUri,
-                                                           webViewGetTitle,
-                                                           webViewGetUri, webViewTryGetFaviconPixbuf)
-import qualified Graphics.UI.Gtk.WebKit.WebView as W
+import           Graphics.UI.Gtk.General.General.Extended
+import           Graphics.UI.Gtk.WebKit.WebView           as Export hiding (webViewGetIconUri, webViewGetTitle, webViewGetUri, webViewTryGetFaviconPixbuf)
+import qualified Graphics.UI.Gtk.WebKit.WebView           as W
 
 import           Network.URI.Extended
 -- }}}

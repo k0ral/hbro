@@ -55,7 +55,7 @@ import           Data.Text                                (splitOn)
 import qualified Graphics.UI.Gtk.Abstract.Container       as Gtk
 import           Graphics.UI.Gtk.Abstract.Widget
 import qualified Graphics.UI.Gtk.Builder                  as Gtk
-import           Graphics.UI.Gtk.General.General
+import           Graphics.UI.Gtk.General.General.Extended
 import qualified Graphics.UI.Gtk.Misc.Adjustment          as Gtk
 import           Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import           Graphics.UI.Gtk.WebKit.DOM.Document

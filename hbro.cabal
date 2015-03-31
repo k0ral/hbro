@@ -65,6 +65,7 @@ Library
         Control.Monad.Logger.Extended
         , Control.Monad.Reader.Extended
         , Graphics.Rendering.Pango.Extended
+        , Graphics.UI.Gtk.General.General.Extended
         , Hbro
         , Hbro.Boot
         , Hbro.Clipboard

@@ -14,6 +14,7 @@ import           Hbro.Prelude
 import qualified Graphics.UI.Gtk.Builder                  as Gtk
 import qualified Graphics.UI.Gtk.Display.Label            as Gtk
 import qualified Graphics.UI.Gtk.Entry.Entry              as Gtk
+import           Graphics.UI.Gtk.General.General.Extended (gSync)
 import qualified Graphics.UI.Gtk.Layout.HBox              as Gtk
 import qualified Graphics.UI.Gtk.Scrolling.ScrolledWindow as Gtk
 import qualified Graphics.UI.Gtk.Windows.Window           as Gtk

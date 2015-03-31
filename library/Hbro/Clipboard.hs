@@ -11,6 +11,7 @@ import           Hbro.Logger
 import           Hbro.Prelude
 
 import           Graphics.UI.Gtk.General.Clipboard
+import           Graphics.UI.Gtk.General.General.Extended
 import           Graphics.UI.Gtk.General.Selection
 -- }}}
 

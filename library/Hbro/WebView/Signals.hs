@@ -21,6 +21,7 @@ import           Data.Set                                   as S hiding (map)
 import           Graphics.UI.Gtk.Abstract.Object
 import           Graphics.UI.Gtk.Abstract.Widget            hiding (KeyVal)
 import           Graphics.UI.Gtk.Gdk.EventM                 as Gdk
+import           Graphics.UI.Gtk.General.General.Extended
 import           Graphics.UI.Gtk.WebKit.Download            as W hiding
                                                                   (Download, downloadGetSuggestedFilename, downloadGetUri)
 import           Graphics.UI.Gtk.WebKit.WebNavigationAction
