@@ -15,7 +15,7 @@ Design principles
   A web browser retrieves, renders and traverses web pages, period.
 
 `Keep It Simple, Stupid`_
-  The program should be written with simplicity in mind, and without obsession for performance, features or release frequency. It should boot instantly, consume little memory and offer an uncluttered graphical interface. The code should be easy to grasp (well, as long as you speak Haskell...) to encourage users to hack it. Simplicity provides lightness, scalability, stability and maintainability.
+  The application should be written with simplicity in mind, and without obsession for performance, features or release frequency. It should boot instantly, consume little memory and offer an uncluttered graphical interface. The code should be easy to grasp (well, as long as you speak Haskell...) to encourage users to hack it. Simplicity provides lightness, scalability, stability and maintainability.
 
 Extensible
   Configuration system should allow users to implement extra features. External programs should be able to query/command the web browser.

@@ -66,7 +66,7 @@ data Closed = Closed deriving(Show)
 instance Event Closed where
   describeInput _ _ = Just "Prompt closed."
 
-data Changed   = Changed deriving(Show)
+data Changed = Changed deriving(Show)
 instance Event Changed where
   type Input Changed = Text
   describeInput _ = Just . (++) "Prompt value changed to: "
@@ -126,10 +126,10 @@ initialize =
 open :: (MonadIO m) => Text -> Text -> PromptBar -> m PromptBar
 open description defaultText =
     withM_ descriptionL (gAsync . (`labelSetText` description))
-        >=> withM_ entryL (gAsync . (`entrySetText` defaultText))
-        >=> withM_ boxL (gAsync . widgetShow)
-        >=> withM_ entryL (gAsync . widgetGrabFocus)
-        >=> withM_ entryL (gAsync . (`editableSetPosition` (-1)))
+    >=> withM_ entryL (gAsync . (`entrySetText` defaultText))
+    >=> withM_ boxL (gAsync . widgetShow)
+    >=> withM_ entryL (gAsync . widgetGrabFocus)
+    >=> withM_ entryL (gAsync . (`editableSetPosition` (-1)))
 
 close :: (ControlIO m, MonadLogger m) => PromptBar -> m PromptBar
 close promptBar = do

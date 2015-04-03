@@ -147,9 +147,8 @@ buildFrom builder = do
 
 initialize :: (ControlIO m, MonadLogger m) => MainView -> m MainView
 initialize mainView = do
-  -- gAsync $ do
   set webView widgetCanDefault True
-  -- webViewSetMaintainsBackForwardList webView False
+  -- set webView webViewSetMaintainsBackForwardList False
   gAsync . on webView closeWebView $ gAsync mainQuit >> return False
   gAsync . on webView consoleMessage $ \a b n c -> do
       putStrLn "console message"

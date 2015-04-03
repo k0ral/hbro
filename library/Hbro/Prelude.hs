@@ -15,7 +15,6 @@ module Hbro.Prelude
 -- * Generic aliases/shortcuts
     , (|:)
     , (>:)
-    , leftM
     , io
     , (>/>)
     , abort
@@ -79,14 +78,10 @@ type ControlIO m = (MonadBaseControl IO m, MonadIO m)
 (|:) :: [a] -> a -> NonEmpty a
 list |: e = NonEmpty.reverse (e :| reverse list)
 
--- | Infix operator to build couples
+-- | Infix equivalent for @(,)@
 (>:) :: a -> b -> (a, b)
 (>:) = (,)
 infix 0 >:
-
--- | 'left' for 'Kleisli' arrows
-leftM :: Monad m => (a -> m b) -> Either a c -> m (Either b c)
-leftM f = runKleisli (left $ Kleisli f)
 
 -- | Alias for 'liftIO'
 io :: MonadIO m => IO a -> m a
@@ -145,10 +140,3 @@ fwd f x = f x >> return x
 
 --     return $ delete myPid . map (read :: String -> ProcessID) . nub . words $ pids ++ " " ++ pids'
 -- }}}
-
-
-{-errorHandler :: (MonadIO m, MonadReader r m, HasOptions r) => FilePath -> IOError -> m ()
-errorHandler file e = do
-  when (isAlreadyInUseError e) $ unlessQuiet . io . putStrLn $ "ERROR: file <" ++ file ++ "> is already opened and cannot be reopened."
-  when (isDoesNotExistError e) $ unlessQuiet . io . putStrLn $ "ERROR: file <" ++ file ++ "> doesn't exist."
-  when (isPermissionError   e) $ unlessQuiet . io . putStrLn $ "ERROR: user doesn't have permission to open file <" ++ file ++ ">."-}
