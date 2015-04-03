@@ -5,7 +5,8 @@
 -- | Some lifted functions from 'Graphics.UI.Gtk.WebKit.WebView'.
 -- Designed to be imported as @qualified@.
 module Graphics.UI.Gtk.WebKit.Lifted.WebView
-    ( webViewGetUri
+    ( webViewUri
+    , webViewGetUri
     , webViewGetIconUri
     , webViewTryGetFaviconPixbuf
     , webViewGetTitle
@@ -20,8 +21,11 @@ import           Hbro.Prelude
 
 import           Graphics.UI.Gtk.Gdk.Pixbuf
 import           Graphics.UI.Gtk.General.General.Extended
-import           Graphics.UI.Gtk.WebKit.WebView           as Export hiding (webViewGetIconUri, webViewGetTitle, webViewGetUri, webViewTryGetFaviconPixbuf)
+import           Graphics.UI.Gtk.WebKit.WebView           as Export hiding (webViewGetIconUri, webViewGetTitle, webViewGetUri, webViewTryGetFaviconPixbuf,
+                                                                     webViewUri)
 import qualified Graphics.UI.Gtk.WebKit.WebView           as W
+
+import           System.Glib.Attributes
 
 import           Network.URI.Extended
 -- }}}
@@ -32,6 +36,9 @@ unavailableFavicon = "No available favicon."
 unavailableURI = "No available URI."
 titleUnavailable = "No available title."
 
+-- | 'W.webViewUri' with 'Text'
+webViewUri :: ReadAttr WebView (Maybe Text)
+webViewUri = W.webViewUri
 
 webViewGetUri :: (MonadIO m, MonadError Text m) => WebView -> m URI
 webViewGetUri = gSync . W.webViewGetUri >=> maybe (throwError unavailableURI) return >=> parseURIM
