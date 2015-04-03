@@ -11,12 +11,13 @@ import           Hbro.Prelude
 
 import           Graphics.UI.Gtk.General.General.Extended
 
-import           System.Glib.Attributes                   (Attr, AttrOp (..))
+import           System.Glib.Attributes                   (Attr, AttrOp (..),
+                                                           ReadWriteAttr)
 import qualified System.Glib.Attributes                   as Glib
 -- }}}
 
 -- * Wrappers
-get :: (MonadIO m) => o -> Attr o a -> m a
+get :: (MonadIO m) => o -> ReadWriteAttr o a b -> m a
 get o a = gSync $ Glib.get o a
 
 set :: (MonadIO m, MonadLogger m, Show a) => o -> Attr o a -> a -> m o
