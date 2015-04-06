@@ -3,6 +3,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Extension of @System.Glib.Attributes@ module.
+-- All functions call `postGUISync' or `postGUIAsync` as they are not meant to be used in the same thread as the Gtk loop.
 module System.Glib.Attributes.Extended where
 
 -- {{{ Imports

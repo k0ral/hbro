@@ -37,6 +37,7 @@ import           Hbro.Logger
 import           Hbro.Prelude                    hiding (isPrefixOf)
 
 import           Control.Concurrent.Async.Lifted
+import           Control.Monad.Trans.Resource
 
 import qualified Data.List.NonEmpty              as NonEmpty
 import qualified Data.Map                        as Map
@@ -120,8 +121,8 @@ instance Event KeyMapPressed where
   describeInput _ (strokes, _bound) = Just . unwords $ "Key pressed: " : (describe <$> strokes)
 
 
-bindKeys :: (ControlIO m, MonadLogger m, MonadError Text m) => Signal KeyPressed -> Signal KeyMapPressed -> KeyMap m -> m (Async ())
-bindKeys input output keyMap = addRecursiveHook input empty $ \previousStrokes newStroke -> do
+bindKeys :: (ControlIO m, MonadLogger m, MonadError Text m, MonadResource m) => Signal KeyPressed -> Signal KeyMapPressed -> KeyMap m -> m ReleaseKey
+bindKeys input output keyMap = addRecursiveHandler input empty $ \previousStrokes newStroke -> do
     let k = Map.keys keyMap
         strokes = previousStrokes |: newStroke
         strokesL = NonEmpty.toList strokes

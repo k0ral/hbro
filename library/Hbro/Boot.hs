@@ -24,6 +24,7 @@ import           Hbro.Prelude
 
 import           Control.Concurrent.Async.Lifted
 import           Control.Lens                    hiding ((<|), (??), (|>))
+import           Control.Monad.Trans.Resource
 
 import           Data.Version                    hiding (Version)
 
@@ -45,15 +46,15 @@ data Settings = Settings
     { configuration :: Config
     , commandMap    :: God r m => CommandMap m
     , keyMap        :: God r m => KeyMap m
-    , startUpHook   :: God r m => m ()
+    , startUp       :: God r m => m ()
     }
 
 instance Default Settings where
   def = Settings
-          { configuration     = def
-          , commandMap        = defaultCommandMap
-          , keyMap            = defaultKeyMap
-          , startUpHook       = debug "No start-up hook defined"
+          { configuration = def
+          , commandMap    = defaultCommandMap
+          , keyMap        = defaultKeyMap
+          , startUp       = debug "No start-up script defined"
           }
 
 getDataFileName :: (MonadIO m, Functor m) => Text -> m FilePath
@@ -66,11 +67,8 @@ hbro settings = do
 
     case options of
         Left Rebuild -> Dyre.recompile >>= mapM_ putStrLn
-        Left Version -> do
-            (a, b, c) <- ZMQ.version
-            putStrLn $ "hbro v" ++ pack (showVersion Package.version)
-            putStrLn $ "0MQ library v" ++ intercalate "." (map tshow [a, b, c])
-        Right runOptions -> runThreadedLoggingT (runOptions^.logLevelL) $ Dyre.wrap (runOptions^.dyreModeL)
+        Left Version -> printVersions
+        Right runOptions -> runResourceT . runThreadedLoggingT (runOptions^.logLevelL) $ Dyre.wrap (runOptions^.dyreModeL)
                               (withAsyncBound guiThread . mainThread)
                               (settings, runOptions)
 
@@ -86,7 +84,8 @@ guiThread = do
         logInterrupt = putStrLn "Received interrupt signal."
 
 
-mainThread :: (ControlIO m, MonadLogger m, MonadThreadedLogger m) => (Settings, CliOptions) -> Async () -> m ()
+mainThread :: (ControlIO m, MonadThrow m, MonadThreadedLogger m, MonadResource m)
+           => (Settings, CliOptions) -> Async () -> m ()
 mainThread (settings, options) uiThread = void . runExceptT . logErrors $ do
     uiFiles      <- getUIFiles options
     (builder, mainView, promptBar, statusBar, notifBar) <- asum $ map Gui.initialize uiFiles
@@ -103,15 +102,14 @@ mainThread (settings, options) uiThread = void . runExceptT . logErrors $ do
       . withReaderT (builder, )
       . withReaderT (keySignal, )
       . withAsync (bindCommands socketURI (commandMap settings)) . const $ do
-        bindKeys (mainView^.keyPressedHookL) keySignal (keyMap settings)
+        bindKeys (mainView^.keyPressedHandlerL) keySignal (keyMap settings)
 
-        setDefaultHook (mainView^.downloadHookL) defaultDownloadHook
-        setDefaultHook (mainView^.linkClickedHookL) defaultLinkClickedHook
-        setDefaultHook (mainView^.loadRequestedHookL) defaultLoadRequestedHook
-        setDefaultHook (mainView^.newWindowHookL) defaultNewWindowHook
-        setDefaultHook (mainView^.titleChangedHookL) defaultTitleChangedHook
+        addHandler (mainView^.linkClickedHandlerL) defaultLinkClickedHandler
+        addHandler (mainView^.loadRequestedHandlerL) defaultLoadRequestedHandler
+        addHandler (mainView^.newWindowHandlerL) defaultNewWindowHandler
+        addHandler (mainView^.titleChangedHandlerL) defaultTitleChangedHandler
 
-        startUpHook settings
+        startUp settings
 
         debug . ("Start-up configuration: \n" ++) . describe =<< Config.get id
 
@@ -147,3 +145,9 @@ getStartURI uri = do
 
     parseURIReferenceM ("file://" ++ fpToText workingDir ++ "/" ++ tshow uri) <| fileURI |> return uri
     -- maybe abort return =<< logErrors (parseURIReference fileURI')
+
+printVersions :: IO ()
+printVersions = do
+  (a, b, c) <- ZMQ.version
+  putStrLn $ "hbro v" ++ pack (showVersion Package.version)
+  putStrLn $ "0MQ library v" ++ intercalate "." (map tshow [a, b, c])

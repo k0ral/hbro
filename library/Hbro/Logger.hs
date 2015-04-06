@@ -22,18 +22,18 @@ module Hbro.Logger
 -- {{{ Imports
 import           Hbro.Error
 import           Hbro.Event
-import           Hbro.Prelude                    hiding (runReaderT)
+import           Hbro.Prelude                  hiding (runReaderT)
 
-import           Control.Concurrent.Async.Lifted
 import           Control.Monad.Base
-import           Control.Monad.Logger.Extended   as X
+import           Control.Monad.Logger.Extended as X
 import           Control.Monad.Reader
+import           Control.Monad.Trans.Resource
 
-import           Data.Text                       (justifyLeft)
+import           Data.Text                     (justifyLeft)
 import           Data.Text.Encoding
 import           Data.Text.Encoding.Error
 
-import           System.Log.FastLogger           as X
+import           System.Log.FastLogger         as X
 -- }}}
 
 -- | Log event
@@ -42,10 +42,13 @@ instance Event LogMessage where
   type Input LogMessage = (Loc, LogSource, LogLevel, Text)
   describeInput _ _ = Nothing
 
-class MonadThreadedLogger m where
+class (MonadLogger m) => MonadThreadedLogger m where
   addLogHandler :: (Input LogMessage -> IO ()) -> m ()
 
 instance (Monad m, MonadThreadedLogger m) => MonadThreadedLogger (ExceptT e m) where
+  addLogHandler = lift . addLogHandler
+
+instance (Monad m, MonadThreadedLogger m) => MonadThreadedLogger (ResourceT m) where
   addLogHandler = lift . addLogHandler
 
 newtype ThreadedLoggingT m a = ThreadedLoggingT { unThreadedLoggingT :: ReaderT (Signal LogMessage, LogLevel) m a }
@@ -53,6 +56,8 @@ deriving instance (Applicative m) => Applicative (ThreadedLoggingT m)
 deriving instance (Functor m) => Functor (ThreadedLoggingT m)
 deriving instance (Monad m) => Monad (ThreadedLoggingT m)
 deriving instance (MonadIO m) => MonadIO (ThreadedLoggingT m)
+deriving instance (MonadResource m) => MonadResource (ThreadedLoggingT m)
+deriving instance (MonadThrow m) => MonadThrow (ThreadedLoggingT m)
 deriving instance MonadTrans ThreadedLoggingT
 
 instance MonadBase b m => MonadBase b (ThreadedLoggingT m) where
@@ -74,19 +79,18 @@ instance (MonadIO m, Functor m) => MonadLogger (ThreadedLoggingT m) where
     guard $ level >= levelRef
     emit' loggerSignal (loc, source, level, decodeUtf8With lenientDecode . fromLogStr $ toLogStr message)
 
-instance (ControlIO m) => MonadThreadedLogger (ThreadedLoggingT m) where
+instance (ControlIO m, MonadResource m) => MonadThreadedLogger (ThreadedLoggingT m) where
   addLogHandler f = ThreadedLoggingT $ do
     (loggerSignal, _) <- Control.Monad.Reader.ask
-    void $ addHook loggerSignal (io . f)
+    void $ addHandler loggerSignal (io . f)
 
-runThreadedLoggingT :: (ControlIO m) => LogLevel -> ThreadedLoggingT m b -> m b
+runThreadedLoggingT :: (ControlIO m, MonadResource m) => LogLevel -> ThreadedLoggingT m b -> m b
 runThreadedLoggingT logLevel f = do
     loggerSignal <- newSignal LogMessage
-    loggerThread <- addHook loggerSignal $ \(_loc, _source, level, message) -> io . putStrLn $ formatLevel level ++ " " ++ message
+    addHandler loggerSignal $ \(_loc, _source, level, message) -> io . putStrLn $ formatLevel level ++ " " ++ message
 
     result <- flip runReaderT (loggerSignal, logLevel) $ unThreadedLoggingT f
     closeSignal' loggerSignal
-    io $ wait loggerThread
     return result
 
 formatLevel :: LogLevel -> Text

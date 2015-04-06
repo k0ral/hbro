@@ -49,6 +49,7 @@ Library
         pango,
         parsec,
         process,
+        resourcet,
         safe,
         semigroups,
         stm-chans,
@@ -59,7 +60,7 @@ Library
         transformers,
         transformers-base,
         unix,
-        webkitgtk3 >= 0.13,
+        webkitgtk3 >= 0.13.1.2,
         zeromq4-haskell
     Exposed-modules:
         Control.Monad.Logger.Extended

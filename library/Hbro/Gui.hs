@@ -29,6 +29,7 @@ import           Hbro.Logger
 import           Hbro.Prelude                             hiding (on)
 
 import           Control.Lens.Getter
+import           Control.Monad.Trans.Resource
 
 import           Graphics.Rendering.Pango.Enums
 import           Graphics.UI.Gtk.Abstract.Widget
@@ -39,7 +40,7 @@ import           Graphics.UI.Gtk.Windows.Window
 import           System.Glib.Signals                      hiding (Signal)
 -- }}}
 
-initialize :: (ControlIO m, Alternative m, MonadError Text m, MonadLogger m, MonadThreadedLogger m)
+initialize :: (ControlIO m, Alternative m, MonadError Text m, MonadThreadedLogger m, MonadResource m)
            => FilePath -> m (Gtk.Builder, MainView, PromptBar, StatusBar, NotificationBar)
 initialize (fpToText -> file) = do
     debug $ "Building GUI from " ++ file
@@ -57,7 +58,7 @@ initialize (fpToText -> file) = do
     Prompt.close promptBar
 
     gAsync $ windowSetDefault mainWindow (Just webView)
-    addHook (promptBar^.closedL) (const . gAsync $ widgetGrabFocus webView)
+    addHandler (promptBar^.closedL) (const . gAsync $ widgetGrabFocus webView)
 
     -- io $ scrolledWindowSetPolicy (gui^.scrollWindowL) PolicyNever PolicyNever
     -- io $ G.set (gui^.scrollWindowL) [ scrolledWindowHscrollbarPolicy := PolicyNever, scrolledWindowVscrollbarPolicy := PolicyNever]

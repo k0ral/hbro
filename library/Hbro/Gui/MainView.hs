@@ -8,21 +8,22 @@ module Hbro.Gui.MainView
   ( MainView
   , scrollWindowL
   , webViewL
-  , downloadHookL
-  , keyPressedHookL
-  , linkClickedHookL
-  , linkHoveredHookL
-  , linkUnhoveredHookL
-  , loadCommittedHookL
-  , loadFailedHookL
-  , loadFinishedHookL
-  , loadRequestedHookL
-  , loadStartedHookL
-  , newWindowHookL
-  , progressChangedHookL
-  , scrolledHookL
-  , titleChangedHookL
-  , zoomLevelChangedHookL
+  , downloadHandlerL
+  , keyPressedHandlerL
+  , linkClickedHandlerL
+  , linkHoveredHandlerL
+  , linkUnhoveredHandlerL
+  , loadCommittedHandlerL
+  , loadFailedHandlerL
+  , loadFinishedHandlerL
+  , loadRequestedHandlerL
+  , loadStartedHandlerL
+  , newWindowHandlerL
+  , progressChangedHandlerL
+  , scrolledHandlerL
+  , titleChangedHandlerL
+  , uriChangedHandlerL
+  , zoomLevelChangedHandlerL
   , Axis(..)
   , Position(..)
   , getWebView
@@ -78,24 +79,25 @@ instance Event Scrolled where
 
 declareLenses [d|
   data MainView = MainView
-    { scrollWindowL         :: ScrolledWindow  -- ^ 'ScrolledWindow' containing the webview
-    , webViewL              :: WebView
-    , downloadHookL         :: Signal Download
-    , keyPressedHookL       :: Signal KeyPressed
-    , linkClickedHookL      :: Signal LinkClicked
-    , linkHoveredHookL      :: Signal LinkHovered
-    , linkUnhoveredHookL    :: Signal LinkUnhovered
-    , loadCommittedHookL    :: Signal LoadCommitted
-    , loadFailedHookL       :: Signal LoadFailed
-    , loadFinishedHookL     :: Signal LoadFinished
-    , loadRequestedHookL    :: Signal LoadRequested
-    , loadStartedHookL      :: Signal LoadStarted
-    , newWindowHookL        :: Signal NewWindow
-    , progressChangedHookL  :: Signal ProgressChanged
-    -- , resourceOpenedHookL   :: Signal ResourceOpened
-    , scrolledHookL         :: Signal Scrolled
-    , titleChangedHookL     :: Signal TitleChanged
-    , zoomLevelChangedHookL :: Signal ZoomLevelChanged
+    { scrollWindowL            :: ScrolledWindow  -- ^ 'ScrolledWindow' containing the webview
+    , webViewL                 :: WebView
+    , downloadHandlerL         :: Signal Download
+    , keyPressedHandlerL       :: Signal KeyPressed
+    , linkClickedHandlerL      :: Signal LinkClicked
+    , linkHoveredHandlerL      :: Signal LinkHovered
+    , linkUnhoveredHandlerL    :: Signal LinkUnhovered
+    , loadCommittedHandlerL    :: Signal LoadCommitted
+    , loadFailedHandlerL       :: Signal LoadFailed
+    , loadFinishedHandlerL     :: Signal LoadFinished
+    , loadRequestedHandlerL    :: Signal LoadRequested
+    , loadStartedHandlerL      :: Signal LoadStarted
+    , newWindowHandlerL        :: Signal NewWindow
+    , progressChangedHandlerL  :: Signal ProgressChanged
+    -- , resourceOpenedHandlerL   :: Signal ResourceOpened
+    , scrolledHandlerL         :: Signal Scrolled
+    , titleChangedHandlerL     :: Signal TitleChanged
+    , uriChangedHandlerL       :: Signal URIChanged
+    , zoomLevelChangedHandlerL :: Signal ZoomLevelChanged
     }
   |]
 
@@ -142,6 +144,7 @@ buildFrom builder = do
              -- <*> newSignal ResourceOpened
              <*> newSignal Scrolled
              <*> newSignal TitleChanged
+             <*> newSignal URIChanged
              <*> newSignal ZoomLevelChanged
 
 
@@ -176,21 +179,22 @@ initialize mainView = do
   --        -- True -> (putStrLn "OK")
   --     (maybe (return ()) (`networkRequestSetUri` "about:blank") request)
 
-  attachDownload          webView  $ mainView^.downloadHookL
-  attachKeyPressed        webView  $ mainView^.keyPressedHookL
-  attachLinkHovered       webView (mainView^.linkHoveredHookL) (mainView^.linkUnhoveredHookL)
-  attachLoadCommitted     webView  $ mainView^.loadCommittedHookL
-  attachLoadFailed        webView  $ mainView^.loadFailedHookL
-  attachLoadFinished      webView  $ mainView^.loadFinishedHookL
-  attachLoadStarted       webView  $ mainView^.loadStartedHookL
-  attachNavigationRequest webView (mainView^.linkClickedHookL, mainView^.loadRequestedHookL)
-  attachNewWebView        webView  $ mainView^.newWindowHookL
-  attachNewWindow         webView  $ mainView^.newWindowHookL
-  attachProgressChanged   webView  $ mainView^.progressChangedHookL
-  -- attachResourceOpened    webView (mainView^.resourceOpenedHook)
-  attachScrolled          mainView $ mainView^.scrolledHookL
-  attachTitleChanged      webView  $ mainView^.titleChangedHookL
-  attachZoomLevelChanged  webView  $ mainView^.zoomLevelChangedHookL
+  attachDownload          webView  $ mainView^.downloadHandlerL
+  attachKeyPressed        webView  $ mainView^.keyPressedHandlerL
+  attachLinkHovered       webView (mainView^.linkHoveredHandlerL) (mainView^.linkUnhoveredHandlerL)
+  attachLoadCommitted     webView  $ mainView^.loadCommittedHandlerL
+  attachLoadFailed        webView  $ mainView^.loadFailedHandlerL
+  attachLoadFinished      webView  $ mainView^.loadFinishedHandlerL
+  attachLoadStarted       webView  $ mainView^.loadStartedHandlerL
+  attachNavigationRequest webView (mainView^.linkClickedHandlerL) (mainView^.loadRequestedHandlerL)
+  attachNewWebView        webView  $ mainView^.newWindowHandlerL
+  attachNewWindow         webView  $ mainView^.newWindowHandlerL
+  attachProgressChanged   webView  $ mainView^.progressChangedHandlerL
+  -- attachResourceOpened    webView (mainView^.resourceOpenedHandler)
+  attachScrolled          mainView $ mainView^.scrolledHandlerL
+  attachTitleChanged      webView  $ mainView^.titleChangedHandlerL
+  attachUriChanged        webView  $ mainView^.uriChangedHandlerL
+  attachZoomLevelChanged  webView  $ mainView^.zoomLevelChangedHandlerL
 
   initSettings webView
 

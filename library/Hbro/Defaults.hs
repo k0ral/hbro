@@ -26,6 +26,8 @@ import           Hbro.Logger
 import           Hbro.Prelude
 import           Hbro.WebView.Signals
 
+import           Control.Monad.Trans.Resource
+
 import           Data.Map                                 as Map hiding (foldl,
                                                                   map)
 
@@ -42,23 +44,21 @@ import           System.Glib.Attributes.Extended
 -- }}}
 
 -- | A 'God' monad has access to everything.
-type God r m = (ControlIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has (TVar Config) r, Has PromptBar r, Has NotificationBar r, Has StatusBar r, Has Gtk.Builder r, Has (Signal KeyMapPressed) r, Has MainView r, Alternative m)
+type God r m = (ControlIO m, MonadLogger m, MonadError Text m, MonadResource m, MonadReader r m, Has (TVar Config) r, Has PromptBar r, Has NotificationBar r, Has StatusBar r, Has Gtk.Builder r, Has (Signal KeyMapPressed) r, Has MainView r, Alternative m)
 
-defaultDownloadHook :: (MonadLogger m) => Input Download -> m ()
-defaultDownloadHook _ = warning "No download hook defined."
+defaultLinkClickedHandler :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has MainView r)
+                          => Handler m LinkClicked
+defaultLinkClickedHandler (uri, Gtk.MiddleButton) = spawnHbro' uri
+defaultLinkClickedHandler (uri, _) = load uri
 
-defaultLinkClickedHook :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has MainView r) => Input LinkClicked -> m ()
-defaultLinkClickedHook (uri, Gtk.MiddleButton) = spawnHbro' uri
-defaultLinkClickedHook (uri, _) = load uri
+defaultLoadRequestedHandler :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has MainView r) => URI -> m ()
+defaultLoadRequestedHandler = load
 
-defaultLoadRequestedHook :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has MainView r) => URI -> m ()
-defaultLoadRequestedHook = load
+defaultNewWindowHandler :: (MonadIO m, MonadLogger m) => URI -> m ()
+defaultNewWindowHandler uri = spawnHbro' uri
 
-defaultNewWindowHook :: (MonadIO m, MonadLogger m) => URI -> m ()
-defaultNewWindowHook uri = spawnHbro' uri
-
-defaultTitleChangedHook :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has Gtk.Builder r) => Text -> m ()
-defaultTitleChangedHook title = getMainWindow >>= \w -> set w windowTitle ("hbro | " ++ title) >> return ()
+defaultTitleChangedHandler :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has Gtk.Builder r) => Text -> m ()
+defaultTitleChangedHandler title = getMainWindow >>= \w -> set w windowTitle ("hbro | " ++ title) >> return ()
 
 -- /!\ NetworkRequest's Haskell binding is missing the function "webkit_network_request_get_message", which makes it rather useless...
 -- | Display content if webview can show the given MIME type, otherwise download it.

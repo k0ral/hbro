@@ -8,6 +8,7 @@ module Hbro.Event (
 -- * Types
       Event(..)
     , Signal
+    , Handler
 -- * Signal manipulation
     , newSignal
     , emit
@@ -15,10 +16,10 @@ module Hbro.Event (
     , closeSignal
     , closeSignal'
     , listenTo
--- * Hooks
-    , setDefaultHook
-    , addHook
-    , addRecursiveHook
+-- * Handlers
+    , addHandler
+    , addRecursiveHandler
+    , deleteHandlers
     ) where
 
 -- {{{ Imports
@@ -27,6 +28,7 @@ import           Hbro.Prelude
 import           Control.Concurrent.Async.Lifted
 import           Control.Concurrent.STM.TMChan
 import           Control.Monad.Logger.Extended
+import           Control.Monad.Trans.Resource
 
 import           Data.Function                   (fix)
 -- }}}
@@ -39,14 +41,17 @@ class (Show e) => Event e where
   describeInput :: e -> Input e -> Maybe Text
 
 -- | A signal notifies the occurrence of an event.
-data (Event e) => Signal e = Signal e (TMChan (Input e)) (MVar (Async ()))
+data (Event e) => Signal e = Signal e (TMChan (Input e)) (TVar [ReleaseKey])
+
+-- | Event handler.
+type Handler m a = Input a -> m ()
 
 instance (Event e) => Describable (Signal e) where
   describe (Signal e _ _) = tshow e
 
 -- | 'Signal' exports no constructor, use this function instead.
 newSignal :: (BaseIO m, Event e) => e -> m (Signal e)
-newSignal e = Signal e <$> io newBroadcastTMChanIO <*> newEmptyMVar
+newSignal e = Signal e <$> io newBroadcastTMChanIO <*> io (newTVarIO [])
 
 -- | Blocks until signal is received.
 waitFor :: (MonadIO m) => TMChan a -> m (Maybe a)
@@ -54,8 +59,10 @@ waitFor = atomically . readTMChan
 
 -- | Trigger an event.
 emit :: (Event e, MonadIO m, MonadLogger m) => Signal e -> Input e -> m ()
-emit signal@(Signal e _ _) input = do
+emit signal@(Signal e _ h) input = do
   forM_ (describeInput e input) $ debug . ("Event triggered: " ++)
+  handlers <- atomically $ readTVar h
+  when (null handlers) . forM_ (describeInput e input) $ debug . (++) "No handler for event: "
   emit' signal input
 
 -- | Like 'emit', but doesn't log anything.
@@ -63,46 +70,43 @@ emit' :: (Event e, MonadIO m) => Signal e -> Input e -> m ()
 emit' (Signal _ s _) input = atomically $ writeTMChan s input
 
 -- | Close a signal and all its attached hooks.
-closeSignal :: (Event e, MonadIO m, MonadLogger m) => Signal e -> m ()
-closeSignal signal = do
-  debug "Closing signal."
-  closeSignal' signal
+closeSignal :: (Event e, MonadIO m, MonadLogger m, MonadResource m) => Signal e -> m ()
+closeSignal signal = debug "Closing signal." >> closeSignal' signal
 
 -- | Like 'close', but doesn't log anything.
-closeSignal' :: (Event e, MonadIO m) => Signal e -> m ()
-closeSignal' (Signal _ s _) = atomically $ closeTMChan s
+closeSignal' :: (Event e, MonadIO m, MonadResource m) => Signal e -> m ()
+closeSignal' signal@(Signal _ s _) = atomically (closeTMChan s) >> deleteHandlers signal
 
 -- | Asynchronously wait for the next event.
 listenTo :: (Event a, MonadIO m) => Signal a -> m (Async (Maybe (Input a)))
 listenTo (Signal _ signal _) = io . async . waitFor =<< atomically (dupTMChan signal)
 
--- | A default hook is run as long as no other hook is added.
-setDefaultHook :: (Event a, ControlIO m) => Signal a -> (Input a -> m ()) -> m ()
-setDefaultHook (Signal _ s defThread) f = do
-  signal <- atomically $ dupTMChan s
-  mapM cancel =<< tryTakeMVar defThread
-
-  hookThread <- async . fix $ \recurse -> do
-    mapM_ (\x -> f x >> recurse) =<< waitFor signal
-
-  putMVar defThread $ map (const ()) hookThread
-
 -- | Execute a function each time an event occurs.
-addHook :: (Event a, ControlIO m) => Signal a -> (Input a -> m ()) -> m (Async ())
-addHook (Signal _ s defThread) f = do
+addHandler :: (Event a, ControlIO m, MonadResource m) => Signal a -> (Handler m a) -> m ReleaseKey
+addHandler (Signal _ s handlers) f = do
   signal <- atomically $ dupTMChan s
-  thread  <- async . fix $ \recurse -> do
-    mapM_ (\x -> f x >> recurse) =<< waitFor signal
 
-  mapM cancel =<< tryTakeMVar defThread
-  return $ map (const ()) thread
+  result <- liftBaseWith $ \runInIO -> do
+    runInIO . flip allocate cancel . async . fix $ \recurse ->
+      waitFor signal >>= mapM_ (\x -> (runInIO $ f x) >> recurse)
+  (releaseKey, (_ :: Async ())) <- restoreM result
+  atomically $ modifyTVar handlers (releaseKey:)
 
--- | Generalized version of 'addHook' where the callback function may recurse
-addRecursiveHook :: (Event a, ControlIO m) => Signal a -> b -> (b -> Input a -> m b) -> m (Async ())
-addRecursiveHook (Signal _ signal defThread) init f = do
-  signal' <- atomically $ dupTMChan signal
-  thread  <- async . flip fix init $ \recurse acc -> do
-    mapM_ (f acc >=> recurse) =<< waitFor signal'
+  return releaseKey
 
-  mapM cancel =<< tryTakeMVar defThread
-  return $ map (const ()) thread
+-- | Generalized version of 'addHandler' where the callback function may recurse.
+addRecursiveHandler :: (Event a, ControlIO m, MonadResource m) => Signal a -> b -> (b -> Input a -> m b) -> m ReleaseKey
+addRecursiveHandler (Signal _ s handlers) init f = do
+  signal <- atomically $ dupTMChan s
+
+  result <- liftBaseWith $ \runInIO ->
+    runInIO . flip allocate cancel . async . void . runInIO . flip fix init $ \recurse acc ->
+      waitFor signal >>= mapM_ (f acc >=> recurse)
+  (releaseKey, (_ :: Async ())) <- restoreM result
+  atomically $ modifyTVar handlers (releaseKey:)
+
+  return releaseKey
+
+-- | Stop all handlers associated to the given signal.
+deleteHandlers :: (Event e, MonadIO m, MonadResource m) => Signal e -> m ()
+deleteHandlers (Signal _ _ handlers) = void . sequence . map release =<< atomically (readTVar handlers)

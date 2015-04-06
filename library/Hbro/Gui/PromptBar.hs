@@ -44,6 +44,7 @@ import           Hbro.Prelude                             hiding (on)
 import           Control.Concurrent.Async.Lifted
 import           Control.Lens.Getter
 import           Control.Lens.TH
+import           Control.Monad.Trans.Resource
 
 import           Graphics.Rendering.Pango.Extended
 import           Graphics.UI.Gtk.Abstract.Widget
@@ -71,6 +72,11 @@ instance Event Changed where
   type Input Changed = Text
   describeInput _ = Just . (++) "Prompt value changed to: "
 
+data Validated = Validated deriving(Show)
+instance Event Validated where
+  type Input Validated = Text
+  describeInput _ = Just . (++) "Prompt validated with value: "
+
 -- | No exported constructor, please use 'buildFrom'
 declareLenses [d|
   data PromptBar = PromptBar
@@ -79,7 +85,7 @@ declareLenses [d|
     , entryL       :: Entry
     , changedL     :: Signal Changed
     , closedL      :: Signal Closed
-    , validatedL   :: TMVar Text
+    , validatedL   :: Signal Validated
     }
   |]
 -- }}}
@@ -87,20 +93,20 @@ declareLenses [d|
 -- | A 'PromptBar' can be built from an XML file.
 buildFrom :: (ControlIO m, MonadLogger m, Applicative m) => Gtk.Builder -> m PromptBar
 buildFrom builder = do
-    validation   <- io newEmptyTMVarIO
     entry        <- getWidget builder entryName
     closedSignal <- newSignal Closed
+    validated    <- newSignal Validated
 
     promptBar <- PromptBar <$> getWidget builder boxName
                            <*> getWidget builder labelName
                            <*> pure entry
                            <*> newSignal Changed
                            <*> pure closedSignal
-                           <*> pure validation
+                           <*> pure validated
 
     onEntryChanged entry $ emit (promptBar^.changedL)
     onEntryCanceled entry . async $ close promptBar
-    onEntryValidated entry $ \value -> atomically $ tryTakeTMVar validation >> putTMVar validation value
+    onEntryValidated entry $ emit validated
 
     return promptBar
 
@@ -144,7 +150,6 @@ close promptBar = do
 clean :: (ControlIO m) => PromptBar -> m PromptBar
 clean = withM_ entryL (gAsync . (`widgetRestoreText` StateNormal))
     >=> withM_ entryL (gAsync . (\e -> widgetModifyText e StateNormal gray))
-    >=> withM_ validatedL (void . atomically . tryTakeTMVar)
 
 
 -- {{{ Prompts
@@ -159,18 +164,18 @@ prompt description startValue promptBar = do
     clean promptBar
     open description startValue promptBar
 
-    cancelation <- listenTo (promptBar^.closedL)
-    validation  <- io . async . atomically . takeTMVar $ promptBar^.validatedL
+    cancelation <- listenTo $ promptBar^.closedL
+    validation  <- listenTo $ promptBar^.validatedL
 
     result <- io $ waitEitherCancel cancelation validation
     close promptBar
-    either (const $ throwError promptInterrupted) return result
+    maybe (throwError promptInterrupted) return . join $ hush result
 
 promptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m) => Text -> Text -> m Text
 promptM a b = prompt a b =<< ask
 
 
-iprompt :: (ControlIO m, MonadLogger m, MonadError Text m)
+iprompt :: (ControlIO m, MonadLogger m, MonadError Text m, MonadResource m)
         => Text
         -> Text
         -> (Text -> m ())
@@ -179,19 +184,19 @@ iprompt :: (ControlIO m, MonadLogger m, MonadError Text m)
 iprompt description startValue f promptBar = do
     clean promptBar
 
-    update <- addHook (promptBar^.changedL) f
+    update <- addHandler (promptBar^.changedL) f
     open description startValue promptBar
 
     io . wait =<< listenTo (promptBar^.closedL)
     close promptBar
-    cancel update
+    release update
 
-ipromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m) => Text -> Text -> (Text -> m ()) -> m ()
+ipromptM :: (ControlIO m, MonadResource m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m) => Text -> Text -> (Text -> m ()) -> m ()
 ipromptM a b c = iprompt a b c =<< ask
 
 
 -- | Same as 'prompt' for URI values
-uriPrompt :: (ControlIO m, MonadLogger m, MonadError Text m)
+uriPrompt :: (ControlIO m, MonadLogger m, MonadError Text m, MonadResource m)
           => Text
           -> Text
           -> PromptBar
@@ -199,20 +204,20 @@ uriPrompt :: (ControlIO m, MonadLogger m, MonadError Text m)
 uriPrompt description startValue promptBar = do
     clean promptBar
 
-    update <- addHook (promptBar^.changedL) $ checkURI promptBar
+    update <- addHandler (promptBar^.changedL) $ checkURI promptBar
     open description startValue promptBar
 
-    validation  <- io . async . atomically . takeTMVar $ promptBar^.validatedL
-    cancelation <- listenTo (promptBar^.closedL)
+    validation  <- listenTo $ promptBar^.validatedL
+    cancelation <- listenTo $ promptBar^.closedL
 
     result <- io $ waitEitherCancel cancelation validation
+    release update
     close promptBar
-    cancel update
-    let resultM = either (const $ throwError promptInterrupted) return result
+    parseURIReferenceM =<< maybe (throwError promptInterrupted) return (join $ hush result)
 
-    parseURIReferenceM =<< resultM
 
-uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m) => Text -> Text -> m URI
+uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m, MonadResource m)
+           => Text -> Text -> m URI
 uriPromptM a b = uriPrompt a b =<< ask
 
 
