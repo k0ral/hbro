@@ -55,7 +55,9 @@ Suggestions about better alternatives for any of these points (except the progra
 Installation
 ------------
 
-At the moment, *hbro* depends on the *integer-simple* package, which means you won't be able to build it using a standard GHC that uses the *integer-gmp* package. This distinction is `documented here`_, and the reason for this constraint is `explained there`_.
+Up until GHC 7.8, *hbro* requires the *integer-simple* package, which means you won't be able to build it using a standard GHC installation that uses the *integer-gmp* package. This distinction is `documented here`_, and the reason for this constraint is `explained there`_.
+
+Starting with GHC 7.10, the *integer-gmp* package was completely rewritten and *integer-simple* is no longer required.
 
 
 Configuration

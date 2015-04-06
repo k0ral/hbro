@@ -37,7 +37,6 @@ Library
         -- http-conduit,
         -- http-conduit-browser,
         -- http-types,
-        integer-simple,
         lens >= 4.4,
         lifted-async >= 0.6,
         lifted-base >= 0.2.3.3,
@@ -62,6 +61,9 @@ Library
         unix,
         webkitgtk3 >= 0.13.1.2,
         zeromq4-haskell
+    if impl(ghc < 7.10)
+       Build-depends: integer-simple
+
     Exposed-modules:
         Control.Monad.Logger.Extended
         , Control.Monad.Reader.Extended

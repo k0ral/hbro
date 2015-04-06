@@ -33,8 +33,9 @@ module Hbro.Prelude
 -- {{{ Imports
 import           ClassyPrelude                 as X hiding (Builder (..),
                                                      MonadReader (..),
-                                                     ReaderT (..), error, log,
-                                                     toList)
+                                                     ReaderT (..),
+                                                     defaultTimeLocale, error,
+                                                     log, toList)
 
 import           Control.Applicative           as X (Alternative (..),
                                                      WrappedMonad, optional)

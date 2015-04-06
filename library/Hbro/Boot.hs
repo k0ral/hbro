@@ -44,9 +44,9 @@ import qualified System.ZMQ4                     as ZMQ (version)
 -- | What users can configure.
 data Settings = Settings
     { configuration :: Config
-    , commandMap    :: God r m => CommandMap m
-    , keyMap        :: God r m => KeyMap m
-    , startUp       :: God r m => m ()
+    , commandMap    :: forall m r . God r m => CommandMap m
+    , keyMap        :: forall m r . God r m => KeyMap m
+    , startUp       :: forall m r . God r m => m ()
     }
 
 instance Default Settings where
