@@ -36,6 +36,7 @@ import           Network.URI.Extended
 
 import qualified Paths_hbro                      as Package
 
+import           System.Info
 import           System.Posix.Process
 import           System.Posix.Signals
 import qualified System.ZMQ4                     as ZMQ (version)
@@ -149,5 +150,6 @@ getStartURI uri = do
 printVersions :: IO ()
 printVersions = do
   (a, b, c) <- ZMQ.version
-  putStrLn $ "hbro v" ++ pack (showVersion Package.version)
-  putStrLn $ "0MQ library v" ++ intercalate "." (map tshow [a, b, c])
+  putStrLn $ "hbro-" ++ pack (showVersion Package.version)
+  putStrLn $ "compiled by " ++ pack compilerName ++ "-" ++ pack (showVersion compilerVersion)
+  putStrLn $ "using zeromq-" ++ intercalate "." (map tshow [a, b, c])
