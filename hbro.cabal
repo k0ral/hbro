@@ -55,7 +55,7 @@ Library
         system-fileio,
         text,
         -- text-icu,
-        time,
+        time >= 1.5,
         transformers,
         transformers-base,
         unix,
