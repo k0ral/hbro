@@ -19,11 +19,6 @@ module Hbro.Prelude
     , (>/>)
     , abort
     , doNothing
--- * File manipulation
-    , readFileE
-    , readFileE'
-    , writeFileE
-    , writeFileE'
 -- * Lens util
     , withM
     , withM_
@@ -44,12 +39,9 @@ import           Control.Conditional           as X (ToBool (..), (<<|), (<|),
                                                      (|>), (|>>))
 import           Control.Lens
 import           Control.Monad.Base            as X (MonadBase (..))
-import           Control.Monad.Except
 import           Control.Monad.Reader.Extended as X hiding (get)
 import           Control.Monad.Trans.Control   as X
 
-import qualified Data.ByteString               as Strict
-import qualified Data.ByteString.Lazy          as Lazy
 import           Data.Default.Class            as X
 import           Data.Foldable                 as X (asum)
 import           Data.List                     as X (tail)
@@ -99,24 +91,6 @@ abort = mzero
 -- | Alias for @return ()@
 doNothing :: Monad m => m ()
 doNothing = return ()
--- }}}
-
--- {{{ File manipulation
--- | Lifted version of 'readFile'
-readFileE :: (ControlIO m, MonadError Text m) => FilePath -> m Lazy.ByteString
-readFileE = handleIO (throwError . tshow) . readFile
-
--- | Strict version of 'readFileE'
-readFileE' :: (ControlIO m, MonadError Text m) => FilePath -> m Strict.ByteString
-readFileE' = handleIO (throwError . tshow) . readFile
-
--- | Lifted version of 'writeFile'
-writeFileE :: (ControlIO m, MonadError Text m) => FilePath -> Lazy.ByteString -> m ()
-writeFileE f x = handleIO (throwError . tshow) $ writeFile f x
-
--- | Strict version of 'writeFileE'
-writeFileE' :: (ControlIO m, MonadError Text m) => FilePath -> Strict.ByteString -> m ()
-writeFileE' f x = handleIO (throwError . tshow) $ writeFile f x
 -- }}}
 
 -- {{{ Lens util

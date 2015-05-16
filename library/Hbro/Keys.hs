@@ -28,7 +28,6 @@ module Hbro.Keys (
     ) where
 
 -- {{{ Imports
-import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Keys.Model                 ((.|))
@@ -121,7 +120,8 @@ instance Event KeyMapPressed where
   describeInput _ (strokes, _bound) = Just . unwords $ "Key pressed: " : (describe <$> strokes)
 
 
-bindKeys :: (ControlIO m, MonadLogger m, MonadError Text m, MonadResource m) => Signal KeyPressed -> Signal KeyMapPressed -> KeyMap m -> m ReleaseKey
+bindKeys :: (ControlIO m, MonadLogger m, MonadCatch m, MonadResource m)
+         => Signal KeyPressed -> Signal KeyMapPressed -> KeyMap m -> m ReleaseKey
 bindKeys input output keyMap = addRecursiveHandler input empty $ \previousStrokes newStroke -> do
     let k = Map.keys keyMap
         strokes = previousStrokes |: newStroke

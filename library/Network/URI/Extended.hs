@@ -1,11 +1,12 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
--- | Monadic version of 'Network.URI'.
+-- | Generalized version of 'Network.URI'.
 module Network.URI.Extended
     ( module X
-    , parseURIReferenceM
-    , parseURIM
+    , parseURIReference
+    , parseURI
+    , UriException(..)
     ) where
 
 -- {{{ Imports
@@ -14,24 +15,28 @@ import           Hbro.Prelude
 
 import           Data.Aeson
 
-import           Network.URI  as X
+import           Network.URI  as X hiding (parseURI, parseURIReference)
+import qualified Network.URI  as N
 -- }}}
 
 instance FromJSON URI where
-    parseJSON (String t) = maybe mzero return . parseURIReference $ unpack t
+    parseJSON (String t) = maybe mzero return $ parseURIReference t
     parseJSON _ = mzero
 
 instance ToJSON URI where
     toJSON = String . tshow
 
--- | Error message
-invalidURI :: Text -> Text
-invalidURI uri = "Invalid URI: " ++ uri
+-- | Generalized version of 'N.parseURIReference'.
+parseURIReference :: (MonadThrow m) => Text -> m URI
+parseURIReference uri = N.parseURIReference (unpack uri) `failWith` InvalidUri uri
 
--- | Monadic version of 'parseURIReference'
-parseURIReferenceM :: (MonadError Text m) => Text -> m URI
-parseURIReferenceM uri = parseURIReference (unpack uri) `failWith` invalidURI uri
+-- | Generalized version of 'N.parseURI'.
+parseURI :: (MonadThrow m) => Text -> m URI
+parseURI uri = N.parseURI (unpack uri) `failWith` InvalidUri uri
 
--- | Monadic version of 'parseURI'
-parseURIM :: (MonadError Text m) => Text -> m URI
-parseURIM uri = parseURI (unpack uri) `failWith` invalidURI uri
+
+data UriException = InvalidUri Text deriving(Eq)
+instance Exception UriException
+
+instance Show UriException where
+  show (InvalidUri t) = "Invalid URI: " ++ unpack t

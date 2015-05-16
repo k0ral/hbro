@@ -82,14 +82,14 @@ listenTo :: (Event a, MonadIO m) => Signal a -> m (Async (Maybe (Input a)))
 listenTo (Signal _ signal _) = io . async . waitFor =<< atomically (dupTMChan signal)
 
 -- | Execute a function each time an event occurs.
-addHandler :: (Event a, ControlIO m, MonadResource m) => Signal a -> (Handler m a) -> m ReleaseKey
+addHandler :: (Event a, ControlIO m, MonadResource m) => Signal a -> Handler m a -> m ReleaseKey
 addHandler (Signal _ s handlers) f = do
   signal <- atomically $ dupTMChan s
 
   result <- liftBaseWith $ \runInIO -> do
     runInIO . flip allocate cancel . async . fix $ \recurse ->
-      waitFor signal >>= mapM_ (\x -> (runInIO $ f x) >> recurse)
-  (releaseKey, (_ :: Async ())) <- restoreM result
+      waitFor signal >>= mapM_ (\x -> runInIO (f x) >> recurse)
+  (releaseKey, _ :: Async ()) <- restoreM result
   atomically $ modifyTVar handlers (releaseKey:)
 
   return releaseKey
@@ -102,11 +102,11 @@ addRecursiveHandler (Signal _ s handlers) init f = do
   result <- liftBaseWith $ \runInIO ->
     runInIO . flip allocate cancel . async . void . runInIO . flip fix init $ \recurse acc ->
       waitFor signal >>= mapM_ (f acc >=> recurse)
-  (releaseKey, (_ :: Async ())) <- restoreM result
+  (releaseKey, _ :: Async ()) <- restoreM result
   atomically $ modifyTVar handlers (releaseKey:)
 
   return releaseKey
 
 -- | Stop all handlers associated to the given signal.
 deleteHandlers :: (Event e, MonadIO m, MonadResource m) => Signal e -> m ()
-deleteHandlers (Signal _ _ handlers) = void . sequence . map release =<< atomically (readTVar handlers)
+deleteHandlers (Signal _ _ handlers) = void . mapM release =<< atomically (readTVar handlers)

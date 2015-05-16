@@ -37,12 +37,10 @@ module Hbro.Core (
     ) where
 
 -- {{{ Imports
-import           Graphics.UI.Gtk.WebKit.Lifted
-import           Graphics.UI.Gtk.WebKit.Lifted.WebView
+import           Graphics.UI.Gtk.WebKit.Extended
 
 import           Hbro.Config                              as Config
 import           Hbro.Dyre
-import           Hbro.Error
 -- import           Hbro.Gui                              as Gui
 import           Hbro.Gui.MainView
 import           Hbro.Logger
@@ -81,31 +79,31 @@ data ZoomDirection = In | Out
 -- }}}
 
 -- {{{ Getters
-getCurrentURI :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m URI
+getCurrentURI :: (MonadIO m, MonadReader r m, Has MainView r, MonadThrow m) => m URI
 getCurrentURI = webViewGetUri =<< getWebView
 
-getFaviconURI :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m URI
+getFaviconURI :: (MonadIO m, MonadReader r m, Has MainView r, MonadThrow m) => m URI
 getFaviconURI = webViewGetIconUri =<< getWebView
 
-getFavicon :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => Int -> Int -> m Pixbuf
+getFavicon :: (MonadIO m, MonadReader r m, Has MainView r, MonadThrow m) => Int -> Int -> m Pixbuf
 getFavicon w h = (\v -> webViewTryGetFaviconPixbuf v w h) =<< getWebView
 
 getLoadProgress :: (MonadIO m, MonadReader r m, Has MainView r) => m Double
 getLoadProgress = gSync . webViewGetProgress =<< getWebView
 
-getPageTitle :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m Text
+getPageTitle :: (MonadIO m, MonadReader r m, Has MainView r, MonadThrow m) => m Text
 getPageTitle = webViewGetTitle =<< getWebView
 
 -- | Return the HTML code of the current webpage.
-getPageData :: (MonadIO m, MonadReader r m, Has MainView r, MonadError Text m) => m ByteString
+getPageData :: (MonadIO m, MonadReader r m, Has MainView r, MonadThrow m) => m ByteString
 getPageData = dataSourceGetData =<< io . webFrameGetDataSource =<< io . webViewGetMainFrame =<< getWebView
 -- }}}
 
 -- {{{ Browsing
-goHome :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r, Has (TVar Config) r, MonadError Text m) => m ()
+goHome :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r, Has (TVar Config) r, MonadThrow m) => m ()
 goHome = load =<< Config.get homePageL
 
-load :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r, MonadError Text m) => URI -> m ()
+load :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r, MonadThrow m) => URI -> m ()
 load uri = do
     debug $ "Loading URI: " ++ tshow uri
     -- void . logErrors $ do
@@ -126,7 +124,7 @@ load uri = do
     -- }
 
 
--- load' :: (MonadBaseControl IO m, MonadReader GUI m, HasHTTPClient t, MonadError Text m) => URI -> m ()
+-- load' :: (MonadBaseControl IO m, MonadReader GUI m, HasHTTPClient t, MonadThrow m) => URI -> m ()
 -- load' uri = do
 --     page <- Client.retrieve uri
 --     -- render page =<< Client.getURI
@@ -169,13 +167,13 @@ printPage = gAsync . webFramePrint =<< gSync . webViewGetMainFrame =<< getWebVie
 spawnHbro :: (MonadIO m, MonadLogger m) => m ()
 spawnHbro = do
   executable <- getHbroExecutable
-  spawn (fpToText executable) []
+  spawn (pack executable) []
 
 -- | Spawn another browser instance and load the given URI at start-up.
 spawnHbro' :: (MonadIO m, MonadLogger m) => URI -> m ()
 spawnHbro' uri = do
   executable <- getHbroExecutable
-  spawn (fpToText executable) ["-u", tshow uri]
+  spawn (pack executable) ["-u", tshow uri]
 
 -- | Terminate the program.
 quit :: (MonadIO m) => m ()
@@ -183,13 +181,13 @@ quit = gAsync mainQuit
 
 
 -- {{{ Misc
-saveWebPage :: (ControlIO m, MonadLogger m, MonadReader r m, Has MainView r, MonadError Text m) => FilePath -> m ()
-saveWebPage file = writeFileE' file =<< getPageData
+saveWebPage :: (ControlIO m, MonadLogger m, MonadReader r m, Has MainView r, MonadThrow m) => FilePath -> m ()
+saveWebPage file = writeFile file =<< getPageData
 
 -- | Execute a javascript file on current webpage.
 executeJSFile :: (MonadIO m, MonadLogger m) => FilePath -> WebView -> m ()
 executeJSFile filePath webView' = do
-    debug $ "Executing Javascript file: " ++ fpToText filePath
+    debug $ "Executing Javascript file: " ++ pack filePath
     script <- readFile filePath
     let script' = asText . unwords . map (++ "\n") . lines $ script
 

@@ -16,6 +16,14 @@ import           Graphics.UI.Gtk.General.Selection
 -- }}}
 
 
+data ClipboardException = EmptyClipboard SelectionTag deriving(Eq)
+
+instance Exception ClipboardException
+
+instance Show ClipboardException where
+  show (EmptyClipboard tag) = "Empty clipboard [" ++ show tag ++ "]"
+
+
 -- | Write given 'Text' to the selection-primary clipboard
 write :: (BaseIO m, MonadLogger m) => Text -> m ()
 write = write' selectionPrimary
@@ -27,15 +35,15 @@ write' tag text = do
     gSync (clipboardGet tag) >>= gAsync . (`clipboardSetText` text)
 
 -- | Read clipboard's content. Both 'selectionPrimary' and 'selectionClipboard' are inspected (in this order).
-read :: (BaseIO m, Alternative m, MonadError Text m) => m Text
+read :: (BaseIO m, Alternative m, MonadThrow m) => m Text
 read = read' selectionPrimary <|> read' selectionClipboard
 
 -- | Return the content from the given clipboard.
-read' :: (Alternative m, MonadError Text m, BaseIO m) => SelectionTag -> m Text
+read' :: (Alternative m, MonadThrow m, BaseIO m) => SelectionTag -> m Text
 read' tag = do
     clipboard <- gSync $ clipboardGet tag
     result    <- newEmptyMVar
 
     gAsync . clipboardRequestText clipboard $ putMVar result
 
-    takeMVar result <!> ("Empty clipboard [" ++ tshow tag ++ "]")
+    takeMVar result <!> EmptyClipboard tag

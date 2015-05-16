@@ -19,6 +19,8 @@ import           Hbro.Prelude
 import           Config.Dyre
 import           Config.Dyre.Compile
 import           Config.Dyre.Paths
+
+import           System.Directory
 -- }}}
 
 -- | How dynamic reconfiguration process should behave.
@@ -43,10 +45,11 @@ describePaths = io $ do
 getHbroExecutable :: (MonadIO m) => m FilePath
 getHbroExecutable = io $ do
   (a, _, _, _, _) <- getPaths baseParameters
-  return . fpFromText $ pack a
+  return a
 
 -- Dynamic reconfiguration settings
-parameters :: (Functor m, MonadIO m, MonadLogger m, StM m () ~ ()) => (RunInBase m IO) -> Mode -> (a -> m b) -> Params (Either Text a)
+parameters :: (Functor m, MonadIO m, MonadLogger m, StM m () ~ ())
+           => RunInBase m IO -> Mode -> (a -> m b) -> Params (Either Text a)
 parameters runInIO mode main = baseParameters
     { configCheck = mode /= Vanilla
     , realMain    = runInIO . main'
@@ -63,6 +66,7 @@ baseParameters = defaultParams
     , ghcOpts                 = ["-threaded"]
     , statusOut               = hPutStrLn stderr
     , includeCurrentDirectory = False
+    , configDir               = Just $ getAppUserDataDirectory "hbro"
     }
 
 wrap :: (ControlIO m, MonadLogger m, StM m () ~ ()) => Mode -> (a -> m b) -> a -> m ()

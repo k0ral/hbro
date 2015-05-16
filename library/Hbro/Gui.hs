@@ -13,9 +13,8 @@ module Hbro.Gui (
 ) where
 
 -- {{{ Imports
-import           Graphics.UI.Gtk.WebKit.Lifted.WebView    ()
+import           Graphics.UI.Gtk.WebKit.Extended          ()
 
-import           Hbro.Error                               as Hbro
 import           Hbro.Event
 import           Hbro.Gui.Builder
 import           Hbro.Gui.MainView                        hiding (initialize)
@@ -40,9 +39,9 @@ import           Graphics.UI.Gtk.Windows.Window
 import           System.Glib.Signals                      hiding (Signal)
 -- }}}
 
-initialize :: (ControlIO m, Alternative m, MonadError Text m, MonadThreadedLogger m, MonadResource m)
+initialize :: (ControlIO m, Alternative m, MonadCatch m, MonadThreadedLogger m, MonadResource m)
            => FilePath -> m (Gtk.Builder, MainView, PromptBar, StatusBar, NotificationBar)
-initialize (fpToText -> file) = do
+initialize (pack -> file) = do
     debug $ "Building GUI from " ++ file
     builder <- gSync Gtk.builderNew
     gSync . Gtk.builderAddFromFile builder $ unpack file

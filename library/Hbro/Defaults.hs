@@ -11,7 +11,6 @@ module Hbro.Defaults where
 import           Hbro.Clipboard                           as Clipboard
 import           Hbro.Config                              (Config)
 import           Hbro.Core
-import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Gui                                 as Gui
@@ -43,21 +42,23 @@ import           Network.URI.Extended
 import           System.Glib.Attributes.Extended
 -- }}}
 
--- | A 'God' monad has access to everything.
-type God r m = (ControlIO m, MonadLogger m, MonadError Text m, MonadResource m, MonadReader r m, Has (TVar Config) r, Has PromptBar r, Has NotificationBar r, Has StatusBar r, Has Gtk.Builder r, Has (Signal KeyMapPressed) r, Has MainView r, Alternative m)
+-- | A 'God' monad has access to everything, and obviously never throws errors.
+type God r m = (ControlIO m, MonadLogger m, MonadResource m, MonadReader r m, Has (TVar Config) r, Has PromptBar r, Has NotificationBar r, Has StatusBar r, Has Gtk.Builder r, Has (Signal KeyMapPressed) r, Has MainView r, Alternative m)
 
-defaultLinkClickedHandler :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has MainView r)
+defaultLinkClickedHandler :: (MonadIO m, MonadLogger m, MonadThrow m, MonadReader r m, Has MainView r)
                           => Handler m LinkClicked
 defaultLinkClickedHandler (uri, Gtk.MiddleButton) = spawnHbro' uri
 defaultLinkClickedHandler (uri, _) = load uri
 
-defaultLoadRequestedHandler :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has MainView r) => URI -> m ()
+defaultLoadRequestedHandler :: (MonadIO m, MonadLogger m, MonadThrow m, MonadReader r m, Has MainView r)
+                            => URI -> m ()
 defaultLoadRequestedHandler = load
 
 defaultNewWindowHandler :: (MonadIO m, MonadLogger m) => URI -> m ()
-defaultNewWindowHandler uri = spawnHbro' uri
+defaultNewWindowHandler = spawnHbro'
 
-defaultTitleChangedHandler :: (MonadIO m, MonadLogger m, MonadError Text m, MonadReader r m, Has Gtk.Builder r) => Text -> m ()
+defaultTitleChangedHandler :: (MonadIO m, MonadLogger m, MonadThrow m, MonadReader r m, Has Gtk.Builder r)
+                           => Text -> m ()
 defaultTitleChangedHandler title = getMainWindow >>= \w -> set w windowTitle ("hbro | " ++ title) >> return ()
 
 -- /!\ NetworkRequest's Haskell binding is missing the function "webkit_network_request_get_message", which makes it rather useless...
@@ -68,7 +69,7 @@ defaultTitleChangedHandler title = getMainWindow >>= \w -> set w windowTitle ("h
 
 
 -- | List of default supported requests.
-defaultCommandMap :: God r m => CommandMap m
+defaultCommandMap :: (God r m, MonadCatch m) => CommandMap m
 defaultCommandMap = Map.fromList
 -- Get information
     [ "GET_URI"             >: \_arguments -> Right . tshow <$> getCurrentURI
@@ -77,7 +78,7 @@ defaultCommandMap = Map.fromList
     , "GET_LOAD_PROGRESS"   >: \_arguments -> Right . tshow <$> getLoadProgress
 -- Trigger actions
     , "LOAD_URI"            >: \arguments -> case arguments of
-            uri:_ -> parseURIReferenceM uri >>= load >> return (Right "OK")
+            uri:_ -> parseURIReference uri >>= load >> return (Right "OK")
             _     -> return . Left $ "Argument needed."
     , "STOP_LOADING"        >: \_arguments -> stopLoading       >> return (Right "OK")
     , "RELOAD"              >: \_arguments -> reload            >> return (Right "OK")
@@ -89,7 +90,7 @@ defaultCommandMap = Map.fromList
     ]
 
 
-defaultKeyMap :: (God r m) => KeyMap m
+defaultKeyMap :: (God r m, MonadCatch m) => KeyMap m
 defaultKeyMap = Map.fromList
 -- Browse
    [ [_Alt     .| _Left]   >: goBack
@@ -107,8 +108,8 @@ defaultKeyMap = Map.fromList
 -- Copy/paste
    , [_Control .| _c]      >: getCurrentURI >>= Clipboard.write . tshow
    , [_Alt     .| _c]      >: getPageTitle >>= Clipboard.write
-   , [_Control .| _v]      >: Clipboard.read >>= parseURIReferenceM >>= load
-   , [_Alt     .| _v]      >: Clipboard.read >>= parseURIReferenceM >>= spawnHbro'
+   , [_Control .| _v]      >: Clipboard.read >>= parseURIReference >>= load
+   , [_Alt     .| _v]      >: Clipboard.read >>= parseURIReference >>= spawnHbro'
 -- Display
    , [_Control .| _plus]   >: zoomIn
    , [_Control .| _minus]  >: zoomOut
@@ -127,7 +128,7 @@ defaultKeyMap = Map.fromList
    , [_Control .| _h]      >: gAsync . webViewUnMarkTextMatches =<< getWebView
 -- Misc
     --, (_Control .| _i)      >: openInspector
-   , [_Control .| _s]      >: promptM "Save webpage " "" >>= saveWebPage . fpFromText
+   , [_Control .| _s]      >: promptM "Save webpage " "" >>= saveWebPage . unpack
    , [_Alt     .| _Print]  >: printPage
    , [_Control .| _t]      >: spawnHbro
    , [_Control .| _w]      >: quit

@@ -51,8 +51,8 @@ declareLenses [d|
 instance Describable CliOptions where
     describe opts = unwords $ catMaybes
         [ ("URI=" ++) . tshow <$> (opts^.startURIL)
-        , ("SOCKET=" ++) . fpToText  <$> (opts^.socketPathL)
-        , ("UI=" ++) . fpToText <$> (opts^.uiFileL)
+        , ("SOCKET=" ++) . pack  <$> (opts^.socketPathL)
+        , ("UI=" ++) . pack <$> (opts^.uiFileL)
         , Just . ("DYRE_MODE=" ++) . tshow $ opts^.dyreModeL
         , Just "DYRE_DEBUG" <| opts^.dyreDebugL |> Nothing
         , Just . ("LOG-LEVEL=" ++) . tshow $ opts^.logLevelL

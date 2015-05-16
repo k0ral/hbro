@@ -10,10 +10,11 @@ module Hbro.Gui.NotificationBar
     ) where
 
 -- {{{ Imports
-import           Hbro.Error
 import           Hbro.Gui.Builder
 import           Hbro.Logger
 import           Hbro.Prelude
+
+import           Control.Monad.Trans.Maybe
 
 import           Graphics.Rendering.Pango.Extended
 import           Graphics.UI.Gtk.Abstract.Misc
@@ -51,7 +52,7 @@ instance LabelClass NotificationBar
 
 initialize :: (ControlIO m, MonadThreadedLogger m) => NotificationBar -> m NotificationBar
 initialize notifBar = do
-  addLogHandler $ \(_loc, _source, level, message) -> void . runFailT $ do
+  addLogHandler $ \(_loc, _source, level, message) -> void . runMaybeT $ do
     guard $ level >= LevelInfo
     write' message (logColor level) notifBar
   return notifBar

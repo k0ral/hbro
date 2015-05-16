@@ -17,6 +17,7 @@ module Hbro.Gui.PromptBar (
     , labelName
     , entryName
     , boxName
+    , PromptException(..)
 -- * Functions
     , initialize
     , close
@@ -44,6 +45,7 @@ import           Hbro.Prelude                             hiding (on)
 import           Control.Concurrent.Async.Lifted
 import           Control.Lens.Getter
 import           Control.Lens.TH
+import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Resource
 
 import           Graphics.Rendering.Pango.Extended
@@ -88,6 +90,13 @@ declareLenses [d|
     , validatedL   :: Signal Validated
     }
   |]
+
+data PromptException = PromptInterrupted deriving(Eq)
+
+instance Exception PromptException
+
+instance Show PromptException where
+  show PromptInterrupted = "Prompt interrupted."
 -- }}}
 
 -- | A 'PromptBar' can be built from an XML file.
@@ -117,10 +126,6 @@ labelName = "promptDescription"
 entryName = "promptEntry"
 boxName   = "promptBox"
 
--- | Error message
-promptInterrupted :: Text
-promptInterrupted = "Prompt interrupted."
-
 initialize :: (MonadIO m) => PromptBar -> m PromptBar
 initialize =
     withM_ descriptionL (gAsync . (`labelSetAttributes` [allItalic, allBold]))
@@ -139,7 +144,7 @@ open description defaultText =
 
 close :: (ControlIO m, MonadLogger m) => PromptBar -> m PromptBar
 close promptBar = do
-  runFailT $ do
+  runMaybeT $ do
     guard =<< get (promptBar^.boxL) widgetVisible
     emit (promptBar^.closedL) ()
     gAsync . widgetHide $ promptBar^.boxL
@@ -155,7 +160,7 @@ clean = withM_ entryL (gAsync . (`widgetRestoreText` StateNormal))
 -- {{{ Prompts
 -- | Open prompt bar with given description and default value,
 -- register a callback to trigger when value is changed, and another one when value is validated.
-prompt :: (ControlIO m, MonadLogger m, MonadError Text m)
+prompt :: (ControlIO m, MonadLogger m, MonadThrow m)
         => Text             -- ^ Prompt description
         -> Text             -- ^ Pre-fill value
         -> PromptBar
@@ -169,13 +174,14 @@ prompt description startValue promptBar = do
 
     result <- io $ waitEitherCancel cancelation validation
     close promptBar
-    maybe (throwError promptInterrupted) return . join $ hush result
+    maybe (throwM PromptInterrupted) return . join $ hush result
 
-promptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m) => Text -> Text -> m Text
+promptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadThrow m)
+        => Text -> Text -> m Text
 promptM a b = prompt a b =<< ask
 
 
-iprompt :: (ControlIO m, MonadLogger m, MonadError Text m, MonadResource m)
+iprompt :: (ControlIO m, MonadLogger m, MonadThrow m, MonadResource m)
         => Text
         -> Text
         -> (Text -> m ())
@@ -191,12 +197,13 @@ iprompt description startValue f promptBar = do
     close promptBar
     release update
 
-ipromptM :: (ControlIO m, MonadResource m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m) => Text -> Text -> (Text -> m ()) -> m ()
+ipromptM :: (ControlIO m, MonadResource m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadThrow m)
+         => Text -> Text -> (Text -> m ()) -> m ()
 ipromptM a b c = iprompt a b c =<< ask
 
 
 -- | Same as 'prompt' for URI values
-uriPrompt :: (ControlIO m, MonadLogger m, MonadError Text m, MonadResource m)
+uriPrompt :: (ControlIO m, MonadLogger m, MonadThrow m, MonadResource m)
           => Text
           -> Text
           -> PromptBar
@@ -213,10 +220,10 @@ uriPrompt description startValue promptBar = do
     result <- io $ waitEitherCancel cancelation validation
     release update
     close promptBar
-    parseURIReferenceM =<< maybe (throwError promptInterrupted) return (join $ hush result)
+    parseURIReference =<< maybe (throwM PromptInterrupted) return (join $ hush result)
 
 
-uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadError Text m, MonadResource m)
+uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadThrow m, MonadResource m)
            => Text -> Text -> m URI
 uriPromptM a b = uriPrompt a b =<< ask
 

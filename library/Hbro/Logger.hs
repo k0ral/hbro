@@ -20,13 +20,14 @@ module Hbro.Logger
     ) where
 
 -- {{{ Imports
-import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Prelude                  hiding (runReaderT)
 
 import           Control.Monad.Base
+import           Control.Monad.Catch
 import           Control.Monad.Logger.Extended as X
 import           Control.Monad.Reader
+import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Resource
 
 import           Data.Text                     (justifyLeft)
@@ -45,19 +46,18 @@ instance Event LogMessage where
 class (MonadLogger m) => MonadThreadedLogger m where
   addLogHandler :: (Input LogMessage -> IO ()) -> m ()
 
-instance (Monad m, MonadThreadedLogger m) => MonadThreadedLogger (ExceptT e m) where
-  addLogHandler = lift . addLogHandler
-
 instance (Monad m, MonadThreadedLogger m) => MonadThreadedLogger (ResourceT m) where
   addLogHandler = lift . addLogHandler
 
 newtype ThreadedLoggingT m a = ThreadedLoggingT { unThreadedLoggingT :: ReaderT (Signal LogMessage, LogLevel) m a }
+deriving instance (Alternative m) => Alternative (ThreadedLoggingT m)
 deriving instance (Applicative m) => Applicative (ThreadedLoggingT m)
 deriving instance (Functor m) => Functor (ThreadedLoggingT m)
 deriving instance (Monad m) => Monad (ThreadedLoggingT m)
 deriving instance (MonadIO m) => MonadIO (ThreadedLoggingT m)
 deriving instance (MonadResource m) => MonadResource (ThreadedLoggingT m)
 deriving instance (MonadThrow m) => MonadThrow (ThreadedLoggingT m)
+deriving instance (MonadCatch m) => MonadCatch (ThreadedLoggingT m)
 deriving instance MonadTrans ThreadedLoggingT
 
 instance MonadBase b m => MonadBase b (ThreadedLoggingT m) where
@@ -74,7 +74,7 @@ instance MonadBaseControl b m => MonadBaseControl b (ThreadedLoggingT m) where
   restoreM     = defaultRestoreM
 
 instance (MonadIO m, Functor m) => MonadLogger (ThreadedLoggingT m) where
-  monadLoggerLog loc source level message = ThreadedLoggingT . void . runFailT $ do
+  monadLoggerLog loc source level message = ThreadedLoggingT . void . runMaybeT $ do
     (loggerSignal, levelRef) <- Control.Monad.Reader.ask
     guard $ level >= levelRef
     emit' loggerSignal (loc, source, level, decodeUtf8With lenientDecode . fromLogStr $ toLogStr message)
@@ -101,9 +101,9 @@ formatLevel LevelError     = "ERROR"
 formatLevel (LevelOther a) = justifyLeft 5 ' ' . take 5 $ tshow a
 
 -- | Like 'catchError', except that the error is automatically logged, then discarded.
-logErrors :: (MonadLogger m, Functor m, MonadError Text m) => m a -> m (Maybe a)
-logErrors f = catchError (Just <$> f) $ \e -> error e >> return Nothing
+logErrors :: (ControlIO m, MonadLogger m, MonadCatch m) => m a -> m (Maybe a)
+logErrors f = catchAll (Just <$> f) $ \e -> error (tshow e) >> return Nothing
 
 -- | Like 'logErrors', but discards the result.
-logErrors_ :: (MonadLogger m, Functor m, MonadError Text m) => m a -> m ()
+logErrors_ :: (MonadLogger m, ControlIO m, MonadCatch m) => m a -> m ()
 logErrors_ = void . logErrors

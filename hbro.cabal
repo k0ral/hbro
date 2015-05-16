@@ -25,13 +25,16 @@ Library
         aeson,
         base == 4.*,
         bytestring,
-        classy-prelude >= 0.9.4,
+        classy-prelude >= 0.12,
         cond,
         containers,
         data-default-class,
+        directory,
         dyre >= 0.8.8,
         errors,
+        exceptions,
         fast-logger,
+        filepath,
         glib,
         gtk3 >= 0.13,
         -- http-conduit,
@@ -52,7 +55,6 @@ Library
         safe,
         semigroups,
         stm-chans,
-        system-fileio,
         text,
         -- text-icu,
         time >= 1.5,
@@ -66,40 +68,39 @@ Library
 
     Exposed-modules:
         Control.Monad.Logger.Extended
-        , Control.Monad.Reader.Extended
-        , Graphics.Rendering.Pango.Extended
-        , Graphics.UI.Gtk.General.General.Extended
-        , Hbro
-        , Hbro.Boot
-        , Hbro.Clipboard
-        , Hbro.Config
-        , Hbro.Core
-        , Hbro.Defaults
-        , Hbro.Error
-        , Hbro.Event
-        , Hbro.Gdk.KeyVal
-        , Hbro.Gui.Builder
-        , Hbro.Gui.MainView
-        , Hbro.Gui.NotificationBar
-        , Hbro.Gui.PromptBar
-        , Hbro.Gui.StatusBar
-        , Hbro.IPC
-        , Hbro.Keys
-        , Hbro.Keys.Model
-        , Hbro.Logger
-        , Hbro.Prelude
-        , Hbro.WebView.Signals
-        , Network.URI.Extended
-        , System.Glib.Attributes.Extended
-        , System.Process.Extended
+        Control.Monad.Reader.Extended
+        Graphics.Rendering.Pango.Extended
+        Graphics.UI.Gtk.General.General.Extended
+        Hbro
+        Hbro.Boot
+        Hbro.Clipboard
+        Hbro.Config
+        Hbro.Core
+        Hbro.Defaults
+        Hbro.Error
+        Hbro.Event
+        Hbro.Gdk.KeyVal
+        Hbro.Gui.Builder
+        Hbro.Gui.MainView
+        Hbro.Gui.NotificationBar
+        Hbro.Gui.PromptBar
+        Hbro.Gui.StatusBar
+        Hbro.IPC
+        Hbro.Keys
+        Hbro.Keys.Model
+        Hbro.Logger
+        Hbro.Prelude
+        Hbro.WebView.Signals
+        Network.URI.Extended
+        System.Glib.Attributes.Extended
+        System.Process.Extended
     Other-modules:
-        Graphics.UI.Gtk.WebKit.Lifted
-        , Graphics.UI.Gtk.WebKit.Lifted.WebView
-        -- , Hbro.CFunctions
-        , Hbro.Dyre
-        , Hbro.Gui
-        , Hbro.Options
-        , Paths_hbro
+        Graphics.UI.Gtk.WebKit.Extended
+        -- Hbro.CFunctions
+        Hbro.Dyre
+        Hbro.Gui
+        Hbro.Options
+        Paths_hbro
     -- Build-tools: hsc2hs
     -- C-sources: cbits/cbits.c
     -- Include-dirs: include

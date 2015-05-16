@@ -6,7 +6,6 @@
 module Hbro.WebView.Signals where
 
 -- {{{ Imports
-import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Keys                                  as Keys
@@ -14,8 +13,8 @@ import           Hbro.Keys.Model                            ((.|))
 import           Hbro.Logger
 import           Hbro.Prelude                               hiding (on)
 
-import           Graphics.UI.Gtk.WebKit.Lifted              as Lifted
-import           Graphics.UI.Gtk.WebKit.Lifted.WebView      as W
+import           Control.Monad.Catch
+import           Control.Monad.Trans.Maybe
 
 import           Data.Set                                   as S hiding (map)
 
@@ -25,6 +24,7 @@ import           Graphics.UI.Gtk.Gdk.EventM                 as Gdk
 import           Graphics.UI.Gtk.General.General.Extended
 import           Graphics.UI.Gtk.WebKit.Download            as W hiding
                                                                   (Download, downloadGetSuggestedFilename, downloadGetUri)
+import           Graphics.UI.Gtk.WebKit.Extended            as W
 import           Graphics.UI.Gtk.WebKit.WebNavigationAction
 import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
 
@@ -110,9 +110,10 @@ data ResourceAction = Load | Download' deriving(Show)
 instance Describable ResourceAction where describe = tshow
 
 
-attachDownload :: (ControlIO m, MonadLogger m) => WebView -> Signal Download -> m (ConnectId WebView)
+attachDownload :: (ControlIO m, MonadCatch m, MonadLogger m)
+               => WebView -> Signal Download -> m (ConnectId WebView)
 attachDownload webView signal = liftBaseWith $ \runInIO -> gSync . on webView downloadRequested $ \d -> do
-  runInIO . runExceptT . logErrors $ do
+  runInIO . logErrors $ do
     amount <- io $ downloadGetTotalSize d
     uri    <- downloadGetUri d
     name   <- downloadGetSuggestedFilename d
@@ -121,10 +122,11 @@ attachDownload webView signal = liftBaseWith $ \runInIO -> gSync . on webView do
   return False
 
 
-attachLinkHovered :: (ControlIO m, MonadLogger m) => WebView -> Signal LinkHovered -> Signal LinkUnhovered -> m (ConnectId WebView)
+attachLinkHovered :: (ControlIO m, MonadCatch m, MonadLogger m)
+                  => WebView -> Signal LinkHovered -> Signal LinkUnhovered -> m (ConnectId WebView)
 attachLinkHovered webView hoveredSignal unhoveredSignal = liftBaseWith $ \runInIO -> gSync $ on webView hoveringOverLink (\a b -> void . runInIO $ callback a b)
-  where callback title (Just uri) = void . runExceptT . logErrors $ do
-          u <- parseURIM $ pack uri
+  where callback title (Just uri) = void . logErrors $ do
+          u <- parseURI $ pack uri
           emit hoveredSignal (u, pack <$> title)
         callback _ _ = emit unhoveredSignal ()
 
@@ -133,10 +135,11 @@ attachLoadCommitted :: (ControlIO m, MonadLogger m) => WebView -> Signal LoadCom
 attachLoadCommitted webView signal = liftBaseWith $ \runInIO -> gSync . on webView loadCommitted $ \_frame -> void . runInIO $ emit signal ()
 
 
-attachLoadFailed :: (ControlIO m, MonadLogger m) => WebView -> Signal LoadFailed -> m (ConnectId WebView)
+attachLoadFailed :: (ControlIO m, MonadCatch m, MonadLogger m)
+                 => WebView -> Signal LoadFailed -> m (ConnectId WebView)
 attachLoadFailed webView signal = liftBaseWith $ \runInIO -> gSync . on webView loadError $ \_frame uri e -> do
-  runInIO . runExceptT . logErrors $ do
-    uri' <- parseURIReferenceM uri
+  runInIO . logErrors $ do
+    uri' <- parseURIReference uri
     emit signal (uri', e)
   return False
 
@@ -148,7 +151,7 @@ attachLoadFinished webView signal = liftBaseWith $ \runInIO -> gSync . on webVie
 attachLoadStarted :: (ControlIO m, MonadLogger m) => WebView -> Signal LoadStarted -> m (ConnectId WebView)
 attachLoadStarted webView signal = liftBaseWith $ \runInIO -> gSync . on webView loadStarted $ \_frame -> void . runInIO $ emit signal ()
 
-attachNavigationRequest :: (ControlIO m, MonadLogger m) => WebView -> Signal LinkClicked -> Signal LoadRequested -> m (ConnectId WebView)
+attachNavigationRequest :: (ControlIO m, MonadCatch m, MonadLogger m) => WebView -> Signal LinkClicked -> Signal LoadRequested -> m (ConnectId WebView)
 attachNavigationRequest webView signal1 signal2 = liftBaseWith $ \runInIO -> gSync . on webView navigationPolicyDecisionRequested $ \_frame request action decision -> do
     reason <- webNavigationActionGetReason action
     button <- toMouseButton <$> webNavigationActionGetButton action
@@ -157,7 +160,7 @@ attachNavigationRequest webView signal1 signal2 = liftBaseWith $ \runInIO -> gSy
     -- io . putStrLn . ("Request type: " ++) . describe =<< networkRequestGetContentType request
     -- io . putStrLn . ("Request type: " ++) . describe =<< networkRequestGetURI request
 
-    runInIO . runExceptT $ do
+    runInIO $ do
         uri <- networkRequestGetUri request
 
         case (reason, button) of
@@ -167,10 +170,8 @@ attachNavigationRequest webView signal1 signal2 = liftBaseWith $ \runInIO -> gSy
             (WebNavigationReasonOther, _) -> do
                 debug $ "Navigation request to <" ++ tshow uri ++ ">"
                 io $ webPolicyDecisionUse decision
-            (WebNavigationReasonBackForward, _) -> do
-                io $ webPolicyDecisionUse decision
-            (WebNavigationReasonReload, _) -> do
-                io $ webPolicyDecisionUse decision
+            (WebNavigationReasonBackForward, _) -> io $ webPolicyDecisionUse decision
+            (WebNavigationReasonReload, _) -> io $ webPolicyDecisionUse decision
             (WebNavigationReasonFormSubmitted, _) -> do
                 debug $ "Form submitted to <" ++ tshow uri ++ ">"
                 io $ webPolicyDecisionUse decision
@@ -178,8 +179,8 @@ attachNavigationRequest webView signal1 signal2 = liftBaseWith $ \runInIO -> gSy
                 debug $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
                 emit signal2 uri
                 io $ webPolicyDecisionIgnore decision
-      `catchError` \e -> do
-        error e
+      `catchAll` \e -> do
+        error (tshow e)
         io $ webPolicyDecisionUse decision
 
     return True
@@ -193,22 +194,22 @@ attachNavigationRequest webView signal1 signal2 = liftBaseWith $ \runInIO -> gSy
 -- Triggered in 2 cases:
 --  1/ Javascript window.open()
 --  2/ Context menu "Open in new window"
-attachNewWebView :: (ControlIO m, MonadLogger m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
+attachNewWebView :: (ControlIO m, MonadCatch m, MonadLogger m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
 attachNewWebView webView signal = liftBaseWith $ \runInIO -> gSync . on webView createWebView $ \_frame -> do
     webView' <- webViewNew
 
     on webView' webViewReady $ return True
     on webView' navigationPolicyDecisionRequested $ \_ request _ decision -> do
-        runInIO . runExceptT . logErrors $ networkRequestGetUri request >>= emit signal
+        runInIO . logErrors $ networkRequestGetUri request >>= emit signal
         webPolicyDecisionIgnore decision
         return True
 
     return webView'
 
 
-attachNewWindow :: (ControlIO m, MonadLogger m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
+attachNewWindow :: (ControlIO m, MonadCatch m, MonadLogger m) => WebView -> Signal NewWindow -> m (ConnectId WebView)
 attachNewWindow webView signal = liftBaseWith $ \runInIO -> gSync . on webView newWindowPolicyDecisionRequested $ \_frame request _action decision -> do
-    runInIO . runExceptT . logErrors $ networkRequestGetUri request >>= emit signal
+    runInIO . logErrors $ networkRequestGetUri request >>= emit signal
     webPolicyDecisionIgnore decision
     return True
 
@@ -239,10 +240,10 @@ attachProgressChanged webView signal = liftBaseWith $ \runInIO -> gSync . on web
 attachTitleChanged :: (ControlIO m, MonadLogger m) => WebView -> Signal TitleChanged -> m (ConnectId WebView)
 attachTitleChanged webView signal = liftBaseWith $ \runInIO -> gSync . on webView W.titleChanged $ \_frame title -> void . runInIO $ emit signal title
 
-attachUriChanged :: (ControlIO m, MonadLogger m) => WebView -> Signal URIChanged -> m (ConnectId WebView)
+attachUriChanged :: (ControlIO m, MonadCatch m, MonadLogger m) => WebView -> Signal URIChanged -> m (ConnectId WebView)
 attachUriChanged webView signal = liftBaseWith $ \runInIO ->
-  gSync . on webView (notifyProperty W.webViewUri) . void . runInIO . runExceptT . logErrors $
-    io (Glib.get webView webViewUri) >>= maybe (throwError "Invalid URI") return >>= parseURIM >>= emit signal
+  gSync . on webView (notifyProperty W.webViewUri) . void . runInIO . logErrors $
+    io (Glib.get webView webViewUri) >>= maybe (throwM UnavailableUri) return >>= parseURI >>= emit signal
 
 attachZoomLevelChanged :: (ControlIO m, MonadLogger m) => WebView -> Signal ZoomLevelChanged -> m (ConnectId WebView)
 attachZoomLevelChanged webView signal = liftBaseWith $ \runInIO -> gSync . on webView (notifyProperty webViewZoomLevel) . void . runInIO $ emit signal =<< io (Glib.get webView webViewZoomLevel)
@@ -253,7 +254,7 @@ attachKeyPressed webView signal = liftBaseWith $ \runInIO -> gSync . on webView 
     modifiers <- Modifier . S.delete Gdk.Shift . S.fromList <$> Gdk.eventModifier
     key       <- KeyVal <$> Gdk.eventKeyVal
 
-    io . runInIO . runFailT $ do
+    io . runInIO . runMaybeT $ do
         guard . not $ isModifier key || isModalKey key
         emit signal $ modifiers .| key
 

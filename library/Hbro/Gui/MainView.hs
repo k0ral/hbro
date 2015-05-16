@@ -60,8 +60,9 @@ import           Graphics.UI.Gtk.General.General.Extended
 import qualified Graphics.UI.Gtk.Misc.Adjustment          as Gtk
 import           Graphics.UI.Gtk.Scrolling.ScrolledWindow
 import           Graphics.UI.Gtk.WebKit.DOM.Document
-import           Graphics.UI.Gtk.WebKit.Lifted.WebView    hiding
-                                                           (LoadStatus (..))
+import           Graphics.UI.Gtk.WebKit.Extended          hiding
+                                                           (LoadStatus (..),
+                                                           networkRequestGetUri)
 import           Graphics.UI.Gtk.WebKit.NetworkRequest
 import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import           Graphics.UI.Gtk.WebKit.WebSettings
@@ -148,7 +149,7 @@ buildFrom builder = do
              <*> newSignal ZoomLevelChanged
 
 
-initialize :: (ControlIO m, MonadLogger m) => MainView -> m MainView
+initialize :: (ControlIO m, MonadCatch m, MonadLogger m) => MainView -> m MainView
 initialize mainView = do
   set webView widgetCanDefault True
   -- set webView webViewSetMaintainsBackForwardList False
