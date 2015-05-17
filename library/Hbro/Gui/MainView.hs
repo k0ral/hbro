@@ -237,7 +237,7 @@ initSettings webView = do
     set s webSettingsEnablePageCache                   True
     set s webSettingsEnablePlugins                     False
     set s webSettingsEnablePrivateBrowsing             False
-    set s webSettingsEnableScripts                     False
+    set s webSettingsEnableScripts                     True
     set s webSettingsEnableSpellChecking               False
     set s webSettingsEnableSpatialNavigation           False
     set s webSettingsEnableUniversalAccessFromFileUris True
