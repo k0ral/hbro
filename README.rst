@@ -2,7 +2,7 @@
 hbro
 ====
 
-**In a nutshell**: *hbro* is a minimal, KISS compliant web browser for linux; it is written, configured and extensible in Haskell.
+**In a nutshell**, *hbro* is a minimal web browser for linux. It is written, configured and extensible in Haskell.
 
 Information about versions, dependencies, source repositories and contacts can be found in hackage_.
 
@@ -18,7 +18,7 @@ Design principles
   The application should be written with simplicity in mind, and without obsession for performance, features or release frequency. It should boot instantly, consume little memory and offer an uncluttered graphical interface. The code should be easy to grasp (well, as long as you speak Haskell...) to encourage users to hack it. Simplicity provides lightness, scalability, stability and maintainability.
 
 Extensible
-  Configuration system should allow users to implement extra features. External programs should be able to query/command the web browser.
+  Users should be able to implement extra features through an extension system, without digging into the internals of the application. External programs should be able to query/command the web browser.
 
 Good defaults
   The default behavior should be suitable for users that cannot afford or don't want to spend (waste ?) their time in tweaks.
@@ -31,10 +31,10 @@ Components and libraries used
 -----------------------------
 
 Programming language : Haskell_
-  Modern, purely-functional language that makes it possible to work with a short, elegant and robust code.
+  Modern, purely-functional language that makes it possible to work with a concise, elegant and robust code.
 
 Layout engine : WebKit_
-  Has to be open-source, be (kind of) standards-compliant, and provide a Haskell binding. WebKit is pretty much the only choice left.
+  Has to be open-source, be (kind of) standards-compliant, and provide a Haskell binding. Considering those requirements, WebKit is pretty much the only game in town.
 
 HTTP client : WebKit_
   Ideally, the HTTP client should be delegated to a distinct library (typically http-conduit_), but WebKit clearly wasn't designed to be used as a *mere* layout engine. So for now, it still handles all network connections.
@@ -43,7 +43,7 @@ UI toolkit : `GTK+`_
   Given the programming language and layout engine, there's no much choice left for the UI toolkit.
 
 Interprocess interface : ZeroMQ_
-  Socket-like interface that implements various convenient communication schemes like request-reply and publish-subscribe.
+  Socket-like interface that implements various communication schemes like request-reply and publish-subscribe.
 
 Configuration system : Dyre_
   Dynamic reconfiguration library for haskell programs.
@@ -52,8 +52,8 @@ Configuration system : Dyre_
 Suggestions about better alternatives for any of these points (except the programming language) are welcome.
 
 
-Installation
-------------
+Installation notes
+------------------
 
 Up until GHC 7.8, *hbro* requires the *integer-simple* package, which means you won't be able to build it using a standard GHC installation that uses the *integer-gmp* package. This distinction is `documented here`_, and the reason for this constraint is `explained there`_.
 
@@ -63,7 +63,7 @@ Starting with GHC 7.10, the *integer-gmp* package was completely rewritten and *
 Configuration
 -------------
 
-By default, a minimal configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.config/hbro/hbro.hs`` to override it. Several extensions are provided with the * hbro-contrib_ * package, including a commented configuration file example.
+By default, a minimal configuration file (see ``Hbro/Main.hs``) is used to build *hbro*. You can create your own at ``~/.hbro/hbro.hs`` to override it. Several extensions are provided with the * hbro-contrib_ * package, including a commented configuration file example.
 
 
 GUI layout
@@ -72,8 +72,8 @@ GUI layout
 The graphical layout is described in an XML file that is parsed by GtkBuilder_. This file is looked for in several places with the following order of priority:
 
 - the value from commandline option ``-U``;
-- the file ``~/.config/hbro/ui.xml``;
-- the file ``examples/ui.xml`` bundled with the package.
+- the ``~/.hbro/ui.xml`` file;
+- the ``examples/ui.xml`` file bundled with the package.
 
 At least the following widgets must be defined, with the adequate ``id`` attributes, for the browser to start:
 
