@@ -110,7 +110,7 @@ Many problems/limitations are inherited from the *Haskell* bindings webkitgtk3_ 
 - javascript's ``window.open`` requests open in the same window instead of spawning a new one;
 - toggling to source mode reloads current webpage (which may be undesired)
 
-Patches or suggestions are welcome to deal with the following issues.
+Patches or suggestions to deal with these issues are welcome.
 
 
 License
