@@ -50,6 +50,7 @@ Library
         pango,
         parsec,
         process,
+        random,
         resourcet >= 1.1.5,
         safe,
         semigroups,
@@ -60,6 +61,7 @@ Library
         transformers,
         transformers-base,
         unix,
+        uuid,
         webkitgtk3 >= 0.13.1.2,
         zeromq4-haskell
     if impl(ghc < 7.10)

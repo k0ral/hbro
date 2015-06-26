@@ -25,6 +25,7 @@ import           Control.Concurrent.Async.Lifted
 import           Control.Lens                    hiding ((<|), (??), (|>))
 import           Control.Monad.Trans.Resource
 
+import           Data.UUID
 import           Data.Version                    hiding (Version)
 
 import           Graphics.UI.Gtk.General.General as Gtk
@@ -35,8 +36,8 @@ import qualified Paths_hbro                      as Package
 
 import           System.Directory
 import           System.Info
-import           System.Posix.Process
 import           System.Posix.Signals
+import           System.Random
 import qualified System.ZMQ4                     as ZMQ (version)
 -- }}}
 
@@ -132,9 +133,9 @@ getSocketURI options = maybe getDefaultSocketURI (return . normalize) $ options^
   where
     normalize = ("ipc://" ++) . pack
     getDefaultSocketURI = do
-      dir <- pack <$> io getTemporaryDirectory
-      pid <- io getProcessID
-      return $ "ipc://" ++ dir ++ "/hbro." ++ tshow pid
+      dir  <- pack <$> io getTemporaryDirectory
+      uuid <- io (randomIO :: IO UUID)
+      return $ "ipc://" ++ dir ++ "/hbro-" ++ tshow uuid
 
 -- | Parse URI passed in commandline, check whether it is a file path or an internet URI
 -- and return the corresponding normalized URI (that is: prefixed with "file://" or "http://")
