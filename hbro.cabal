@@ -108,7 +108,7 @@ Library
     -- Includes: include/cbits.h
     -- Install-includes: include/cbits.h
     Hs-Source-Dirs: library
-    Ghc-options: -Wall -fno-warn-unused-do-bind -threaded
+    Ghc-options: -Wall -fno-warn-unused-do-bind
 
 Flag threaded
     Description: Build with -threaded
