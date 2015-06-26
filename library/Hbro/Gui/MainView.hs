@@ -6,24 +6,24 @@
 {-# LANGUAGE TypeFamilies      #-}
 module Hbro.Gui.MainView
   ( MainView
-  , scrollWindowL
-  , webViewL
-  , downloadHandlerL
-  , keyPressedHandlerL
-  , linkClickedHandlerL
-  , linkHoveredHandlerL
-  , linkUnhoveredHandlerL
-  , loadCommittedHandlerL
-  , loadFailedHandlerL
-  , loadFinishedHandlerL
-  , loadRequestedHandlerL
-  , loadStartedHandlerL
-  , newWindowHandlerL
-  , progressChangedHandlerL
-  , scrolledHandlerL
-  , titleChangedHandlerL
-  , uriChangedHandlerL
-  , zoomLevelChangedHandlerL
+  , scrollWindow_
+  , webView_
+  , downloadHandler_
+  , keyPressedHandler_
+  , linkClickedHandler_
+  , linkHoveredHandler_
+  , linkUnhoveredHandler_
+  , loadCommittedHandler_
+  , loadFailedHandler_
+  , loadFinishedHandler_
+  , loadRequestedHandler_
+  , loadStartedHandler_
+  , newWindowHandler_
+  , progressChangedHandler_
+  , scrolledHandler_
+  , titleChangedHandler_
+  , uriChangedHandler_
+  , zoomLevelChangedHandler_
   , Axis(..)
   , Position(..)
   , getWebView
@@ -80,38 +80,38 @@ instance Event Scrolled where
 
 declareLenses [d|
   data MainView = MainView
-    { scrollWindowL            :: ScrolledWindow  -- ^ 'ScrolledWindow' containing the webview
-    , webViewL                 :: WebView
-    , downloadHandlerL         :: Signal Download
-    , keyPressedHandlerL       :: Signal KeyPressed
-    , linkClickedHandlerL      :: Signal LinkClicked
-    , linkHoveredHandlerL      :: Signal LinkHovered
-    , linkUnhoveredHandlerL    :: Signal LinkUnhovered
-    , loadCommittedHandlerL    :: Signal LoadCommitted
-    , loadFailedHandlerL       :: Signal LoadFailed
-    , loadFinishedHandlerL     :: Signal LoadFinished
-    , loadRequestedHandlerL    :: Signal LoadRequested
-    , loadStartedHandlerL      :: Signal LoadStarted
-    , newWindowHandlerL        :: Signal NewWindow
-    , progressChangedHandlerL  :: Signal ProgressChanged
+    { scrollWindow_            :: ScrolledWindow  -- ^ 'ScrolledWindow' containing the webview
+    , webView_                 :: WebView
+    , downloadHandler_         :: Signal Download
+    , keyPressedHandler_       :: Signal KeyPressed
+    , linkClickedHandler_      :: Signal LinkClicked
+    , linkHoveredHandler_      :: Signal LinkHovered
+    , linkUnhoveredHandler_    :: Signal LinkUnhovered
+    , loadCommittedHandler_    :: Signal LoadCommitted
+    , loadFailedHandler_       :: Signal LoadFailed
+    , loadFinishedHandler_     :: Signal LoadFinished
+    , loadRequestedHandler_    :: Signal LoadRequested
+    , loadStartedHandler_      :: Signal LoadStarted
+    , newWindowHandler_        :: Signal NewWindow
+    , progressChangedHandler_  :: Signal ProgressChanged
     -- , resourceOpenedHandlerL   :: Signal ResourceOpened
-    , scrolledHandlerL         :: Signal Scrolled
-    , titleChangedHandlerL     :: Signal TitleChanged
-    , uriChangedHandlerL       :: Signal URIChanged
-    , zoomLevelChangedHandlerL :: Signal ZoomLevelChanged
+    , scrolledHandler_         :: Signal Scrolled
+    , titleChangedHandler_     :: Signal TitleChanged
+    , uriChangedHandler_       :: Signal URIChanged
+    , zoomLevelChangedHandler_ :: Signal ZoomLevelChanged
     }
   |]
 
 
 -- * Commonly used getters
 getWebView :: (MonadReader r m, Has MainView r) => m WebView
-getWebView = asks $ view webViewL
+getWebView = asks $ view webView_
 
 getWebSettings :: (MonadIO m, MonadReader r m, Has MainView r) => m WebSettings
-getWebSettings = gSync . webViewGetWebSettings =<< asks (view webViewL)
+getWebSettings = gSync . webViewGetWebSettings =<< asks (view webView_)
 
 getDOM :: (MonadIO m, MonadReader r m, Has MainView r) => m (Maybe Document)
-getDOM = gSync . webViewGetDomDocument =<< asks (view webViewL)
+getDOM = gSync . webViewGetDomDocument =<< asks (view webView_)
 
 getAdjustment :: (MonadIO m) => Axis -> ScrolledWindow -> m Gtk.Adjustment
 getAdjustment Horizontal = gSync . scrolledWindowGetHAdjustment
@@ -180,40 +180,40 @@ initialize mainView = do
   --        -- True -> (putStrLn "OK")
   --     (maybe (return ()) (`networkRequestSetUri` "about:blank") request)
 
-  attachDownload          webView  $ mainView^.downloadHandlerL
-  attachKeyPressed        webView  $ mainView^.keyPressedHandlerL
-  attachLinkHovered       webView (mainView^.linkHoveredHandlerL) (mainView^.linkUnhoveredHandlerL)
-  attachLoadCommitted     webView  $ mainView^.loadCommittedHandlerL
-  attachLoadFailed        webView  $ mainView^.loadFailedHandlerL
-  attachLoadFinished      webView  $ mainView^.loadFinishedHandlerL
-  attachLoadStarted       webView  $ mainView^.loadStartedHandlerL
-  attachNavigationRequest webView (mainView^.linkClickedHandlerL) (mainView^.loadRequestedHandlerL)
-  attachNewWebView        webView  $ mainView^.newWindowHandlerL
-  attachNewWindow         webView  $ mainView^.newWindowHandlerL
-  attachProgressChanged   webView  $ mainView^.progressChangedHandlerL
+  attachDownload          webView  $ mainView^.downloadHandler_
+  attachKeyPressed        webView  $ mainView^.keyPressedHandler_
+  attachLinkHovered       webView (mainView^.linkHoveredHandler_) (mainView^.linkUnhoveredHandler_)
+  attachLoadCommitted     webView  $ mainView^.loadCommittedHandler_
+  attachLoadFailed        webView  $ mainView^.loadFailedHandler_
+  attachLoadFinished      webView  $ mainView^.loadFinishedHandler_
+  attachLoadStarted       webView  $ mainView^.loadStartedHandler_
+  attachNavigationRequest webView (mainView^.linkClickedHandler_) (mainView^.loadRequestedHandler_)
+  attachNewWebView        webView  $ mainView^.newWindowHandler_
+  attachNewWindow         webView  $ mainView^.newWindowHandler_
+  attachProgressChanged   webView  $ mainView^.progressChangedHandler_
   -- attachResourceOpened    webView (mainView^.resourceOpenedHandler)
-  attachScrolled          mainView $ mainView^.scrolledHandlerL
-  attachTitleChanged      webView  $ mainView^.titleChangedHandlerL
-  attachUriChanged        webView  $ mainView^.uriChangedHandlerL
-  attachZoomLevelChanged  webView  $ mainView^.zoomLevelChangedHandlerL
+  attachScrolled          mainView $ mainView^.scrolledHandler_
+  attachTitleChanged      webView  $ mainView^.titleChangedHandler_
+  attachUriChanged        webView  $ mainView^.uriChangedHandler_
+  attachZoomLevelChanged  webView  $ mainView^.zoomLevelChangedHandler_
 
   initSettings webView
 
   return mainView
-  where webView = mainView^.webViewL
+  where webView = mainView^.webView_
 
 canRender :: (MonadIO m, MonadReader r m, Has MainView r) => Text -> m Bool
-canRender mimetype = gSync . (`webViewCanShowMimeType` mimetype) =<< asks (view webViewL)
+canRender mimetype = gSync . (`webViewCanShowMimeType` mimetype) =<< asks (view webView_)
 
 
 render :: (MonadReader r m, Has MainView r, MonadIO m, MonadLogger m) => Text -> URI -> m ()
 render page uri = do
     debug $ "Rendering <" ++ tshow uri ++ ">"
-    -- loadString page uri =<< get' webViewL
+    -- loadString page uri =<< get' webView_
 
     -- debug $ "Base URI: " ++ show (baseOf uri)
 
-    loadString page (baseOf uri) =<< asks (view webViewL)
+    loadString page (baseOf uri) =<< asks (view webView_)
   where
     baseOf uri' = uri' {
         uriPath = unpack . (`snoc` '/') . intercalate "/" . initSafe . splitOn "/" . pack $ uriPath uri'
@@ -269,7 +269,7 @@ scroll :: (MonadIO m, MonadLogger m) => Axis -> Position -> MainView -> m MainVi
 scroll axis percentage mainView = do
      debug $ "Set scroll " ++ tshow axis ++ " = " ++ tshow percentage
 
-     adj     <- getAdjustment axis $ mainView^.scrollWindowL
+     adj     <- getAdjustment axis $ mainView^.scrollWindow_
      page    <- get adj Gtk.adjustmentPageSize
      current <- get adj Gtk.adjustmentValue
      lower   <- get adj Gtk.adjustmentLower
@@ -285,5 +285,5 @@ scroll axis percentage mainView = do
 
 attachScrolled :: (ControlIO m, MonadLogger m) => MainView -> Signal Scrolled -> m (ConnectId Gtk.Adjustment)
 attachScrolled mainView signal = do
-  adjustment <- getAdjustment Vertical $ mainView^.scrollWindowL
+  adjustment <- getAdjustment Vertical $ mainView^.scrollWindow_
   liftBaseWith $ \runInIO -> gSync . Gtk.onValueChanged adjustment . void . runInIO $ emit signal ()

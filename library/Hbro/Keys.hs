@@ -133,4 +133,4 @@ bindKeys input output keyMap = addRecursiveHandler input empty $ \previousStroke
     emit output (strokesL, isJust found)
 
     async . logErrors $ fromMaybe doNothing found
-    return $ empty <| reset |> strokesL
+    return $ if reset then empty else strokesL

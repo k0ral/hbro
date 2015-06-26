@@ -7,12 +7,12 @@
 module Hbro.Options (
       Command(..)
     , CliOptions()
-    , startURIL
-    , socketPathL
-    , uiFileL
-    , dyreModeL
-    , dyreDebugL
-    , logLevelL
+    , startURI_
+    , socketPath_
+    , uiFile_
+    , dyreMode_
+    , dyreDebug_
+    , logLevel_
     , parseOptions
     ) where
 
@@ -39,23 +39,23 @@ data Command = Rebuild | Version
 -- | Available options
 declareLenses [d|
   data CliOptions = CliOptions
-    { startURIL   :: Maybe URI
-    , socketPathL :: Maybe FilePath
-    , uiFileL     :: Maybe FilePath
-    , dyreModeL   :: Dyre.Mode
-    , dyreDebugL  :: Bool
-    , logLevelL   :: LogLevel
+    { startURI_   :: Maybe URI
+    , socketPath_ :: Maybe FilePath
+    , uiFile_     :: Maybe FilePath
+    , dyreMode_   :: Dyre.Mode
+    , dyreDebug_  :: Bool
+    , logLevel_   :: LogLevel
     } deriving(Eq)
   |]
 
 instance Describable CliOptions where
     describe opts = unwords $ catMaybes
-        [ ("URI=" ++) . tshow <$> (opts^.startURIL)
-        , ("SOCKET=" ++) . pack  <$> (opts^.socketPathL)
-        , ("UI=" ++) . pack <$> (opts^.uiFileL)
-        , Just . ("DYRE_MODE=" ++) . tshow $ opts^.dyreModeL
-        , Just "DYRE_DEBUG" <| opts^.dyreDebugL |> Nothing
-        , Just . ("LOG-LEVEL=" ++) . tshow $ opts^.logLevelL
+        [ ("URI=" ++) . tshow <$> (opts^.startURI_)
+        , ("SOCKET=" ++) . pack  <$> (opts^.socketPath_)
+        , ("UI=" ++) . pack <$> (opts^.uiFile_)
+        , Just . ("DYRE_MODE=" ++) . tshow $ opts^.dyreMode_
+        , if opts^.dyreDebug_ then Just "DYRE_DEBUG" else Nothing
+        , Just . ("LOG-LEVEL=" ++) . tshow $ opts^.logLevel_
         ]
 
 instance Default CliOptions where

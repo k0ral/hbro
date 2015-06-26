@@ -13,7 +13,7 @@
 module Hbro.Config (
 -- * Types
       Config
-    , homePageL
+    , homePage_
 -- * Getter/setter
     , get
     , set
@@ -32,12 +32,12 @@ import qualified Network.URI  as N
 -- | Custom settings provided by the user
 declareLenses [d|
   data Config = Config
-    { homePageL :: URI
+    { homePage_ :: URI
     }
   |]
 
 instance Describable Config where
-    describe c = "Home page = " ++ tshow (c^.homePageL)
+    describe c = "Home page = " ++ tshow (c^.homePage_)
 
 instance Default Config where
     def = Config $ fromJust . N.parseURI $ "https://duckduckgo.com/"

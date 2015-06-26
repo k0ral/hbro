@@ -101,7 +101,7 @@ getPageData = dataSourceGetData =<< io . webFrameGetDataSource =<< io . webViewG
 
 -- {{{ Browsing
 goHome :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r, Has (TVar Config) r, MonadThrow m) => m ()
-goHome = load =<< Config.get homePageL
+goHome = load =<< Config.get homePage_
 
 load :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r, MonadThrow m) => URI -> m ()
 load uri = do

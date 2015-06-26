@@ -21,7 +21,7 @@ import           Hbro.Gui.MainView                        hiding (initialize)
 import qualified Hbro.Gui.MainView                        as MainView
 import           Hbro.Gui.NotificationBar                 (NotificationBar)
 import qualified Hbro.Gui.NotificationBar                 as NotifBar
-import           Hbro.Gui.PromptBar                       (PromptBar, closedL)
+import           Hbro.Gui.PromptBar                       (PromptBar, closed_)
 import qualified Hbro.Gui.PromptBar                       as Prompt
 import           Hbro.Gui.StatusBar
 import           Hbro.Logger
@@ -52,12 +52,12 @@ initialize (pack -> file) = do
     notifBar   <- NotifBar.initialize =<< NotifBar.buildFrom builder
     statusBar  <- StatusBar <$> getWidget builder "statusBox"
 
-    let webView = mainView^.webViewL
+    let webView = mainView^.webView_
     gAsync . widgetShowAll $ mainWindow
     Prompt.close promptBar
 
     gAsync $ windowSetDefault mainWindow (Just webView)
-    addHandler (promptBar^.closedL) (const . gAsync $ widgetGrabFocus webView)
+    addHandler (promptBar^.closed_) (const . gAsync $ widgetGrabFocus webView)
 
     -- io $ scrolledWindowSetPolicy (gui^.scrollWindowL) PolicyNever PolicyNever
     -- io $ G.set (gui^.scrollWindowL) [ scrolledWindowHscrollbarPolicy := PolicyNever, scrolledWindowVscrollbarPolicy := PolicyNever]

@@ -68,7 +68,7 @@ hbro settings = do
     case options of
         Left Rebuild -> Dyre.recompile >>= mapM_ putStrLn
         Left Version -> printVersions
-        Right runOptions -> runResourceT . runThreadedLoggingT (runOptions^.logLevelL) $ Dyre.wrap (runOptions^.dyreModeL)
+        Right runOptions -> runResourceT . runThreadedLoggingT (runOptions^.logLevel_) $ Dyre.wrap (runOptions^.dyreMode_)
                               (withAsyncBound guiThread . mainThread)
                               (settings, runOptions)
 
@@ -102,18 +102,18 @@ mainThread (settings, options) uiThread = logErrors_ $ do
       . withReaderT (builder, )
       . withReaderT (keySignal, )
       . withAsync (bindCommands socketURI (commandMap settings)) . const $ do
-        bindKeys (mainView^.keyPressedHandlerL) keySignal (keyMap settings)
+        bindKeys (mainView^.keyPressedHandler_) keySignal (keyMap settings)
 
-        addHandler (mainView^.linkClickedHandlerL) defaultLinkClickedHandler
-        addHandler (mainView^.loadRequestedHandlerL) defaultLoadRequestedHandler
-        addHandler (mainView^.newWindowHandlerL) defaultNewWindowHandler
-        addHandler (mainView^.titleChangedHandlerL) defaultTitleChangedHandler
+        addHandler (mainView^.linkClickedHandler_) defaultLinkClickedHandler
+        addHandler (mainView^.loadRequestedHandler_) defaultLoadRequestedHandler
+        addHandler (mainView^.newWindowHandler_) defaultNewWindowHandler
+        addHandler (mainView^.titleChangedHandler_) defaultTitleChangedHandler
 
         startUp settings
 
         debug . ("Start-up configuration: \n" ++) . describe =<< Config.get id
 
-        maybe goHome (load <=< getStartURI) (options^.startURIL)
+        maybe goHome (load <=< getStartURI) (options^.startURI_)
         io $ wait uiThread
 
     debug "All threads correctly exited."
@@ -124,11 +124,11 @@ getUIFiles :: (MonadIO m, Functor m) => CliOptions -> m [FilePath]
 getUIFiles options = do
     fileFromConfig  <- getAppUserDataDirectory "hbro" >/> "ui.xml"
     fileFromPackage <- getDataFileName "examples/ui.xml"
-    return $ catMaybes [options^.uiFileL, Just fileFromConfig, Just fileFromPackage]
+    return $ catMaybes [options^.uiFile_, Just fileFromConfig, Just fileFromPackage]
 
 -- | Return socket URI used by this instance
 getSocketURI :: (MonadIO m, Functor m) => CliOptions -> m Text
-getSocketURI options = maybe getDefaultSocketURI (return . normalize) $ options^.socketPathL
+getSocketURI options = maybe getDefaultSocketURI (return . normalize) $ options^.socketPath_
   where
     normalize = ("ipc://" ++) . pack
     getDefaultSocketURI = do

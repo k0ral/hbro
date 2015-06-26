@@ -11,8 +11,8 @@
 module Hbro.Gui.PromptBar (
 -- * Types
       PromptBar
-    , boxL
-    , closedL
+    , box_
+    , closed_
     , buildFrom
     , labelName
     , entryName
@@ -82,12 +82,12 @@ instance Event Validated where
 -- | No exported constructor, please use 'buildFrom'
 declareLenses [d|
   data PromptBar = PromptBar
-    { boxL         :: HBox
-    , descriptionL :: Label
-    , entryL       :: Entry
-    , changedL     :: Signal Changed
-    , closedL      :: Signal Closed
-    , validatedL   :: Signal Validated
+    { box_         :: HBox
+    , description_ :: Label
+    , entry_       :: Entry
+    , changed_     :: Signal Changed
+    , closed_      :: Signal Closed
+    , validated_   :: Signal Validated
     }
   |]
 
@@ -113,7 +113,7 @@ buildFrom builder = do
                            <*> pure closedSignal
                            <*> pure validated
 
-    onEntryChanged entry $ emit (promptBar^.changedL)
+    onEntryChanged entry $ emit (promptBar^.changed_)
     onEntryCanceled entry . async $ close promptBar
     onEntryValidated entry $ emit validated
 
@@ -128,33 +128,33 @@ boxName   = "promptBox"
 
 initialize :: (MonadIO m) => PromptBar -> m PromptBar
 initialize =
-    withM_ descriptionL (gAsync . (`labelSetAttributes` [allItalic, allBold]))
-    >=> withM_ descriptionL (gAsync . (`labelSetAttributes` [AttrForeground {paStart = 0, paEnd = -1, paColor = gray}]))
-    >=> withM_ entryL (gAsync . (\e -> widgetModifyBase e StateNormal black))
-    >=> withM_ entryL (gAsync . (\e -> widgetModifyText e StateNormal gray))
+    withM_ description_ (gAsync . (`labelSetAttributes` [allItalic, allBold]))
+    >=> withM_ description_ (gAsync . (`labelSetAttributes` [AttrForeground {paStart = 0, paEnd = -1, paColor = gray}]))
+    >=> withM_ entry_ (gAsync . (\e -> widgetModifyBase e StateNormal black))
+    >=> withM_ entry_ (gAsync . (\e -> widgetModifyText e StateNormal gray))
 
 
 open :: (MonadIO m) => Text -> Text -> PromptBar -> m PromptBar
 open description defaultText =
-    withM_ descriptionL (gAsync . (`labelSetText` description))
-    >=> withM_ entryL (gAsync . (`entrySetText` defaultText))
-    >=> withM_ boxL (gAsync . widgetShow)
-    >=> withM_ entryL (gAsync . widgetGrabFocus)
-    >=> withM_ entryL (gAsync . (`editableSetPosition` (-1)))
+    withM_ description_ (gAsync . (`labelSetText` description))
+    >=> withM_ entry_ (gAsync . (`entrySetText` defaultText))
+    >=> withM_ box_ (gAsync . widgetShow)
+    >=> withM_ entry_ (gAsync . widgetGrabFocus)
+    >=> withM_ entry_ (gAsync . (`editableSetPosition` (-1)))
 
 close :: (ControlIO m, MonadLogger m) => PromptBar -> m PromptBar
 close promptBar = do
   runMaybeT $ do
-    guard =<< get (promptBar^.boxL) widgetVisible
-    emit (promptBar^.closedL) ()
-    gAsync . widgetHide $ promptBar^.boxL
+    guard =<< get (promptBar^.box_) widgetVisible
+    emit (promptBar^.closed_) ()
+    gAsync . widgetHide $ promptBar^.box_
     void $ clean promptBar
   return promptBar
 
 -- | Close prompt, that is: clean its content, signals and callbacks
 clean :: (ControlIO m) => PromptBar -> m PromptBar
-clean = withM_ entryL (gAsync . (`widgetRestoreText` StateNormal))
-    >=> withM_ entryL (gAsync . (\e -> widgetModifyText e StateNormal gray))
+clean = withM_ entry_ (gAsync . (`widgetRestoreText` StateNormal))
+    >=> withM_ entry_ (gAsync . (\e -> widgetModifyText e StateNormal gray))
 
 
 -- {{{ Prompts
@@ -169,8 +169,8 @@ prompt description startValue promptBar = do
     clean promptBar
     open description startValue promptBar
 
-    cancelation <- listenTo $ promptBar^.closedL
-    validation  <- listenTo $ promptBar^.validatedL
+    cancelation <- listenTo $ promptBar^.closed_
+    validation  <- listenTo $ promptBar^.validated_
 
     result <- io $ waitEitherCancel cancelation validation
     close promptBar
@@ -190,10 +190,10 @@ iprompt :: (ControlIO m, MonadLogger m, MonadThrow m, MonadResource m)
 iprompt description startValue f promptBar = do
     clean promptBar
 
-    update <- addHandler (promptBar^.changedL) f
+    update <- addHandler (promptBar^.changed_) f
     open description startValue promptBar
 
-    io . wait =<< listenTo (promptBar^.closedL)
+    io . wait =<< listenTo (promptBar^.closed_)
     close promptBar
     release update
 
@@ -211,11 +211,11 @@ uriPrompt :: (ControlIO m, MonadLogger m, MonadThrow m, MonadResource m)
 uriPrompt description startValue promptBar = do
     clean promptBar
 
-    update <- addHandler (promptBar^.changedL) $ checkURI promptBar
+    update <- addHandler (promptBar^.changed_) $ checkURI promptBar
     open description startValue promptBar
 
-    validation  <- listenTo $ promptBar^.validatedL
-    cancelation <- listenTo $ promptBar^.closedL
+    validation  <- listenTo $ promptBar^.validated_
+    cancelation <- listenTo $ promptBar^.closed_
 
     result <- io $ waitEitherCancel cancelation validation
     release update
@@ -231,11 +231,11 @@ uriPromptM a b = uriPrompt a b =<< ask
 checkURI :: (MonadIO m, MonadLogger m) => PromptBar -> Text -> m ()
 checkURI promptBar v = do
     debug $ "Is URI ? " ++ tshow (isURIReference $ unpack v)
-    gAsync $ widgetModifyText (promptBar^.entryL) StateNormal (green <| isURIReference (unpack v) |> red)
+    gAsync $ widgetModifyText (promptBar^.entry_) StateNormal (if isURIReference (unpack v) then green else red)
 
 
 getPromptValue :: (MonadIO m) => PromptBar -> m Text
-getPromptValue = gSync . entryGetText . view entryL
+getPromptValue = gSync . entryGetText . view entry_
 
 getPromptValueM :: (MonadIO m, MonadReader r m, Has PromptBar r) => m Text
 getPromptValueM = getPromptValue =<< ask
