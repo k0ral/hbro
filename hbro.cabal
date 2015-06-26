@@ -22,7 +22,6 @@ Source-repository head
 
 Library
     Build-depends:
-        aeson,
         base == 4.*,
         bytestring,
         classy-prelude >= 0.12,

@@ -13,18 +13,9 @@ module Network.URI.Extended
 import           Hbro.Error
 import           Hbro.Prelude
 
-import           Data.Aeson
-
 import           Network.URI  as X hiding (parseURI, parseURIReference)
 import qualified Network.URI  as N
 -- }}}
-
-instance FromJSON URI where
-    parseJSON (String t) = maybe mzero return $ parseURIReference t
-    parseJSON _ = mzero
-
-instance ToJSON URI where
-    toJSON = String . tshow
 
 -- | Generalized version of 'N.parseURIReference'.
 parseURIReference :: (MonadThrow m) => Text -> m URI
