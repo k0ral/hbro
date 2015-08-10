@@ -59,7 +59,8 @@ import qualified Graphics.UI.Gtk.Builder                  as Gtk
 import           Graphics.UI.Gtk.General.General.Extended
 import qualified Graphics.UI.Gtk.Misc.Adjustment          as Gtk
 import           Graphics.UI.Gtk.Scrolling.ScrolledWindow
-import           Graphics.UI.Gtk.WebKit.DOM.Document
+import           Graphics.UI.Gtk.WebKit.DOM.Document      hiding
+                                                           (scroll)
 import           Graphics.UI.Gtk.WebKit.Extended          hiding
                                                            (LoadStatus (..),
                                                            networkRequestGetUri)
