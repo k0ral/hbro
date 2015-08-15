@@ -1,5 +1,5 @@
 Name:                hbro
-Version:             1.4.0.0
+Version:             1.5.0.0
 Synopsis:            Minimal extensible web-browser
 Description:         Cf README
 Homepage:            https://github.com/k0ral/hbro
@@ -116,7 +116,7 @@ Flag threaded
 
 Executable hbro
     Build-depends:
-        hbro >= 1.4.0.0,
+        hbro >= 1.5,
         base == 4.*
     Main-is: Main.hs
     Hs-Source-Dirs: executable
