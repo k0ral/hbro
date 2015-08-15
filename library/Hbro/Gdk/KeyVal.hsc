@@ -23,7 +23,7 @@ newtype KeyVal = KeyVal { unKeyValue :: Word32 }
 
 -- | Single characters are returned as is. For other keys, the corresponding keyName wrapped into @\<\>@ is returned.
 instance Describable KeyVal where
-    describe (KeyVal key) = name <| (length name < 2) |> ("<" ++ name ++ ">")
+    describe (KeyVal key) = if length name < 2 then name else "<" ++ name ++ ">"
       where name = Gtk.keyName key
 
 keyVal, shortKeyVal, longKeyVal :: Parser KeyVal

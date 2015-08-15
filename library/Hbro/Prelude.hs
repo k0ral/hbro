@@ -35,8 +35,7 @@ import           ClassyPrelude                 as X hiding (Builder (..),
 import           Control.Applicative           as X (Alternative (..),
                                                      WrappedMonad, optional)
 import           Control.Arrow                 as X (Kleisli (..), left, right)
-import           Control.Conditional           as X (ToBool (..), (<<|), (<|),
-                                                     (|>), (|>>))
+import           Control.Conditional           as X (ToBool (..))
 import           Control.Lens
 import           Control.Monad.Base            as X (MonadBase (..))
 import           Control.Monad.Reader.Extended as X hiding (get)

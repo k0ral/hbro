@@ -144,7 +144,7 @@ getStartURI uri = do
     fileURI    <- io . doesFileExist $ show uri
     workingDir <- pack <$> io getCurrentDirectory
 
-    parseURIReference ("file://" ++ workingDir ++ "/" ++ tshow uri) <| fileURI |> return uri
+    if fileURI then parseURIReference ("file://" ++ workingDir ++ "/" ++ tshow uri) else return uri
     -- maybe abort return =<< logErrors (parseURIReference fileURI')
 
 printVersions :: IO ()
