@@ -83,16 +83,7 @@ listenTo (Signal _ signal _) = io . async . waitFor =<< atomically (dupTMChan si
 
 -- | Execute a function each time an event occurs.
 addHandler :: (Event a, ControlIO m, MonadResource m) => Signal a -> Handler m a -> m ReleaseKey
-addHandler (Signal _ s handlers) f = do
-  signal <- atomically $ dupTMChan s
-
-  result <- liftBaseWith $ \runInIO -> do
-    runInIO . flip allocate cancel . async . fix $ \recurse ->
-      waitFor signal >>= mapM_ (\x -> runInIO (f x) >> recurse)
-  (releaseKey, _ :: Async ()) <- restoreM result
-  atomically $ modifyTVar handlers (releaseKey:)
-
-  return releaseKey
+addHandler signal f = addRecursiveHandler signal () $ const f
 
 -- | Generalized version of 'addHandler' where the callback function may recurse.
 addRecursiveHandler :: (Event a, ControlIO m, MonadResource m) => Signal a -> b -> (b -> Input a -> m b) -> m ReleaseKey
