@@ -94,7 +94,7 @@ doNothing = return ()
 
 -- {{{ Lens util
 -- | Alias for 'mapMOf'
-withM :: Profunctor p => Over p (WrappedMonad m) s t a b -> p a (m b) -> s -> m t
+withM :: LensLike (WrappedMonad m) s t a b -> (a -> m b) -> s -> m t
 withM = mapMOf
 
 withM_ :: Monad m => Over (->) (WrappedMonad m) s t a a -> (a -> m ()) -> s -> m t
