@@ -22,7 +22,7 @@ import           Hbro.IPC
 import           Hbro.Keys                                as Keys
 import           Hbro.Keys.Model                          (singleKey, (.|))
 import           Hbro.Logger
-import           Hbro.Prelude
+import           Hbro.Prelude                             hiding (Handler)
 import           Hbro.WebView.Signals
 
 import           Control.Monad.Trans.Resource

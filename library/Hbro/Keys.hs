@@ -33,7 +33,7 @@ import           Hbro.Gdk.KeyVal
 import           Hbro.Keys.Model                 ((.|))
 import qualified Hbro.Keys.Model                 as Model
 import           Hbro.Logger
-import           Hbro.Prelude                    hiding (isPrefixOf)
+import           Hbro.Prelude                    hiding (async, isPrefixOf)
 
 import           Control.Concurrent.Async.Lifted
 import           Control.Monad.Trans.Resource

@@ -11,7 +11,7 @@ import           Hbro.Gdk.KeyVal
 import           Hbro.Keys                                  as Keys
 import           Hbro.Keys.Model                            ((.|))
 import           Hbro.Logger
-import           Hbro.Prelude                               hiding (on)
+import           Hbro.Prelude                               hiding (on, throwM)
 
 import           Control.Monad.Catch
 import           Control.Monad.Trans.Maybe
