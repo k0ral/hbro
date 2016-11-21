@@ -29,8 +29,8 @@ module Hbro.Prelude
 import           ClassyPrelude                 as X hiding (Builder (..),
                                                      MonadReader (..),
                                                      ReaderT (..),
-                                                     defaultTimeLocale, error,
-                                                     log, toList)
+                                                     asks, defaultTimeLocale,
+                                                     error, log, tail, toList)
 
 import           Control.Applicative           as X (Alternative (..),
                                                      WrappedMonad, optional)

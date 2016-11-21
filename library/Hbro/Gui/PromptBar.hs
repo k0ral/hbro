@@ -40,7 +40,8 @@ import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Gui.Builder
 import           Hbro.Logger
-import           Hbro.Prelude                             hiding (on)
+import           Hbro.Prelude                             hiding (async, on,
+                                                           throwM, throwOn)
 
 import           Control.Concurrent.Async.Lifted
 import           Control.Lens.Getter

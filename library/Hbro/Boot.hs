@@ -19,7 +19,8 @@ import           Hbro.IPC                        as IPC (CommandMap,
 import           Hbro.Keys                       as Keys
 import           Hbro.Logger
 import           Hbro.Options                    as Options
-import           Hbro.Prelude
+import           Hbro.Prelude                    hiding (async, withAsync,
+                                                  withAsyncBound)
 
 import           Control.Concurrent.Async.Lifted
 import           Control.Lens                    hiding ((<|), (??), (|>))

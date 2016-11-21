@@ -23,7 +23,7 @@ module Hbro.Event (
     ) where
 
 -- {{{ Imports
-import           Hbro.Prelude
+import           Hbro.Prelude                    hiding (Handler, async, cancel)
 
 import           Control.Concurrent.Async.Lifted
 import           Control.Concurrent.STM.TMChan

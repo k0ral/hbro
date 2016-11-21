@@ -19,5 +19,5 @@ import           Hbro.IPC          as X
 -- import           Hbro.Keys.Model
 -- import           Hbro.Logger       as X
 -- import           Hbro.Options
-import           Hbro.Prelude      as X
+import           Hbro.Prelude      as X hiding (Handler)
 -- import           Hbro.WebView.Signals
