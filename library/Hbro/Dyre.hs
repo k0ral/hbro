@@ -21,6 +21,7 @@ import           Config.Dyre.Compile
 import           Config.Dyre.Paths
 
 import           System.Directory
+import           System.IO
 -- }}}
 
 -- | How dynamic reconfiguration process should behave.
@@ -35,11 +36,11 @@ describePaths :: MonadIO m => m Text
 describePaths = io $ do
     (a, b, c, d, e) <- getPaths baseParameters
     return . unlines $ map pack
-        [ "Current binary:  " ++ a
-        , "Custom binary:   " ++ b
-        , "Config file:     " ++ c
-        , "Cache directory: " ++ d
-        , "Lib directory:   " ++ e
+        [ "Current binary:  " <> a
+        , "Custom binary:   " <> b
+        , "Config file:     " <> c
+        , "Cache directory: " <> d
+        , "Lib directory:   " <> e
         ]
 
 getHbroExecutable :: (MonadIO m) => m FilePath
@@ -48,7 +49,7 @@ getHbroExecutable = io $ do
   return a
 
 -- Dynamic reconfiguration settings
-parameters :: (Functor m, MonadIO m, MonadLogger m, StM m () ~ ())
+parameters :: (MonadIO m, MonadLogger m, StM m () ~ ())
            => RunInBase m IO -> Mode -> (a -> m b) -> Params (Either Text a)
 parameters runInIO mode main = baseParameters
     { configCheck = mode /= Vanilla
@@ -56,7 +57,7 @@ parameters runInIO mode main = baseParameters
     }
     where main' (Left e) = error e
           main' (Right x) = do
-            debug . ("Dynamic reconfiguration paths:\n" ++) =<< describePaths
+            debug . ("Dynamic reconfiguration paths:\n" <>) =<< describePaths
             void $ main x
 
 baseParameters :: Params (Either Text a)
@@ -76,5 +77,5 @@ wrap mode result args = liftBaseWith $ \runInIO -> wrapMain (parameters runInIO 
 -- | Launch a recompilation of the configuration file
 recompile :: (MonadIO m) => m (Maybe Text)
 recompile = io $ do
-    customCompile baseParameters
-    map pack <$> getErrorString baseParameters
+  customCompile baseParameters
+  fmap pack <$> getErrorString baseParameters

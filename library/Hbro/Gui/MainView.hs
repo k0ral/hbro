@@ -42,16 +42,15 @@ module Hbro.Gui.MainView
   ) where
 
 -- {{{ Imports
+import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gui.Builder
 import           Hbro.Keys                                as Keys
 import           Hbro.Logger
-import           Hbro.Prelude                             hiding (on)
+import           Hbro.Prelude
 import           Hbro.WebView.Signals
 
 import           Control.Lens                             hiding (set, snoc)
-
-import           Data.Text                                (splitOn)
 
 import qualified Graphics.UI.Gtk.Abstract.Container       as Gtk
 import           Graphics.UI.Gtk.Abstract.Widget
@@ -157,13 +156,13 @@ initialize mainView = do
   gAsync . on webView closeWebView $ gAsync mainQuit >> return False
   gAsync . on webView consoleMessage $ \a b n c -> do
       putStrLn "console message"
-      putStrLn $ unlines [a, b, tshow n, c]
+      putStrLn $ unlines [a, b, show n, c]
       return True
 
   gAsync . on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> io $ do
     uri <- networkRequestGetUri request :: IO (Maybe Text)
     -- debug $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" ++ tshow uri ++ ">"
-    renderable <- webViewCanShowMimeType webView (asText mimetype)
+    renderable <- webViewCanShowMimeType webView (mimetype :: Text)
     case (uri, renderable) of
       (Just _, True) -> webPolicyDecisionUse decision
       (Just _, _) -> webPolicyDecisionDownload decision
@@ -209,7 +208,7 @@ canRender mimetype = gSync . (`webViewCanShowMimeType` mimetype) =<< asks (view 
 
 render :: (MonadReader r m, Has MainView r, MonadIO m, MonadLogger m) => Text -> URI -> m ()
 render page uri = do
-    debug $ "Rendering <" ++ tshow uri ++ ">"
+    debug $ "Rendering <" <> show uri <> ">"
     -- loadString page uri =<< get' webView_
 
     -- debug $ "Base URI: " ++ show (baseOf uri)
@@ -217,19 +216,19 @@ render page uri = do
     loadString page (baseOf uri) =<< asks (view webView_)
   where
     baseOf uri' = uri' {
-        uriPath = unpack . (`snoc` '/') . intercalate "/" . initSafe . splitOn "/" . pack $ uriPath uri'
+      uriPath = (`snoc` '/') . ointercalate "/" . initSafe . splitElem '/' $ uriPath uri'
     }
 
 
 -- | Set default settings
-initSettings :: (MonadIO m, MonadLogger m, Functor m) => WebView -> m WebView
+initSettings :: (MonadIO m, MonadLogger m) => WebView -> m WebView
 initSettings webView = do
     s <- gSync $ webViewGetWebSettings webView
 
     set s webSettingsAutoLoadImages                    True
     set s webSettingsAutoShrinkImages                  True
     set s webSettingsEnableDefaultContextMenu          True
-    set s webSettingsDefaultEncoding                   (asText "utf8")
+    set s webSettingsDefaultEncoding                   ("utf8" :: Text)
     set s webSettingsEnableDeveloperExtras             False
     set s webSettingsEnableDomPaste                    False
     set s webSettingsEnableHtml5Database               False
@@ -245,7 +244,7 @@ initSettings webView = do
     set s webSettingsEnableSiteSpecificQuirks          False
     set s webSettingsEnableXssAuditor                  False
     set s webSettingsJSCanOpenWindowAuto               False
-    set s webSettingsMonospaceFontFamily               (asText "inconsolata")
+    set s webSettingsMonospaceFontFamily               ("inconsolata" :: Text)
     set s webSettingsPrintBackgrounds                  True
     set s webSettingsResizableTextAreas                True
     set s webSettingsSpellCheckingLang                 (Nothing :: Maybe Text)
@@ -256,19 +255,19 @@ initSettings webView = do
     return webView
 
 
-zoomIn, zoomOut :: (MonadIO m, Functor m, MonadReader r m, Has MainView r) => m ()
+zoomIn, zoomOut :: (MonadIO m, MonadReader r m, Has MainView r) => m ()
 zoomIn  = getWebView >>= gAsync . webViewZoomIn
 zoomOut = getWebView >>= gAsync . webViewZoomOut
 
 -- | Shortcut to 'scroll' horizontally or vertically.
-scrollH, scrollV :: (MonadIO m, Functor m, MonadLogger m, MonadReader r m, Has MainView r) => Position -> m ()
+scrollH, scrollV :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r) => Position -> m ()
 scrollH p = void . scroll Horizontal p =<< ask
 scrollV p = void . scroll Vertical p =<< ask
 
 -- | General scrolling command
 scroll :: (MonadIO m, MonadLogger m) => Axis -> Position -> MainView -> m MainView
 scroll axis percentage mainView = do
-     debug $ "Set scroll " ++ tshow axis ++ " = " ++ tshow percentage
+     debug $ "Set scroll " <> show axis <> " = " <> show percentage
 
      adj     <- getAdjustment axis $ mainView^.scrollWindow_
      page    <- get adj Gtk.adjustmentPageSize

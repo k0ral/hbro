@@ -26,8 +26,6 @@ parseURI :: (MonadThrow m) => Text -> m URI
 parseURI uri = N.parseURI (unpack uri) `failWith` InvalidUri uri
 
 
-data UriException = InvalidUri Text deriving(Eq)
-instance Exception UriException
-
-instance Show UriException where
-  show (InvalidUri t) = "Invalid URI: " ++ unpack t
+data UriException = InvalidUri Text deriving(Eq, Show)
+instance Exception UriException where
+  displayException (InvalidUri t) = "Invalid URI: " ++ unpack t

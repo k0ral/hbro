@@ -11,6 +11,7 @@ import           Hbro.Config                     as Config
 import           Hbro.Core                       as Core
 import           Hbro.Defaults
 import           Hbro.Dyre                       as Dyre
+import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gui                        as Gui
 import           Hbro.Gui.MainView
@@ -22,6 +23,7 @@ import           Hbro.Options                    as Options
 import           Hbro.Prelude
 
 import           Control.Concurrent.Async.Lifted
+import           Control.Concurrent.STM.MonadIO
 import           Control.Lens                    hiding ((<|), (??), (|>))
 import           Control.Monad.Trans.Resource
 
@@ -58,7 +60,7 @@ instance Default Settings where
           }
 
 
-getDataFileName :: (MonadIO m, Functor m) => Text -> m FilePath
+getDataFileName :: (MonadIO m) => Text -> m FilePath
 getDataFileName file = io (Package.getDataFileName $ unpack file)
 
 -- | Main function to call in the configuration file. Cf @Hbro/Main.hs@ as an example.
@@ -67,7 +69,7 @@ hbro settings = do
     options <- parseOptions
 
     case options of
-        Left Rebuild -> Dyre.recompile >>= mapM_ putStrLn
+        Left Rebuild -> Dyre.recompile >>= mapM_ (putStrLn . unpack)
         Left Version -> printVersions
         Right runOptions -> runResourceT . runThreadedLoggingT (runOptions^.logLevel_) $ Dyre.wrap (runOptions^.dyreMode_)
                               (withAsyncBound guiThread . mainThread)
@@ -93,7 +95,7 @@ mainThread (settings, options) uiThread = logErrors_ $ do
 
     socketURI    <- getSocketURI options
     keySignal    <- newSignal KeyMapPressed
-    config       <- io . newTVarIO $ configuration settings
+    config       <- newTVar $ configuration settings
 
     flip runReaderT (config, ())
       . withReaderT (mainView, )
@@ -112,7 +114,7 @@ mainThread (settings, options) uiThread = logErrors_ $ do
 
         startUp settings
 
-        debug . ("Start-up configuration: \n" ++) . describe =<< Config.get id
+        debug . ("Start-up configuration: \n" <>) . describe =<< Config.get id
 
         maybe goHome (load <=< getStartURI) (options^.startURI_)
         io $ wait uiThread
@@ -121,21 +123,21 @@ mainThread (settings, options) uiThread = logErrors_ $ do
 
 
 -- | Return the list of available UI files (from configuration and package)
-getUIFiles :: (MonadIO m, Functor m) => CliOptions -> m [FilePath]
+getUIFiles :: (MonadIO m) => CliOptions -> m [FilePath]
 getUIFiles options = do
     fileFromConfig  <- getAppUserDataDirectory "hbro" >/> "ui.xml"
     fileFromPackage <- getDataFileName "examples/ui.xml"
     return $ catMaybes [options^.uiFile_, Just fileFromConfig, Just fileFromPackage]
 
 -- | Return socket URI used by this instance
-getSocketURI :: (MonadIO m, Functor m) => CliOptions -> m Text
+getSocketURI :: (MonadIO m) => CliOptions -> m Text
 getSocketURI options = maybe getDefaultSocketURI (return . normalize) $ options^.socketPath_
   where
-    normalize = ("ipc://" ++) . pack
+    normalize = ("ipc://" <>) . pack
     getDefaultSocketURI = do
       dir  <- pack <$> io getTemporaryDirectory
       uuid <- io (randomIO :: IO UUID)
-      return $ "ipc://" ++ dir ++ "/hbro-" ++ tshow uuid
+      return $ "ipc://" <> dir <> "/hbro-" <> show uuid
 
 -- | Parse URI passed in commandline, check whether it is a file path or an internet URI
 -- and return the corresponding normalized URI (that is: prefixed with "file://" or "http://")
@@ -144,12 +146,12 @@ getStartURI uri = do
     fileURI    <- io . doesFileExist $ show uri
     workingDir <- pack <$> io getCurrentDirectory
 
-    if fileURI then parseURIReference ("file://" ++ workingDir ++ "/" ++ tshow uri) else return uri
+    if fileURI then parseURIReference ("file://" <> workingDir <> "/" <> show uri) else return uri
     -- maybe abort return =<< logErrors (parseURIReference fileURI')
 
 printVersions :: IO ()
 printVersions = do
   (a, b, c) <- ZMQ.version
-  putStrLn $ "hbro-" ++ pack (showVersion Package.version)
-  putStrLn $ "compiled by " ++ pack compilerName ++ "-" ++ pack (showVersion compilerVersion)
-  putStrLn $ "using zeromq-" ++ intercalate "." (map tshow [a, b, c])
+  putStrLn $ "hbro-" <> pack (showVersion Package.version)
+  putStrLn $ "compiled by " <> pack compilerName <> "-" <> pack (showVersion compilerVersion)
+  putStrLn $ "using zeromq-" <> ointercalate "." (map show [a, b, c])

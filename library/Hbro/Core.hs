@@ -41,10 +41,14 @@ import           Graphics.UI.Gtk.WebKit.Extended
 
 import           Hbro.Config                              as Config
 import           Hbro.Dyre
--- import           Hbro.Gui                              as Gui
+import           Hbro.Error
 import           Hbro.Gui.MainView
 import           Hbro.Logger
 import           Hbro.Prelude                             as H
+
+import           Control.Concurrent.STM.MonadIO
+
+import           Data.IOData
 
 import           Graphics.UI.Gtk.Gdk.Pixbuf               (Pixbuf)
 import           Graphics.UI.Gtk.General.General.Extended
@@ -105,7 +109,7 @@ goHome = load =<< Config.get homePage_
 
 load :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r, MonadThrow m) => URI -> m ()
 load uri = do
-    debug $ "Loading URI: " ++ tshow uri
+    debug $ "Loading URI: " <> show uri
     -- void . logErrors $ do
     --     currentURI <- getURI
     --     guard (currentURI /= uri')
@@ -113,7 +117,7 @@ load uri = do
 
     -- load' uri'
     webview <- getWebView
-    gSync . webViewLoadUri webview $ show uri'
+    gSync . webViewLoadUri webview $ (show uri' :: Text)
 
   where
     uri' = case uriScheme uri of
@@ -137,10 +141,10 @@ reload, goBack, goForward :: (MonadIO m, MonadReader r m, Has MainView r, MonadL
 -- goForward = load' =<< Browser.stepForward =<< getURI
 reload    = gAsync . webViewReload    =<< getWebView
 goBack = do
-  unlessM (gSync . webViewCanGoBack =<< getWebView) $ warning "Unable to go back."
+  (gSync . webViewCanGoBack =<< getWebView) >>= (`unless` warning "Unable to go back.")
   gAsync . webViewGoBack    =<< getWebView
 goForward = do
-  unlessM (gSync . webViewCanGoForward =<< getWebView) $ warning "Unable to go forward."
+  (gSync . webViewCanGoForward =<< getWebView) >>= (`unless` warning "Unable to go forward.")
   gAsync . webViewGoForward =<< getWebView
 
 reloadBypassCache, stopLoading :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r) => m ()
@@ -152,11 +156,11 @@ stopLoading = getWebView >>= gAsync . webViewStopLoading >> debug "Stopped loadi
 -- {{{
 searchText :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r) => CaseSensitivity -> Direction -> Wrap -> Text -> m Bool
 searchText s d w text = do
-    debug $ "Searching text: " ++ text
+    debug $ "Searching text: " <> text
     v <- getWebView
     gSync $ webViewSearchText v text (toBool s) (toBool d) (toBool w)
 
-searchText_ :: (MonadIO m, Functor m, MonadLogger m, MonadReader r m, Has MainView r) => CaseSensitivity -> Direction -> Wrap -> Text -> m ()
+searchText_ :: (MonadIO m, MonadLogger m, MonadReader r m, Has MainView r) => CaseSensitivity -> Direction -> Wrap -> Text -> m ()
 searchText_ s d w text = void $ searchText s d w text
 
 printPage :: (MonadIO m, MonadReader r m, Has MainView r) => m ()
@@ -173,7 +177,7 @@ spawnHbro = do
 spawnHbro' :: (MonadIO m, MonadLogger m) => URI -> m ()
 spawnHbro' uri = do
   executable <- getHbroExecutable
-  spawn (pack executable) ["-u", tshow uri]
+  spawn (pack executable) ["-u", show uri]
 
 -- | Terminate the program.
 quit :: (MonadIO m) => m ()
@@ -187,11 +191,11 @@ saveWebPage file = writeFile file =<< getPageData
 -- | Execute a javascript file on current webpage.
 executeJSFile :: (MonadIO m, MonadLogger m) => FilePath -> WebView -> m ()
 executeJSFile filePath webView' = do
-    debug $ "Executing Javascript file: " ++ pack filePath
+    debug $ "Executing Javascript file: " <> pack filePath
     script <- readFile filePath
-    let script' = asText . unwords . map (++ "\n") . lines $ script
+    let script' = unwords . map (<> "\n") . lines $ script
 
-    gAsync $ webViewExecuteScript webView' script'
+    gAsync $ webViewExecuteScript webView' (script' :: Text)
 -- }}}
 
 -- | Save current web page to a file,

@@ -22,6 +22,7 @@ module Hbro.Config (
 -- {{{ Imports
 import           Hbro.Prelude
 
+import Control.Concurrent.STM.MonadIO
 import           Control.Lens hiding (set)
 import qualified Control.Lens as L (set)
 
@@ -37,13 +38,13 @@ declareLenses [d|
   |]
 
 instance Describable Config where
-    describe c = "Home page = " ++ tshow (c^.homePage_)
+  describe c = "Home page = " <> show (c^.homePage_)
 
 instance Default Config where
-    def = Config $ fromJust . N.parseURI $ "https://duckduckgo.com/"
+  def = Config $ fromJust . N.parseURI $ "https://duckduckgo.com/"
 
 get :: (MonadIO m, MonadReader r m, Has (TVar Config) r) => Lens' Config a -> m a
-get l = return . view l =<< atomically . readTVar =<< ask
+get l = fmap (view l) (readTVar =<< ask)
 
 set :: (MonadIO m, MonadReader r m, Has (TVar Config) r) => Lens' Config a -> a -> m ()
-set l v = atomically . (`modifyTVar` L.set l v) =<< ask
+set l v = void . (`modifyTVar` L.set l v) =<< ask

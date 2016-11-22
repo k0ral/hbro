@@ -11,6 +11,7 @@ module Hbro.Defaults where
 import           Hbro.Clipboard                           as Clipboard
 import           Hbro.Config                              (Config)
 import           Hbro.Core
+import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Gui                                 as Gui
@@ -25,6 +26,7 @@ import           Hbro.Logger
 import           Hbro.Prelude
 import           Hbro.WebView.Signals
 
+import           Control.Concurrent.STM.MonadIO
 import           Control.Monad.Trans.Resource
 
 import           Data.Map                                 as Map hiding (foldl,
@@ -57,9 +59,9 @@ defaultLoadRequestedHandler = load
 defaultNewWindowHandler :: (MonadIO m, MonadLogger m) => URI -> m ()
 defaultNewWindowHandler = spawnHbro'
 
-defaultTitleChangedHandler :: (MonadIO m, MonadLogger m, MonadThrow m, MonadReader r m, Has Gtk.Builder r)
+defaultTitleChangedHandler :: (MonadIO m, MonadLogger m, MonadReader r m, Has Gtk.Builder r)
                            => Text -> m ()
-defaultTitleChangedHandler title = getMainWindow >>= \w -> set w windowTitle ("hbro | " ++ title) >> return ()
+defaultTitleChangedHandler title = getMainWindow >>= \w -> void (set w windowTitle $ "hbro | " <> title)
 
 -- /!\ NetworkRequest's Haskell binding is missing the function "webkit_network_request_get_message", which makes it rather useless...
 -- | Display content if webview can show the given MIME type, otherwise download it.
@@ -69,13 +71,13 @@ defaultTitleChangedHandler title = getMainWindow >>= \w -> set w windowTitle ("h
 
 
 -- | List of default supported requests.
-defaultCommandMap :: (God r m, MonadCatch m) => CommandMap m
+defaultCommandMap :: (God r m) => CommandMap m
 defaultCommandMap = Map.fromList
 -- Get information
-    [ "GET_URI"             >: \_arguments -> Right . tshow <$> getCurrentURI
+    [ "GET_URI"             >: \_arguments -> Right . show <$> getCurrentURI
     , "GET_TITLE"           >: \_arguments -> Right <$> getPageTitle
-    , "GET_FAVICON_URI"     >: \_arguments -> Right . tshow <$> getFaviconURI
-    , "GET_LOAD_PROGRESS"   >: \_arguments -> Right . tshow <$> getLoadProgress
+    , "GET_FAVICON_URI"     >: \_arguments -> Right . show <$> getFaviconURI
+    , "GET_LOAD_PROGRESS"   >: \_arguments -> Right . show <$> getLoadProgress
 -- Trigger actions
     , "LOAD_URI"            >: \arguments -> case arguments of
             uri:_ -> parseURIReference uri >>= load >> return (Right "OK")
@@ -90,7 +92,7 @@ defaultCommandMap = Map.fromList
     ]
 
 
-defaultKeyMap :: (God r m, MonadCatch m) => KeyMap m
+defaultKeyMap :: (God r m) => KeyMap m
 defaultKeyMap = Map.fromList
 -- Browse
    [ [_Alt     .| _Left]   >: goBack
@@ -106,7 +108,7 @@ defaultKeyMap = Map.fromList
    , [_Control .| _End]    >: scrollV (Absolute 100)
    , [_Alt     .| _Home]   >: goHome
 -- Copy/paste
-   , [_Control .| _c]      >: getCurrentURI >>= Clipboard.write . tshow
+   , [_Control .| _c]      >: getCurrentURI >>= Clipboard.write . show
    , [_Alt     .| _c]      >: getPageTitle >>= Clipboard.write
    , [_Control .| _v]      >: Clipboard.read >>= parseURIReference >>= load
    , [_Alt     .| _v]      >: Clipboard.read >>= parseURIReference >>= spawnHbro'
@@ -118,7 +120,7 @@ defaultKeyMap = Map.fromList
    , [_Control .| _u]      >: getWebView >>= \v -> toggle_ v webViewViewSourceMode
 -- Prompt
    , [_Control .| _o]      >: uriPromptM "Open URI" "" >>= load
-   , [_Alt     .| _o]      >: getCurrentURI >>= \uri -> uriPromptM "Open URI " (tshow uri) >>= load
+   , [_Alt     .| _o]      >: getCurrentURI >>= \uri -> uriPromptM "Open URI " (show uri) >>= load
 -- Search
    , [singleKey _slash]    >: ipromptM "Search " "" (searchText_ CaseInsensitive Forward Wrap)
    , [_Control .| _f]      >: ipromptM "Search " "" (searchText_ CaseInsensitive Forward Wrap)

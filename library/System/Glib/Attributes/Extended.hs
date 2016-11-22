@@ -23,11 +23,11 @@ get o a = gSync $ Glib.get o a
 
 set :: (MonadIO m, MonadLogger m, Show a) => o -> Attr o a -> a -> m o
 set object attribute newValue = do
-  info $ "Set " ++ tshow attribute ++ " = " ++ tshow newValue
+  info $ "Set " <> show attribute <> " = " <> show newValue
   gAsync $ Glib.set object [attribute := newValue]
   return object
 
-set_ :: (MonadIO m, MonadLogger m, Functor m, Show a) => o -> Attr o a -> a -> m ()
+set_ :: (MonadIO m, MonadLogger m, Show a) => o -> Attr o a -> a -> m ()
 set_ o a v = void $ set o a v
 
 -- * Utils
@@ -38,12 +38,12 @@ modify object attribute f = do
   return oldValue
 
 -- | Same as 'modify', but discards the result.
-modify_ :: (MonadIO m, MonadLogger m, Functor m, Show a) => o -> Attr o a -> (a -> a) -> m ()
+modify_ :: (MonadIO m, MonadLogger m, Show a) => o -> Attr o a -> (a -> a) -> m ()
 modify_ object e = void . modify object e
 
 toggle :: (MonadIO m, MonadLogger m) => o -> Attr o Bool -> m Bool
 toggle object x = modify object x not
 
 -- | Same as 'toggle', but discards the result.
-toggle_ :: (MonadIO m, MonadLogger m, Functor m) => o -> Attr o Bool -> m ()
+toggle_ :: (MonadIO m, MonadLogger m) => o -> Attr o Bool -> m ()
 toggle_ object x = modify_ object x not

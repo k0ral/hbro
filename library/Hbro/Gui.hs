@@ -15,6 +15,7 @@ module Hbro.Gui (
 -- {{{ Imports
 import           Graphics.UI.Gtk.WebKit.Extended          ()
 
+import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gui.Builder
 import           Hbro.Gui.MainView                        hiding (initialize)
@@ -25,7 +26,7 @@ import           Hbro.Gui.PromptBar                       (PromptBar, closed_)
 import qualified Hbro.Gui.PromptBar                       as Prompt
 import           Hbro.Gui.StatusBar
 import           Hbro.Logger
-import           Hbro.Prelude                             hiding (on)
+import           Hbro.Prelude
 
 import           Control.Lens.Getter
 import           Control.Monad.Trans.Resource
@@ -42,7 +43,7 @@ import           System.Glib.Signals                      hiding (Signal)
 initialize :: (ControlIO m, Alternative m, MonadCatch m, MonadThreadedLogger m, MonadResource m)
            => FilePath -> m (Gtk.Builder, MainView, PromptBar, StatusBar, NotificationBar)
 initialize (pack -> file) = do
-    debug $ "Building GUI from " ++ file
+    debug $ "Building GUI from " <> file
     builder <- gSync Gtk.builderNew
     gSync . Gtk.builderAddFromFile builder $ unpack file
 

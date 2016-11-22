@@ -26,6 +26,7 @@ module Hbro.Event (
 import           Hbro.Prelude
 
 import           Control.Concurrent.Async.Lifted
+import           Control.Concurrent.STM.MonadIO
 import           Control.Concurrent.STM.TMChan
 import           Control.Monad.Logger.Extended
 import           Control.Monad.Trans.Resource
@@ -47,11 +48,11 @@ data (Event e) => Signal e = Signal e (TMChan (Input e)) (TVar [ReleaseKey])
 type Handler m a = Input a -> m ()
 
 instance (Event e) => Describable (Signal e) where
-  describe (Signal e _ _) = tshow e
+  describe (Signal e _ _) = show e
 
 -- | 'Signal' exports no constructor, use this function instead.
 newSignal :: (BaseIO m, Event e) => e -> m (Signal e)
-newSignal e = Signal e <$> io newBroadcastTMChanIO <*> io (newTVarIO [])
+newSignal e = Signal e <$> io newBroadcastTMChanIO <*> newTVar []
 
 -- | Blocks until signal is received.
 waitFor :: (MonadIO m) => TMChan a -> m (Maybe a)
@@ -60,9 +61,9 @@ waitFor = atomically . readTMChan
 -- | Trigger an event.
 emit :: (Event e, MonadIO m, MonadLogger m) => Signal e -> Input e -> m ()
 emit signal@(Signal e _ h) input = do
-  forM_ (describeInput e input) $ debug . ("Event triggered: " ++)
-  handlers <- atomically $ readTVar h
-  when (null handlers) . forM_ (describeInput e input) $ debug . (++) "No handler for event: "
+  forM_ (describeInput e input) $ debug . ("Event triggered: " <>)
+  handlers <- readTVar h
+  when (null handlers) . forM_ (describeInput e input) $ debug . (<>) "No handler for event: "
   emit' signal input
 
 -- | Like 'emit', but doesn't log anything.
@@ -94,10 +95,10 @@ addRecursiveHandler (Signal _ s handlers) init f = do
     runInIO . flip allocate cancel . async . void . runInIO . flip fix init $ \recurse acc ->
       waitFor signal >>= mapM_ (f acc >=> recurse)
   (releaseKey, _ :: Async ()) <- restoreM result
-  atomically $ modifyTVar handlers (releaseKey:)
+  modifyTVar handlers (releaseKey:)
 
   return releaseKey
 
 -- | Stop all handlers associated to the given signal.
 deleteHandlers :: (Event e, MonadIO m, MonadResource m) => Signal e -> m ()
-deleteHandlers (Signal _ _ handlers) = void . mapM release =<< atomically (readTVar handlers)
+deleteHandlers (Signal _ _ handlers) = mapM_ release =<< readTVar handlers

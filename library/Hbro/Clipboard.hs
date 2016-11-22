@@ -10,18 +10,18 @@ import           Hbro.Error
 import           Hbro.Logger
 import           Hbro.Prelude
 
+import           Control.Concurrent.MVar.Lifted
+
 import           Graphics.UI.Gtk.General.Clipboard
 import           Graphics.UI.Gtk.General.General.Extended
 import           Graphics.UI.Gtk.General.Selection
 -- }}}
 
 
-data ClipboardException = EmptyClipboard SelectionTag deriving(Eq)
+data ClipboardException = EmptyClipboard SelectionTag deriving(Eq, Show)
 
-instance Exception ClipboardException
-
-instance Show ClipboardException where
-  show (EmptyClipboard tag) = "Empty clipboard [" ++ show tag ++ "]"
+instance Exception ClipboardException where
+  displayException (EmptyClipboard tag) = "Empty clipboard [" <> show tag <> "]"
 
 
 -- | Write given 'Text' to the selection-primary clipboard
@@ -31,7 +31,7 @@ write = write' selectionPrimary
 -- | Write given text to the given clipboard
 write' :: (BaseIO m, MonadLogger m) => SelectionTag -> Text -> m ()
 write' tag text = do
-    debug $ "Writing to clipboard: " ++ text
+    debug $ "Writing to clipboard: " <> text
     gSync (clipboardGet tag) >>= gAsync . (`clipboardSetText` text)
 
 -- | Read clipboard's content. Both 'selectionPrimary' and 'selectionClipboard' are inspected (in this order).

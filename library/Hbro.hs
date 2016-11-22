@@ -1,4 +1,4 @@
-module Hbro ( module X) where
+module Hbro (module X) where
 
 import           Hbro.Boot         as X
 -- import           Hbro.Clipboard

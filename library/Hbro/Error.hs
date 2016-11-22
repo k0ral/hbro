@@ -6,8 +6,8 @@ module Hbro.Error ( module X, module Hbro.Error) where
 -- {{{ Imports
 import           Hbro.Prelude
 
-import           Control.Error.Util  as X (hush, note)
-import           Control.Monad.Catch ()
+import           Control.Error.Util     as X (hush, note)
+import           Control.Exception.Safe as X hiding (Handler)
 -- }}}
 
 failWith :: (MonadThrow m, Exception e) => Maybe a -> e -> m a

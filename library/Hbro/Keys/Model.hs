@@ -29,7 +29,7 @@ data KeyStroke modifier key = KeyStroke modifier key
 deriving instance (Eq m, Eq k) => Eq (KeyStroke m k)
 deriving instance (Ord m, Ord k) => Ord (KeyStroke m k)
 
-(.|) :: (Monoid modifier) => modifier -> key -> KeyStroke modifier key
+(.|) :: modifier -> key -> KeyStroke modifier key
 (.|) = KeyStroke
 
 singleKey :: (Monoid m) => k -> KeyStroke m k

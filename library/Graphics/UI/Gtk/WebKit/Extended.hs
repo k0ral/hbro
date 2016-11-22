@@ -39,7 +39,8 @@ import qualified Graphics.UI.Gtk.WebKit.NetworkRequest    as W
 import           Graphics.UI.Gtk.WebKit.WebDataSource     as W
 import           Graphics.UI.Gtk.WebKit.WebView           as X hiding (webViewGetIconUri,
                                                                 webViewGetTitle,
-                                                                webViewGetUri, webViewTryGetFaviconPixbuf,
+                                                                webViewGetUri,
+                                                                webViewTryGetFaviconPixbuf,
                                                                 webViewUri)
 import qualified Graphics.UI.Gtk.WebKit.WebView           as W
 
@@ -78,10 +79,10 @@ webViewGetTitle :: (MonadIO m, MonadThrow m) => WebView -> m Text
 webViewGetTitle = gSync . W.webViewGetTitle >=> maybe (throwM UnavailableTitle) return
 
 loadHtmlString :: (MonadIO m) => Text -> URI -> WebView -> m ()
-loadHtmlString html uri webView = gAsync $ W.webViewLoadHtmlString webView html (tshow uri)
+loadHtmlString html uri webView = gAsync $ W.webViewLoadHtmlString webView html (show uri)
 
 loadString :: (MonadIO m) => Text -> URI -> WebView -> m ()
-loadString html uri webView = gAsync $ W.webViewLoadString webView html Nothing (tshow uri)
+loadString html uri webView = gAsync $ W.webViewLoadString webView html Nothing (show uri)
 
 
 data WebKitException = UnavailableData
@@ -89,13 +90,11 @@ data WebKitException = UnavailableData
                      | UnavailableFileName
                      | UnavailableTitle
                      | UnavailableUri
-                     deriving(Eq)
+                     deriving(Eq, Show)
 
-instance Exception WebKitException
-
-instance Show WebKitException where
-  show UnavailableData = "No data available in the web frame."
-  show UnavailableFavicon = "No available favicon."
-  show UnavailableFileName = "No file name available."
-  show UnavailableTitle = "No available title."
-  show UnavailableUri = "No URI available."
+instance Exception WebKitException where
+  displayException UnavailableData     = "No data available in the web frame."
+  displayException UnavailableFavicon  = "No available favicon."
+  displayException UnavailableFileName = "No file name available."
+  displayException UnavailableTitle    = "No available title."
+  displayException UnavailableUri      = "No URI available."

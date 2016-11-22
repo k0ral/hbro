@@ -40,13 +40,13 @@ import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Gui.Builder
 import           Hbro.Logger
-import           Hbro.Prelude                             hiding (on)
+import           Hbro.Prelude
 
 import           Control.Concurrent.Async.Lifted
 import           Control.Lens.Getter
 import           Control.Lens.TH
 import           Control.Monad.Trans.Maybe
-import           Control.Monad.Trans.Resource
+import           Control.Monad.Trans.Resource hiding(throwM)
 
 import           Graphics.Rendering.Pango.Extended
 import           Graphics.UI.Gtk.Abstract.Widget
@@ -72,12 +72,12 @@ instance Event Closed where
 data Changed = Changed deriving(Show)
 instance Event Changed where
   type Input Changed = Text
-  describeInput _ = Just . (++) "Prompt value changed to: "
+  describeInput _ = Just . (<>) "Prompt value changed to: "
 
 data Validated = Validated deriving(Show)
 instance Event Validated where
   type Input Validated = Text
-  describeInput _ = Just . (++) "Prompt validated with value: "
+  describeInput _ = Just . (<>) "Prompt validated with value: "
 
 -- | No exported constructor, please use 'buildFrom'
 declareLenses [d|
@@ -91,16 +91,14 @@ declareLenses [d|
     }
   |]
 
-data PromptException = PromptInterrupted deriving(Eq)
+data PromptException = PromptInterrupted deriving(Eq, Show)
 
-instance Exception PromptException
-
-instance Show PromptException where
-  show PromptInterrupted = "Prompt interrupted."
+instance Exception PromptException where
+  displayException PromptInterrupted = "Prompt interrupted."
 -- }}}
 
 -- | A 'PromptBar' can be built from an XML file.
-buildFrom :: (ControlIO m, MonadLogger m, Applicative m) => Gtk.Builder -> m PromptBar
+buildFrom :: (ControlIO m, MonadLogger m) => Gtk.Builder -> m PromptBar
 buildFrom builder = do
     entry        <- getWidget builder entryName
     closedSignal <- newSignal Closed
@@ -181,7 +179,7 @@ promptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadT
 promptM a b = prompt a b =<< ask
 
 
-iprompt :: (ControlIO m, MonadLogger m, MonadThrow m, MonadResource m)
+iprompt :: (ControlIO m, MonadLogger m, MonadResource m)
         => Text
         -> Text
         -> (Text -> m ())
@@ -197,13 +195,13 @@ iprompt description startValue f promptBar = do
     close promptBar
     release update
 
-ipromptM :: (ControlIO m, MonadResource m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadThrow m)
+ipromptM :: (ControlIO m, MonadResource m, MonadReader r m, Has PromptBar r, MonadLogger m)
          => Text -> Text -> (Text -> m ()) -> m ()
 ipromptM a b c = iprompt a b c =<< ask
 
 
 -- | Same as 'prompt' for URI values
-uriPrompt :: (ControlIO m, MonadLogger m, MonadThrow m, MonadResource m)
+uriPrompt :: (ControlIO m, MonadLogger m, MonadResource m)
           => Text
           -> Text
           -> PromptBar
@@ -223,14 +221,14 @@ uriPrompt description startValue promptBar = do
     parseURIReference =<< maybe (throwM PromptInterrupted) return (join $ hush result)
 
 
-uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadThrow m, MonadResource m)
+uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadResource m)
            => Text -> Text -> m URI
 uriPromptM a b = uriPrompt a b =<< ask
 
 
 checkURI :: (MonadIO m, MonadLogger m) => PromptBar -> Text -> m ()
 checkURI promptBar v = do
-    debug $ "Is URI ? " ++ tshow (isURIReference $ unpack v)
+    debug $ "Is URI ? " <> show (isURIReference $ unpack v)
     gAsync $ widgetModifyText (promptBar^.entry_) StateNormal (if isURIReference (unpack v) then green else red)
 
 

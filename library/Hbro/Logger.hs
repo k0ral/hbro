@@ -23,14 +23,14 @@ module Hbro.Logger
 import           Hbro.Event
 import           Hbro.Prelude                  hiding (runReaderT)
 
+import           Control.Exception.Safe
 import           Control.Monad.Base
-import           Control.Monad.Catch
 import           Control.Monad.Logger.Extended as X
 import           Control.Monad.Reader
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Resource
 
-import           Data.Text                     (justifyLeft)
+import qualified Data.Text                     as Text (justifyLeft)
 import           Data.Text.Encoding
 import           Data.Text.Encoding.Error
 
@@ -87,7 +87,7 @@ instance (ControlIO m, MonadResource m) => MonadThreadedLogger (ThreadedLoggingT
 runThreadedLoggingT :: (ControlIO m, MonadResource m) => LogLevel -> ThreadedLoggingT m b -> m b
 runThreadedLoggingT logLevel f = do
     loggerSignal <- newSignal LogMessage
-    addHandler loggerSignal $ \(_loc, _source, level, message) -> io . putStrLn $ formatLevel level ++ " " ++ message
+    addHandler loggerSignal $ \(_loc, _source, level, message) -> io . putStrLn . unpack $ formatLevel level <> " " <> message
 
     result <- flip runReaderT (loggerSignal, logLevel) $ unThreadedLoggingT f
     closeSignal' loggerSignal
@@ -98,11 +98,11 @@ formatLevel LevelDebug     = "DEBUG"
 formatLevel LevelInfo      = "INFO "
 formatLevel LevelWarn      = "WARN "
 formatLevel LevelError     = "ERROR"
-formatLevel (LevelOther a) = justifyLeft 5 ' ' . take 5 $ tshow a
+formatLevel (LevelOther a) = Text.justifyLeft 5 ' ' . take 5 $ show a
 
 -- | Like 'catchError', except that the error is automatically logged, then discarded.
 logErrors :: (ControlIO m, MonadLogger m, MonadCatch m) => m a -> m (Maybe a)
-logErrors f = catchAll (Just <$> f) $ \e -> error (tshow e) >> return Nothing
+logErrors f = catchAny (Just <$> f) $ \e -> error (show e) >> return Nothing
 
 -- | Like 'logErrors', but discards the result.
 logErrors_ :: (MonadLogger m, ControlIO m, MonadCatch m) => m a -> m ()

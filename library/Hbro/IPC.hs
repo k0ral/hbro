@@ -41,20 +41,20 @@ withSocket c s f = liftBaseWith $ \runInBase -> ZMQ.withSocket c s (runInBase . 
 
 bindCommands :: (ControlIO m, MonadLogger m) => Text -> CommandMap m -> m ()
 bindCommands uri commandMap = void . withContext $ \c -> withSocket c Rep $ \socket -> do
-  info $ "Opening IPC socket at: " ++ uri
+  info $ "Opening IPC socket at: " <> uri
   io $ ZMQ.bind socket (unpack uri)
 
   fix $ \recurse -> do
     message <- receive socket
-    debug $ "Received command: " ++ message
+    debug $ "Received command: " <> message
 
     case words message of
       [] -> send socket "ERROR Empty command"
       command:arguments -> do
         response <- case Map.lookup command commandMap of
-                      Just f -> either ("ERROR " ++) id <$> f arguments
-                      _ -> return "ERROR Unknown command"
-        debug $ "Sending response: " ++ tshow response
+                      Just f -> either ("ERROR " <>) id <$> f arguments
+                      _      -> return "ERROR Unknown command"
+        debug $ "Sending response: " <> show response
         send socket response
     recurse
 

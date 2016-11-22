@@ -19,7 +19,7 @@ module Hbro.Options (
 -- {{{ Imports
 import qualified Hbro.Dyre                   as Dyre
 import           Hbro.Error
-import           Hbro.Prelude                hiding ((<>))
+import           Hbro.Prelude
 
 import           Control.Lens.Getter
 import           Control.Lens.TH
@@ -49,14 +49,14 @@ declareLenses [d|
   |]
 
 instance Describable CliOptions where
-    describe opts = unwords $ catMaybes
-        [ ("URI=" ++) . tshow <$> (opts^.startURI_)
-        , ("SOCKET=" ++) . pack  <$> (opts^.socketPath_)
-        , ("UI=" ++) . pack <$> (opts^.uiFile_)
-        , Just . ("DYRE_MODE=" ++) . tshow $ opts^.dyreMode_
-        , if opts^.dyreDebug_ then Just "DYRE_DEBUG" else Nothing
-        , Just . ("LOG-LEVEL=" ++) . tshow $ opts^.logLevel_
-        ]
+  describe opts = unwords $ catMaybes
+    [ ("URI=" <>) . show <$> (opts^.startURI_)
+    , ("SOCKET=" <>) . pack  <$> (opts^.socketPath_)
+    , ("UI=" <>) . pack <$> (opts^.uiFile_)
+    , Just . ("DYRE_MODE=" <>) . show $ opts^.dyreMode_
+    , if opts^.dyreDebug_ then Just "DYRE_DEBUG" else Nothing
+    , Just . ("LOG-LEVEL=" <>) . show $ opts^.logLevel_
+    ]
 
 instance Default CliOptions where
     def = CliOptions

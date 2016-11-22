@@ -28,6 +28,7 @@ module Hbro.Keys (
     ) where
 
 -- {{{ Imports
+import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Keys.Model                 ((.|))
@@ -40,6 +41,7 @@ import           Control.Monad.Trans.Resource
 
 import qualified Data.List.NonEmpty              as NonEmpty
 import qualified Data.Map                        as Map
+import           Data.Set                        (Set)
 import qualified Data.Set                        as Set
 
 import qualified Graphics.UI.Gtk.Gdk.EventM      as Gdk
@@ -58,7 +60,7 @@ instance Describable Gdk.Modifier where
 deriving instance Ord Gdk.Modifier
 
 instance Describable (Modifier, KeyVal) where
-    describe (m, k) = describe m ++ describe k
+  describe (m, k) = describe m <> describe k
 
 newtype Modifier = Modifier (Set Gdk.Modifier) deriving(Eq)
 
@@ -67,7 +69,7 @@ instance Monoid Modifier where
   (Modifier a) `mappend` (Modifier b) = Modifier (a `mappend` b)
 
 instance Describable Modifier where
-    describe (Modifier x) = concatMap describe $ Set.toList x
+  describe (Modifier x) = mconcat $ map describe $ Set.toList x
 
 instance Ord Modifier where compare = comparing describe
 
@@ -96,7 +98,7 @@ instance Default Mode where def = Normal
 type KeyStroke = Model.KeyStroke Modifier KeyVal
 
 instance Describable KeyStroke where
-  describe (Model.KeyStroke m k) = describe m ++ describe k
+  describe (Model.KeyStroke m k) = describe m <> describe k
 
 keyStrokes :: Parser KeyStroke
 keyStrokes = do
@@ -112,12 +114,12 @@ type KeyMap m = Model.KeyMap KeyStroke (m ())
 data KeyPressed = KeyPressed deriving(Show)
 instance Event KeyPressed where
   type Input KeyPressed = KeyStroke
-  describeInput _ stroke = Just $ "Key pressed: " ++ describe stroke
+  describeInput _ stroke = Just $ "Key pressed: " <> describe stroke
 
 data KeyMapPressed = KeyMapPressed deriving(Show)
 instance Event KeyMapPressed where
   type Input KeyMapPressed = ([KeyStroke], Bool)
-  describeInput _ (strokes, _bound) = Just . unwords $ "Key pressed: " : (describe <$> strokes)
+  describeInput _ (strokes, _bound) = Just $ "Key pressed: " <> unwords (describe <$> strokes)
 
 
 bindKeys :: (ControlIO m, MonadLogger m, MonadCatch m, MonadResource m)
@@ -129,7 +131,7 @@ bindKeys input output keyMap = addRecursiveHandler input empty $ \previousStroke
         found = Map.lookup strokes keyMap
         reset = isJust found || all (not . NonEmpty.isPrefixOf strokesL) k
 
-    debug $ "Accumulated: " ++ unwords (map describe strokesL)
+    debug $ "Accumulated: " <> unwords (map describe strokesL)
     emit output (strokesL, isJust found)
 
     async . logErrors $ fromMaybe doNothing found

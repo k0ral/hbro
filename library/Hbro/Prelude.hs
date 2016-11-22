@@ -1,6 +1,5 @@
 {-# LANGUAGE ConstraintKinds      #-}
 {-# LANGUAGE FlexibleContexts     #-}
-{-# LANGUAGE NoImplicitPrelude    #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeFamilies         #-}
@@ -13,6 +12,7 @@ module Hbro.Prelude
     , BaseIO
     , ControlIO
 -- * Generic aliases/shortcuts
+    , show
     , (|:)
     , (>:)
     , io
@@ -26,34 +26,48 @@ module Hbro.Prelude
 ) where
 
 -- {{{ Imports
-import           ClassyPrelude                 as X hiding (Builder (..),
-                                                     MonadReader (..),
-                                                     ReaderT (..),
-                                                     defaultTimeLocale, error,
-                                                     log, toList)
-
 import           Control.Applicative           as X (Alternative (..),
                                                      WrappedMonad, optional)
 import           Control.Arrow                 as X (Kleisli (..), left, right)
 import           Control.Conditional           as X (ToBool (..))
 import           Control.Lens
+import           Control.Monad                 as X (MonadPlus (..), forM_,
+                                                     forM_, guard, join, unless,
+                                                     void, when, (<=<), (>=>))
 import           Control.Monad.Base            as X (MonadBase (..))
+import           Control.Monad.IO.Class        as X (MonadIO (..))
 import           Control.Monad.Reader.Extended as X hiding (get)
 import           Control.Monad.Trans.Control   as X
 
+import           Data.ByteString               as X (ByteString)
 import           Data.Default.Class            as X
 import           Data.Foldable                 as X (asum)
 import           Data.List                     as X (tail)
 import           Data.List.NonEmpty            hiding (reverse)
 import qualified Data.List.NonEmpty            as NonEmpty
-import           Data.Maybe                    as X (fromJust)
+import           Data.Map                      as X (Map)
+import           Data.Maybe                    as X (fromJust, fromMaybe,
+                                                     isJust)
+import           Data.Monoid                   as X
+import           Data.MonoTraversable          as X
+import           Data.Ord                      as X (comparing)
+import           Data.Sequences                as X
+import           Data.String                   as X (IsString (..))
+import           Data.Text                     as X (Text)
+
+import qualified GHC.Show                      as Show
+
+import           Prelude                       as X hiding (break, drop,
+                                                     dropWhile, error, filter,
+                                                     lines, readFile, replicate,
+                                                     reverse, show, span,
+                                                     splitAt, take, takeWhile,
+                                                     unlines, unwords, words,
+                                                     writeFile)
 
 import           Safe                          as X (initSafe, tailSafe)
-
--- import System.Posix.Process
--- import System.Posix.Types
+import           System.FilePath
 -- }}}
-
 
 -- | Like 'Show', for 'Text'
 class Describable a where describe :: a -> Text
@@ -66,6 +80,10 @@ type BaseIO m = (MonadBase IO m, MonadIO m)
 type ControlIO m = (MonadBaseControl IO m, MonadIO m)
 
 -- {{{ Generic aliases/shortcuts
+-- | Generic 'Show.show'
+show :: (Show a, IsString b) => a -> b
+show = fromString . Show.show
+
 -- | Build a 'NonEmpty' from the right
 (|:) :: [a] -> a -> NonEmpty a
 list |: e = NonEmpty.reverse (e :| reverse list)

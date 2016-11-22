@@ -6,14 +6,14 @@
 module Hbro.WebView.Signals where
 
 -- {{{ Imports
+import           Hbro.Error
 import           Hbro.Event
 import           Hbro.Gdk.KeyVal
 import           Hbro.Keys                                  as Keys
 import           Hbro.Keys.Model                            ((.|))
 import           Hbro.Logger
-import           Hbro.Prelude                               hiding (on)
+import           Hbro.Prelude
 
-import           Control.Monad.Catch
 import           Control.Monad.Trans.Maybe
 
 import           Data.Set                                   as S hiding (map)
@@ -23,7 +23,9 @@ import           Graphics.UI.Gtk.Abstract.Widget            hiding (KeyVal)
 import           Graphics.UI.Gtk.Gdk.EventM                 as Gdk
 import           Graphics.UI.Gtk.General.General.Extended
 import           Graphics.UI.Gtk.WebKit.Download            as W hiding
-                                                                  (Download, downloadGetSuggestedFilename, downloadGetUri)
+                                                                  (Download,
+                                                                  downloadGetSuggestedFilename,
+                                                                  downloadGetUri)
 import           Graphics.UI.Gtk.WebKit.Extended            as W
 import           Graphics.UI.Gtk.WebKit.WebNavigationAction
 import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
@@ -38,17 +40,17 @@ import           System.Glib.Signals                        hiding (Signal)
 data Download = Download deriving(Show)
 instance Event Download where
   type Input Download = (URI, Text, Maybe Int)
-  describeInput _ (uri, _, _) = Just $ "Requested download <" ++ tshow uri ++ ">"
+  describeInput _ (uri, _, _) = Just $ "Requested download <" <> show uri <> ">"
 
 data LinkClicked = LinkClicked deriving(Show)
 instance Event LinkClicked where
   type Input LinkClicked = (URI, MouseButton)
-  describeInput _ (uri, _) = Just $ "Link clicked <" ++ tshow uri ++ ">"
+  describeInput _ (uri, _) = Just $ "Link clicked <" <> show uri <> ">"
 
 data LinkHovered = LinkHovered deriving(Show)
 instance Event LinkHovered where
   type Input LinkHovered = (URI, Maybe Text)
-  describeInput _ (uri, _) = Just $ "Link hovered <" ++ tshow uri ++ ">"
+  describeInput _ (uri, _) = Just $ "Link hovered <" <> show uri <> ">"
 
 data LinkUnhovered = LinkUnhovered deriving(Show)
 instance Event LinkUnhovered where
@@ -61,7 +63,7 @@ instance Event LoadCommitted where
 data LoadFailed = LoadFailed deriving(Show)
 instance Event LoadFailed where
   type Input LoadFailed = (URI, GError)
-  describeInput _ (uri, e) = Just $ "Error loading <" ++ tshow uri ++ "> : " ++ tshow e
+  describeInput _ (uri, e) = Just $ "Error loading <" <> show uri <> "> : " <> show e
 
 data LoadFinished = LoadFinished deriving(Show)
 instance Event LoadFinished where
@@ -70,7 +72,7 @@ instance Event LoadFinished where
 data LoadRequested = LoadRequested deriving(Show)
 instance Event LoadRequested where
   type Input LoadRequested = URI
-  describeInput _ uri = Just $ "Load requested <" ++ tshow uri ++ ">"
+  describeInput _ uri = Just $ "Load requested <" <> show uri <> ">"
 
 data LoadStarted = LoadStarted deriving(Show)
 instance Event LoadStarted where
@@ -79,12 +81,12 @@ instance Event LoadStarted where
 data NewWindow = NewWindow deriving(Show)
 instance Event NewWindow where
   type Input NewWindow = URI
-  describeInput _ uri = Just $ "New window <" ++ tshow uri ++ ">"
+  describeInput _ uri = Just $ "New window <" <> show uri <> ">"
 
 data ProgressChanged = ProgressChanged deriving(Show)
 instance Event ProgressChanged where
   type Input ProgressChanged = Int
-  describeInput _ percent = Just $ "Load progress: " ++ tshow percent ++ "%"
+  describeInput _ percent = Just $ "Load progress: " <> show percent <> "%"
 
 data ResourceOpened = ResourceOpened deriving(Show)
 instance Event ResourceOpened where
@@ -94,20 +96,20 @@ instance Event ResourceOpened where
 data TitleChanged = TitleChanged deriving(Show)
 instance Event TitleChanged where
   type Input TitleChanged = Text
-  describeInput _ = Just . (++) "Title changed to: "
+  describeInput _ = Just . (<>) "Title changed to: "
 
 data URIChanged = URIChanged deriving(Show)
 instance Event URIChanged where
   type Input URIChanged = URI
-  describeInput _ = Just . (++) "URI changed to: " . tshow
+  describeInput _ = Just . (<>) "URI changed to: " . show
 
 data ZoomLevelChanged = ZoomLevelChanged deriving(Show)
 instance Event ZoomLevelChanged where
   type Input ZoomLevelChanged = Float
-  describeInput _ value = Just $ "Zoom level changed to: " ++ tshow value
+  describeInput _ value = Just $ "Zoom level changed to: " <> show value
 
 data ResourceAction = Load | Download' deriving(Show)
-instance Describable ResourceAction where describe = tshow
+instance Describable ResourceAction where describe = show
 
 
 attachDownload :: (ControlIO m, MonadCatch m, MonadLogger m)
@@ -168,19 +170,19 @@ attachNavigationRequest webView signal1 signal2 = liftBaseWith $ \runInIO -> gSy
                 emit signal1 (uri, b)
                 io $ webPolicyDecisionIgnore decision
             (WebNavigationReasonOther, _) -> do
-                debug $ "Navigation request to <" ++ tshow uri ++ ">"
+                debug $ "Navigation request to <" <> show uri <> ">"
                 io $ webPolicyDecisionUse decision
             (WebNavigationReasonBackForward, _) -> io $ webPolicyDecisionUse decision
             (WebNavigationReasonReload, _) -> io $ webPolicyDecisionUse decision
             (WebNavigationReasonFormSubmitted, _) -> do
-                debug $ "Form submitted to <" ++ tshow uri ++ ">"
+                debug $ "Form submitted to <" <> show uri <> ">"
                 io $ webPolicyDecisionUse decision
             _ -> do
-                debug $ "Navigation request [" ++ tshow reason ++ "] to <" ++ tshow uri ++ ">"
+                debug $ "Navigation request [" <> show reason <> "] to <" <> show uri <> ">"
                 emit signal2 uri
                 io $ webPolicyDecisionIgnore decision
-      `catchAll` \e -> do
-        error (tshow e)
+      `catchAny` \e -> do
+        error (show e)
         io $ webPolicyDecisionUse decision
 
     return True
@@ -221,11 +223,11 @@ attachProgressChanged webView signal = liftBaseWith $ \runInIO -> gSync . on web
 -- attachResourceOpened webView signal = liftBaseWith $ \runInIO -> gSync . on webView mimeTypePolicyDecisionRequested $ \_frame request mimetype decision -> do
 --     action <- logErrors $ do
 --         uri <- networkRequestGetUri request
---         debug $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" ++ tshow uri ++ ">"
+--         debug $ "Opening resource [MIME type=" ++ mimetype ++ "] at <" <> show uri <> ">"
 --         -- io . waitForResult =<<
 --         emit signal (uri, mimetype)
 
---     debug "debug" $ "decision made: " ++ tshow action
+--     debug "debug" $ "decision made: " ++ show action
 --     case action of
 --         Just Load -> webPolicyDecisionUse decision
 --         Just Download' -> webPolicyDecisionDownload decision

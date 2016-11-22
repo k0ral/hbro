@@ -38,7 +38,7 @@ asNotificationBar :: NotificationBar -> NotificationBar
 asNotificationBar = id
 
 -- | A 'NotificationBar' can be built from an XML file.
-buildFrom :: (MonadIO m, Functor m) => Gtk.Builder -> m NotificationBar
+buildFrom :: (MonadIO m) => Gtk.Builder -> m NotificationBar
 buildFrom builder = NotificationBar <$> getWidget builder "notificationLabel"
 
 instance GObjectClass NotificationBar where
@@ -59,8 +59,8 @@ initialize notifBar = do
 
 logColor :: LogLevel -> Color
 logColor LevelError = red
-logColor LevelWarn = yellow
-logColor _ = gray
+logColor LevelWarn  = yellow
+logColor _          = gray
 
 write :: (MonadIO m) => Text -> NotificationBar -> m NotificationBar
 write message = write' message gray

@@ -9,6 +9,7 @@ module Hbro.Gdk.KeyVal where
 import Hbro.Prelude
 
 import Data.Char
+import Data.Word
 
 import qualified Graphics.UI.Gtk.Gdk.Keys as Gtk
 
@@ -23,8 +24,7 @@ newtype KeyVal = KeyVal { unKeyValue :: Word32 }
 
 -- | Single characters are returned as is. For other keys, the corresponding keyName wrapped into @\<\>@ is returned.
 instance Describable KeyVal where
-    describe (KeyVal key) = if length name < 2 then name else "<" ++ name ++ ">"
-      where name = Gtk.keyName key
+  describe (KeyVal key) = if olength name < 2 then name else "<" <> name <> ">" where name = Gtk.keyName key
 
 keyVal, shortKeyVal, longKeyVal :: Parser KeyVal
 keyVal = spaces *> (shortKeyVal <|> longKeyVal)
