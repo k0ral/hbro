@@ -28,7 +28,6 @@ import           Hbro.Gui.StatusBar
 import           Hbro.Logger
 import           Hbro.Prelude
 
-import           Control.Lens.Getter
 import           Control.Monad.Trans.Resource
 
 import           Graphics.Rendering.Pango.Enums
@@ -37,6 +36,9 @@ import qualified Graphics.UI.Gtk.Builder                  as Gtk
 import           Graphics.UI.Gtk.General.General.Extended (gAsync, gSync)
 import qualified Graphics.UI.Gtk.General.General.Extended as Gtk
 import           Graphics.UI.Gtk.Windows.Window
+
+import           Lens.Micro.Platform
+
 import           System.Glib.Signals                      hiding (Signal)
 -- }}}
 

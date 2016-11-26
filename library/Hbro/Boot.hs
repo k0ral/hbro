@@ -24,13 +24,14 @@ import           Hbro.Prelude
 
 import           Control.Concurrent.Async.Lifted
 import           Control.Concurrent.STM.MonadIO
-import           Control.Lens                    hiding ((<|), (??), (|>))
 import           Control.Monad.Trans.Resource
 
 import           Data.UUID
 import           Data.Version                    hiding (Version)
 
 import           Graphics.UI.Gtk.General.General as Gtk
+
+import           Lens.Micro.Platform
 
 import           Network.URI.Extended
 

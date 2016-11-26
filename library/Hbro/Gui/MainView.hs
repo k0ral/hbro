@@ -50,8 +50,6 @@ import           Hbro.Logger
 import           Hbro.Prelude
 import           Hbro.WebView.Signals
 
-import           Control.Lens                             hiding (set, snoc)
-
 import qualified Graphics.UI.Gtk.Abstract.Container       as Gtk
 import           Graphics.UI.Gtk.Abstract.Widget
 import qualified Graphics.UI.Gtk.Builder                  as Gtk
@@ -67,6 +65,8 @@ import           Graphics.UI.Gtk.WebKit.NetworkRequest
 import           Graphics.UI.Gtk.WebKit.WebPolicyDecision
 import           Graphics.UI.Gtk.WebKit.WebSettings
 
+import           Lens.Micro.Platform hiding(set)
+
 import           Network.URI
 
 import           System.Glib.Attributes.Extended
@@ -78,29 +78,30 @@ data Scrolled = Scrolled deriving(Show)
 instance Event Scrolled where
   describeInput _ _ = Just "Scrolled"
 
-declareLenses [d|
-  data MainView = MainView
-    { scrollWindow_            :: ScrolledWindow  -- ^ 'ScrolledWindow' containing the webview
-    , webView_                 :: WebView
-    , downloadHandler_         :: Signal Download
-    , keyPressedHandler_       :: Signal KeyPressed
-    , linkClickedHandler_      :: Signal LinkClicked
-    , linkHoveredHandler_      :: Signal LinkHovered
-    , linkUnhoveredHandler_    :: Signal LinkUnhovered
-    , loadCommittedHandler_    :: Signal LoadCommitted
-    , loadFailedHandler_       :: Signal LoadFailed
-    , loadFinishedHandler_     :: Signal LoadFinished
-    , loadRequestedHandler_    :: Signal LoadRequested
-    , loadStartedHandler_      :: Signal LoadStarted
-    , newWindowHandler_        :: Signal NewWindow
-    , progressChangedHandler_  :: Signal ProgressChanged
-    -- , resourceOpenedHandlerL   :: Signal ResourceOpened
-    , scrolledHandler_         :: Signal Scrolled
-    , titleChangedHandler_     :: Signal TitleChanged
-    , uriChangedHandler_       :: Signal URIChanged
-    , zoomLevelChangedHandler_ :: Signal ZoomLevelChanged
-    }
-  |]
+data MainView = MainView
+  { _scrollWindow            :: ScrolledWindow  -- ^ 'ScrolledWindow' containing the webview
+  , _webView                 :: WebView
+  , _downloadHandler         :: Signal Download
+  , _keyPressedHandler       :: Signal KeyPressed
+  , _linkClickedHandler      :: Signal LinkClicked
+  , _linkHoveredHandler      :: Signal LinkHovered
+  , _linkUnhoveredHandler    :: Signal LinkUnhovered
+  , _loadCommittedHandler    :: Signal LoadCommitted
+  , _loadFailedHandler       :: Signal LoadFailed
+  , _loadFinishedHandler     :: Signal LoadFinished
+  , _loadRequestedHandler    :: Signal LoadRequested
+  , _loadStartedHandler      :: Signal LoadStarted
+  , _newWindowHandler        :: Signal NewWindow
+  , _progressChangedHandler  :: Signal ProgressChanged
+  -- , resourceOpenedHandler   :: Signal ResourceOpened
+  , _scrolledHandler         :: Signal Scrolled
+  , _titleChangedHandler     :: Signal TitleChanged
+  , _uriChangedHandler       :: Signal URIChanged
+  , _zoomLevelChangedHandler :: Signal ZoomLevelChanged
+  }
+
+
+makeLensesWith (lensRules & lensField .~ lensGen) ''MainView
 
 
 -- * Commonly used getters

@@ -43,8 +43,6 @@ import           Hbro.Logger
 import           Hbro.Prelude
 
 import           Control.Concurrent.Async.Lifted
-import           Control.Lens.Getter
-import           Control.Lens.TH
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Resource hiding(throwM)
 
@@ -57,6 +55,8 @@ import           Graphics.UI.Gtk.Entry.Entry
 import           Graphics.UI.Gtk.Gdk.EventM               as Gdk
 import           Graphics.UI.Gtk.General.General.Extended
 import           Graphics.UI.Gtk.Layout.HBox
+
+import           Lens.Micro.Platform
 
 import           Network.URI.Extended
 
@@ -80,16 +80,16 @@ instance Event Validated where
   describeInput _ = Just . (<>) "Prompt validated with value: "
 
 -- | No exported constructor, please use 'buildFrom'
-declareLenses [d|
-  data PromptBar = PromptBar
-    { box_         :: HBox
-    , description_ :: Label
-    , entry_       :: Entry
-    , changed_     :: Signal Changed
-    , closed_      :: Signal Closed
-    , validated_   :: Signal Validated
-    }
-  |]
+data PromptBar = PromptBar
+  { _box         :: HBox
+  , _description :: Label
+  , _entry       :: Entry
+  , _changed     :: Signal Changed
+  , _closed      :: Signal Closed
+  , _validated   :: Signal Validated
+  }
+
+makeLensesWith (lensRules & lensField .~ lensGen) ''PromptBar
 
 data PromptException = PromptInterrupted deriving(Eq, Show)
 
@@ -125,20 +125,26 @@ entryName = "promptEntry"
 boxName   = "promptBox"
 
 initialize :: (MonadIO m) => PromptBar -> m PromptBar
-initialize =
-    withM_ description_ (gAsync . (`labelSetAttributes` [allItalic, allBold]))
-    >=> withM_ description_ (gAsync . (`labelSetAttributes` [AttrForeground {paStart = 0, paEnd = -1, paColor = gray}]))
-    >=> withM_ entry_ (gAsync . (\e -> widgetModifyBase e StateNormal black))
-    >=> withM_ entry_ (gAsync . (\e -> widgetModifyText e StateNormal gray))
+initialize promptBar = do
+  mapM gAsync
+    [ labelSetAttributes (promptBar ^. description_) [allItalic, allBold]
+    , labelSetAttributes (promptBar ^. description_) [AttrForeground {paStart = 0, paEnd = -1, paColor = gray}]
+    , widgetModifyBase (promptBar ^. entry_) StateNormal black
+    , widgetModifyText (promptBar ^. entry_) StateNormal gray
+    ]
+  return promptBar
 
 
 open :: (MonadIO m) => Text -> Text -> PromptBar -> m PromptBar
-open description defaultText =
-    withM_ description_ (gAsync . (`labelSetText` description))
-    >=> withM_ entry_ (gAsync . (`entrySetText` defaultText))
-    >=> withM_ box_ (gAsync . widgetShow)
-    >=> withM_ entry_ (gAsync . widgetGrabFocus)
-    >=> withM_ entry_ (gAsync . (`editableSetPosition` (-1)))
+open description defaultText promptBar = do
+  mapM gAsync
+    [ labelSetText (promptBar ^. description_) description
+    , entrySetText (promptBar ^. entry_) defaultText
+    , widgetShow $ promptBar ^. box_
+    , widgetGrabFocus $ promptBar ^. entry_
+    , editableSetPosition (promptBar ^. entry_) (-1)
+    ]
+  return promptBar
 
 close :: (ControlIO m, MonadLogger m) => PromptBar -> m PromptBar
 close promptBar = do
@@ -151,8 +157,13 @@ close promptBar = do
 
 -- | Close prompt, that is: clean its content, signals and callbacks
 clean :: (ControlIO m) => PromptBar -> m PromptBar
-clean = withM_ entry_ (gAsync . (`widgetRestoreText` StateNormal))
-    >=> withM_ entry_ (gAsync . (\e -> widgetModifyText e StateNormal gray))
+clean promptBar = do
+  mapM gAsync
+    [ widgetRestoreText (promptBar ^. entry_) StateNormal
+    , widgetModifyText (promptBar ^. entry_) StateNormal gray
+    ]
+  return promptBar
+
 
 
 -- {{{ Prompts

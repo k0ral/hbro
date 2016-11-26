@@ -21,9 +21,9 @@ import qualified Hbro.Dyre                   as Dyre
 import           Hbro.Error
 import           Hbro.Prelude
 
-import           Control.Lens.Getter
-import           Control.Lens.TH
 import           Control.Monad.Logger
+
+import           Lens.Micro.Platform
 
 import           Network.URI
 
@@ -37,16 +37,16 @@ import           Options.Applicative.Types
 data Command = Rebuild | Version
 
 -- | Available options
-declareLenses [d|
-  data CliOptions = CliOptions
-    { startURI_   :: Maybe URI
-    , socketPath_ :: Maybe FilePath
-    , uiFile_     :: Maybe FilePath
-    , dyreMode_   :: Dyre.Mode
-    , dyreDebug_  :: Bool
-    , logLevel_   :: LogLevel
-    } deriving(Eq)
-  |]
+data CliOptions = CliOptions
+  { _startURI   :: Maybe URI
+  , _socketPath :: Maybe FilePath
+  , _uiFile     :: Maybe FilePath
+  , _dyreMode   :: Dyre.Mode
+  , _dyreDebug  :: Bool
+  , _logLevel   :: LogLevel
+  } deriving(Eq)
+
+makeLensesWith (lensRules & lensField .~ lensGen) ''CliOptions
 
 instance Describable CliOptions where
   describe opts = unwords $ catMaybes

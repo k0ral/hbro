@@ -20,8 +20,7 @@ module Hbro.Prelude
     , abort
     , doNothing
 -- * Lens util
-    , withM
-    , withM_
+    , lensGen
     , fwd
 ) where
 
@@ -30,7 +29,6 @@ import           Control.Applicative           as X (Alternative (..),
                                                      WrappedMonad, optional)
 import           Control.Arrow                 as X (Kleisli (..), left, right)
 import           Control.Conditional           as X (ToBool (..))
-import           Control.Lens
 import           Control.Monad                 as X (MonadPlus (..), forM_,
                                                      forM_, guard, join, unless,
                                                      void, when, (<=<), (>=>))
@@ -56,6 +54,10 @@ import           Data.String                   as X (IsString (..))
 import           Data.Text                     as X (Text)
 
 import qualified GHC.Show                      as Show
+
+import           Language.Haskell.TH.Syntax
+
+import           Lens.Micro.Platform
 
 import           Prelude                       as X hiding (break, drop,
                                                      dropWhile, error, filter,
@@ -111,12 +113,10 @@ doNothing = return ()
 -- }}}
 
 -- {{{ Lens util
--- | Alias for 'mapMOf'
-withM :: LensLike (WrappedMonad m) s t a b -> (a -> m b) -> s -> m t
-withM = mapMOf
-
-withM_ :: Monad m => Over (->) (WrappedMonad m) s t a a -> (a -> m ()) -> s -> m t
-withM_ l f = mapMOf l (fwd f)
+-- | Lens field generator
+lensGen _ _ n = case nameBase n of
+  '_':x -> [TopName (mkName $ x ++ "_")]
+  _     -> []
 
 fwd :: (Monad m) => (a -> m ()) -> a -> m a
 fwd f x = f x >> return x

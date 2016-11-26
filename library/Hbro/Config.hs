@@ -3,7 +3,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes        #-}
-{-# LANGUAGE TemplateHaskell   #-}
 -- | General configuration parameters.
 -- The recommended way to import this module is:
 -- @
@@ -15,27 +14,26 @@ module Hbro.Config (
       Config
     , homePage_
 -- * Getter/setter
-    , get
-    , set
+    , Hbro.Config.get
+    , Hbro.Config.set
 ) where
 
 -- {{{ Imports
 import           Hbro.Prelude
 
-import Control.Concurrent.STM.MonadIO
-import           Control.Lens hiding (set)
-import qualified Control.Lens as L (set)
+import           Control.Concurrent.STM.MonadIO
+
+import           Lens.Micro.Platform as Lens
 
 import           Network.URI  (URI)
 import qualified Network.URI  as N
 -- }}}
 
 -- | Custom settings provided by the user
-declareLenses [d|
-  data Config = Config
-    { homePage_ :: URI
-    }
-  |]
+data Config = Config URI
+
+homePage_ :: Lens' Config URI
+homePage_ f (Config a) = (\b -> Config b) <$> f a
 
 instance Describable Config where
   describe c = "Home page = " <> show (c^.homePage_)
@@ -47,4 +45,4 @@ get :: (MonadIO m, MonadReader r m, Has (TVar Config) r) => Lens' Config a -> m 
 get l = fmap (view l) (readTVar =<< ask)
 
 set :: (MonadIO m, MonadReader r m, Has (TVar Config) r) => Lens' Config a -> a -> m ()
-set l v = void . (`modifyTVar` L.set l v) =<< ask
+set l v = void . (`modifyTVar` Lens.set l v) =<< ask
