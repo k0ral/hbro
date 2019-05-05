@@ -64,6 +64,9 @@ instance Describable (Modifier, KeyVal) where
 
 newtype Modifier = Modifier (Set Gdk.Modifier) deriving(Eq)
 
+instance Semigroup Modifier where
+  (<>) = mappend
+
 instance Monoid Modifier where
   mempty = Modifier mempty
   (Modifier a) `mappend` (Modifier b) = Modifier (a `mappend` b)

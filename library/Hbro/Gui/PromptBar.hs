@@ -212,7 +212,7 @@ ipromptM a b c = iprompt a b c =<< ask
 
 
 -- | Same as 'prompt' for URI values
-uriPrompt :: (ControlIO m, MonadLogger m, MonadResource m)
+uriPrompt :: (ControlIO m, MonadLogger m, MonadResource m, MonadThrow m)
           => Text
           -> Text
           -> PromptBar
@@ -232,7 +232,7 @@ uriPrompt description startValue promptBar = do
     parseURIReference =<< maybe (throwM PromptInterrupted) return (join $ hush result)
 
 
-uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadResource m)
+uriPromptM :: (ControlIO m, MonadReader r m, Has PromptBar r, MonadLogger m, MonadResource m, MonadThrow m)
            => Text -> Text -> m URI
 uriPromptM a b = uriPrompt a b =<< ask
 

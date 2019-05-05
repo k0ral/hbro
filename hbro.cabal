@@ -22,53 +22,51 @@ Source-repository head
 
 Library
     Build-depends:
-        base == 4.*,
+        base,
         bytestring,
         chunked-data,
         cond,
         containers,
         data-default-class,
         directory,
-        dyre >= 0.8.8,
+        dyre,
         errors,
         safe-exceptions,
         fast-logger,
         filepath,
         glib,
-        gtk3 >= 0.13,
+        gtk3,
         -- http-conduit,
         -- http-conduit-browser,
         -- http-types,
         microlens-platform,
-        lifted-async >= 0.6,
-        lifted-base >= 0.2.3.3,
-        mtl >= 2.2,
-        monad-control >= 1.0,
-        monad-logger >= 0.3.6.2,
+        lifted-async,
+        lifted-base ,
+        mtl,
+        monad-control,
+        monad-logger,
         monadIO,
         mono-traversable,
         network-uri,
-        optparse-applicative >= 0.11,
+        optparse-applicative,
         pango,
         parsec,
         process,
         random,
-        resourcet >= 1.1.5,
+        resourcet,
         safe,
         semigroups,
         stm-chans,
         template-haskell,
         text,
         -- text-icu,
-        time >= 1.5,
+        time ,
         transformers,
         transformers-base,
         unix,
         uuid,
-        webkitgtk3 >= 0.13.1.2,
+        webkitgtk3,
         zeromq4-haskell
-    if impl(ghc < 7.10)
-       Build-depends: integer-simple
 
     Exposed-modules:
         Control.Monad.Logger.Extended
@@ -120,7 +118,7 @@ Flag threaded
 Executable hbro
     Build-depends:
         hbro >= 1.7,
-        base == 4.*
+        base
     Main-is: Main.hs
     Hs-Source-Dirs: executable
     Ghc-options: -Wall

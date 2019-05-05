@@ -1,9 +1,16 @@
-{-# LANGUAGE ConstraintKinds   #-}
-{-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
-{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude     #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TupleSections         #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
+
 module Hbro.Boot (Settings(..), hbro) where
 
 -- {{{ Imports
@@ -25,6 +32,7 @@ import           Hbro.Prelude
 import           Control.Concurrent.Async.Lifted
 import           Control.Concurrent.STM.MonadIO
 import           Control.Monad.Trans.Resource
+import           Control.Monad.Trans.Class
 
 import           Data.UUID
 import           Data.Version                    hiding (Version)
@@ -64,6 +72,12 @@ instance Default Settings where
 getDataFileName :: (MonadIO m) => Text -> m FilePath
 getDataFileName file = io (Package.getDataFileName $ unpack file)
 
+instance MonadBase b m =>  MonadBase b (ResourceT m) where
+  liftBase = lift . liftBase
+
+instance MonadBaseControl b m =>  MonadBaseControl b (ResourceT m) where
+  type StM (ResourceT m) a = StM m a
+
 -- | Main function to call in the configuration file. Cf @Hbro/Main.hs@ as an example.
 hbro :: Settings -> IO ()
 hbro settings = do
@@ -72,9 +86,12 @@ hbro settings = do
     case options of
         Left Rebuild -> Dyre.recompile >>= mapM_ (putStrLn . unpack)
         Left Version -> printVersions
-        Right runOptions -> runResourceT . runThreadedLoggingT (runOptions^.logLevel_) $ Dyre.wrap (runOptions^.dyreMode_)
-                              (withAsyncBound guiThread . mainThread)
-                              (settings, runOptions)
+        Right runOptions ->
+          runResourceT
+            . runThreadedLoggingT (runOptions^.logLevel_)
+            $ Dyre.wrap @(ThreadedLoggingT (ResourceT IO)) (runOptions^.dyreMode_)
+                        (withAsyncBound guiThread . mainThread)
+                        (settings, runOptions)
 
 -- | Gtk main loop thread.
 guiThread :: (ControlIO m, MonadLogger m) => m ()

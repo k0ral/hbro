@@ -1,9 +1,11 @@
 {-# LANGUAGE ConstraintKinds     #-}
+{-# LANGUAGE DatatypeContexts    #-}
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE NoImplicitPrelude   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies        #-}
+
 module Hbro.Event (
 -- * Types
       Event(..)

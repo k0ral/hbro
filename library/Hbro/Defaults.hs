@@ -45,7 +45,7 @@ import           System.Glib.Attributes.Extended
 -- }}}
 
 -- | A 'God' monad has access to everything, and obviously never throws errors.
-type God r m = (ControlIO m, MonadLogger m, MonadResource m, MonadReader r m, Has (TVar Config) r, Has PromptBar r, Has NotificationBar r, Has StatusBar r, Has Gtk.Builder r, Has (Signal KeyMapPressed) r, Has MainView r, Alternative m)
+type God r m = (ControlIO m, MonadLogger m, MonadResource m, MonadReader r m, Has (TVar Config) r, Has PromptBar r, Has NotificationBar r, Has StatusBar r, Has Gtk.Builder r, Has (Signal KeyMapPressed) r, Has MainView r, Alternative m, MonadThrow m)
 
 defaultLinkClickedHandler :: (MonadIO m, MonadLogger m, MonadThrow m, MonadReader r m, Has MainView r)
                           => Handler m LinkClicked
