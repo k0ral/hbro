@@ -32,6 +32,7 @@ import           Hbro.Prelude
 import           Control.Concurrent.Async.Lifted
 import           Control.Concurrent.STM.MonadIO
 import           Control.Monad.Trans.Resource
+import           Control.Monad.Trans.Resource.Internal
 import           Control.Monad.Trans.Class
 
 import           Data.UUID
@@ -72,11 +73,23 @@ instance Default Settings where
 getDataFileName :: (MonadIO m) => Text -> m FilePath
 getDataFileName file = io (Package.getDataFileName $ unpack file)
 
-instance MonadBase b m =>  MonadBase b (ResourceT m) where
-  liftBase = lift . liftBase
 
-instance MonadBaseControl b m =>  MonadBaseControl b (ResourceT m) where
-  type StM (ResourceT m) a = StM m a
+instance MonadBase b m => MonadBase b (ResourceT m) where
+    liftBase = lift . liftBase
+
+instance MonadTransControl ResourceT where
+    type StT ResourceT a = a
+    liftWith f = ResourceT $ \r -> f $ \(ResourceT t) -> t r
+    restoreT = ResourceT . const
+    {-# INLINE liftWith #-}
+    {-# INLINE restoreT #-}
+
+instance MonadBaseControl b m => MonadBaseControl b (ResourceT m) where
+     type StM (ResourceT m) a = StM m a
+     liftBaseWith f = ResourceT $ \reader' ->
+         liftBaseWith $ \runInBase ->
+             f $ runInBase . (\(ResourceT r) -> r reader'  )
+     restoreM (base) = ResourceT $ const $ restoreM base
 
 -- | Main function to call in the configuration file. Cf @Hbro/Main.hs@ as an example.
 hbro :: Settings -> IO ()
@@ -89,9 +102,8 @@ hbro settings = do
         Right runOptions ->
           runResourceT
             . runThreadedLoggingT (runOptions^.logLevel_)
-            $ Dyre.wrap @(ThreadedLoggingT (ResourceT IO)) (runOptions^.dyreMode_)
-                        (withAsyncBound guiThread . mainThread)
-                        (settings, runOptions)
+            $ (withAsyncBound guiThread . mainThread)
+              (settings, runOptions)
 
 -- | Gtk main loop thread.
 guiThread :: (ControlIO m, MonadLogger m) => m ()
